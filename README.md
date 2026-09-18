@@ -18,5 +18,5 @@ Frontend-репозиторий команды KVMM. Проект: VK.com
 ### Ссылки
 
 - [Деплой]()
-- [Backend repository]()
+- [Backend repository](https://github.com/go-park-mail-ru/2026_2_KVMM)
 - [Figma]()
