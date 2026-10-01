@@ -99,7 +99,10 @@ export function validatePassword(value) {
   if (length(value) < PASSWORD_LENGTH.min) {
     return MESSAGES.passwordMin;
   }
-  if (length(value) > PASSWORD_LENGTH.max || byteLength(value) > PASSWORD_LENGTH.max) {
+  if (
+    length(value) > PASSWORD_LENGTH.max ||
+    byteLength(value) > PASSWORD_LENGTH.max
+  ) {
     return MESSAGES.passwordMax;
   }
   return "";

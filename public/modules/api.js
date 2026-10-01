@@ -23,8 +23,7 @@ export const api = {
   me: () => request("GET", "/api/auth/me"),
   login: (login, password) =>
     request("POST", "/api/auth/login", { body: { login, password } }),
-  register: (fields) =>
-    request("POST", "/api/auth/register", { body: fields }),
+  register: (fields) => request("POST", "/api/auth/register", { body: fields }),
   logout: (csrfToken) =>
     request("POST", "/api/auth/logout", {
       headers: { "X-CSRF-Token": csrfToken },

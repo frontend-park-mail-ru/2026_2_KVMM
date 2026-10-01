@@ -78,7 +78,9 @@ export class LoginPage {
   async #submitForm() {
     this.#serverError.textContent = "";
 
-    const results = Object.values(this.#fields).map((field) => field.validate());
+    const results = Object.values(this.#fields).map((field) =>
+      field.validate(),
+    );
     if (results.includes(false)) {
       return;
     }

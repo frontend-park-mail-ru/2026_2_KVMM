@@ -47,10 +47,6 @@ export class Input {
     this.#config = config;
   }
 
-  get name() {
-    return this.#config.name;
-  }
-
   get value() {
     return this.#control.value;
   }

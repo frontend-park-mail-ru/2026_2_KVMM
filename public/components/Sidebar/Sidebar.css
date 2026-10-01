@@ -78,6 +78,10 @@
     padding: 6px 12px;
   }
 
+  .sidebar__logout {
+    flex-shrink: 0;
+  }
+
   .sidebar__error {
     flex-basis: 100%;
   }

@@ -14,8 +14,8 @@ function template() {
       <p class="logo sidebar__logo">KVMM</p>
       <nav class="sidebar__nav">
         ${ITEMS.map(itemTemplate).join("")}
-        <button class="sidebar__item sidebar__logout" type="button">Выйти</button>
       </nav>
+      <button class="sidebar__item sidebar__logout" type="button">Выйти</button>
       <p class="sidebar__error" role="alert"></p>
     </aside>
   `;
