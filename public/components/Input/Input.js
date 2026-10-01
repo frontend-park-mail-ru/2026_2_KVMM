@@ -1,13 +1,35 @@
-function template({ name, type, placeholder, autocomplete }) {
+function optionsTemplate(options) {
+  return options
+    .map(({ value, label }) => `<option value="${value}">${label}</option>`)
+    .join("");
+}
+
+function controlTemplate({ name, type, placeholder, autocomplete, options }) {
+  if (options) {
+    return `
+      <select class="input__control" name="${name}" required>
+        <option value="" disabled selected hidden>${placeholder}</option>
+        ${optionsTemplate(options)}
+      </select>
+    `;
+  }
+
   return `
-    <div class="input">
-      <input
-        class="input__control"
-        name="${name}"
-        type="${type}"
-        placeholder="${placeholder}"
-        autocomplete="${autocomplete}"
-      >
+    <input
+      class="input__control"
+      name="${name}"
+      type="${type}"
+      placeholder="${placeholder}"
+      autocomplete="${autocomplete}"
+    >
+  `;
+}
+
+function template(config) {
+  const modifier = config.options ? " input_select" : "";
+  return `
+    <div class="input${modifier}">
+      ${controlTemplate(config)}
       <p class="input__error"></p>
     </div>
   `;
@@ -25,8 +47,16 @@ export class Input {
     this.#config = config;
   }
 
+  get name() {
+    return this.#config.name;
+  }
+
   get value() {
     return this.#control.value;
+  }
+
+  get hasError() {
+    return Boolean(this.#error.textContent);
   }
 
   render() {
@@ -37,7 +67,7 @@ export class Input {
 
     this.#control.addEventListener("blur", () => this.validate());
     this.#control.addEventListener("input", () => {
-      if (this.#error.textContent) {
+      if (this.hasError) {
         this.validate();
       }
     });

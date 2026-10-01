@@ -1,0 +1,62 @@
+.signup-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 48px;
+  width: 100%;
+  max-width: 410px;
+  padding: 36px 32px;
+  border-radius: var(--radius-card);
+  background: var(--color-card);
+  color: var(--color-text-dark);
+}
+
+.signup-card__header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+}
+
+.signup-card__form {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 320px;
+}
+
+.signup-card__fields {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.signup-card__server-error {
+  margin-top: 40px;
+  color: var(--color-error-server);
+  font: var(--font-body);
+  text-align: center;
+}
+
+.signup-card__server-error:empty {
+  display: none;
+}
+
+.signup-card__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 48px;
+}
+
+.signup-card__server-error:not(:empty) + .signup-card__actions {
+  margin-top: 21px;
+}
+
+@media (max-width: 441px) {
+  .signup-card {
+    padding-right: 24px;
+    padding-left: 24px;
+  }
+}

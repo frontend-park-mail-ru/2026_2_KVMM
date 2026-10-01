@@ -28,6 +28,37 @@
   border-color: var(--color-error);
 }
 
+.input_select {
+  position: relative;
+}
+
+.input_select .input__control {
+  padding-right: 36px;
+  appearance: none;
+  cursor: pointer;
+}
+
+.input_select .input__control:invalid {
+  color: var(--color-input-placeholder);
+}
+
+.input_select option {
+  color: var(--color-input-text);
+}
+
+.input_select::after {
+  position: absolute;
+  top: 15px;
+  right: 16px;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid var(--color-input-text);
+  border-bottom: 2px solid var(--color-input-text);
+  content: "";
+  pointer-events: none;
+  transform: rotate(45deg);
+}
+
 .input__error {
   margin-top: 4px;
   color: var(--color-error);
