@@ -1,4 +1,4 @@
-const NETWORK_ERROR = "Сервер недоступен, попробуйте позже";
+export const NETWORK_ERROR = "Сервер недоступен, попробуйте позже";
 const DEFAULT_ERROR = "Проверьте правильность заполнения полей";
 
 const SERVER_ERRORS = {

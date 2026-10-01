@@ -3,5 +3,8 @@
 @import url("styles/base.css");
 @import url("components/Input/Input.css");
 @import url("components/Button/Button.css");
+@import url("components/Sidebar/Sidebar.css");
+@import url("components/Post/Post.css");
 @import url("pages/LoginPage/LoginPage.css");
 @import url("pages/SignupPage/SignupPage.css");
+@import url("pages/FeedPage/FeedPage.css");

@@ -6,6 +6,7 @@ const USER_HOME = "/feed";
 export class Router {
   #root;
   #routes;
+  #page;
 
   constructor(root, routes) {
     this.#root = root;
@@ -53,7 +54,9 @@ export class Router {
 
   #render(path) {
     const { page: Page } = this.#routes[path];
+    this.#page?.destroy?.();
     this.#root.innerHTML = "";
-    new Page(this.#root, this).render();
+    this.#page = new Page(this.#root, this);
+    this.#page.render();
   }
 }
