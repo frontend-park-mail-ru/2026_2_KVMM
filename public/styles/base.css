@@ -1,0 +1,52 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+p {
+  margin: 0;
+}
+
+a {
+  color: inherit;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+.page {
+  min-height: 100vh;
+}
+
+.page_auth {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px;
+  background: var(--color-page-auth);
+  color: var(--color-text-dark);
+}
+
+.page_feed {
+  padding: 24px 80px;
+  background: var(--color-page-feed);
+  color: var(--color-text-light);
+}
+
+.logo {
+  font: var(--font-display);
+}
