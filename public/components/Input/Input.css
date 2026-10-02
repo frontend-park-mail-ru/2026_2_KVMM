@@ -1,0 +1,71 @@
+.input {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.input__control {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-input);
+  background: var(--color-input);
+  color: var(--color-input-text);
+  font: var(--font-body);
+  outline: none;
+}
+
+.input__control::placeholder {
+  color: var(--color-input-placeholder);
+  opacity: 1;
+}
+
+.input__control:focus {
+  border-color: var(--color-primary);
+}
+
+.input_invalid .input__control {
+  border-color: var(--color-error);
+}
+
+.input_select {
+  position: relative;
+}
+
+.input_select .input__control {
+  padding-right: 36px;
+  appearance: none;
+  cursor: pointer;
+}
+
+.input_select .input__control:invalid {
+  color: var(--color-input-placeholder);
+}
+
+.input_select option {
+  color: var(--color-input-text);
+}
+
+.input_select::after {
+  position: absolute;
+  top: 15px;
+  right: 16px;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid var(--color-input-text);
+  border-bottom: 2px solid var(--color-input-text);
+  content: "";
+  pointer-events: none;
+  transform: rotate(45deg);
+}
+
+.input__error {
+  margin-top: 4px;
+  color: var(--color-error);
+  font: var(--font-caption);
+  text-align: left;
+}
+
+.input__error:empty {
+  display: none;
+}
