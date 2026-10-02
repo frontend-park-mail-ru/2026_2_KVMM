@@ -108,6 +108,12 @@
 
 }
 
+.post__action-icon {
+  width: 20px;
+  height: 20px;
+  display: block;
+}
+
 .post__action_likes {
   width: 80px;
   min-width: 80px;
