@@ -79,23 +79,45 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  width: auto;
+  height: 32px;
   padding: 6px 12px;
+  gap: 8px;
   border-radius: var(--radius-pill);
   background: var(--color-surface);
   color: var(--color-text-dark);
   font: var(--font-caption);
 }
 
+.post__action svg {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+
+}
+
 .post__file {
   text-decoration: underline;
 }
+
 
 .post__actions {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+
 }
 
 .post__action_likes {
+  width: 80px;
   min-width: 80px;
+
+}
+
+.post__action:nth-child(2) {
+  width: 133px;
+}
+
+.post__action:nth-child(3) {
+  width: 123px;
 }
