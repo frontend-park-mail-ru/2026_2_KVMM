@@ -1,3 +1,24 @@
+const EYE_ICON = `
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" />
+    <circle cx="12" cy="12" r="3" />
+  </svg>
+`;
+
+const EYE_OFF_ICON = `
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M10.6 5.1A10.4 10.4 0 0 1 12 5c6.4 0 10 7 10 7a17.6 17.6 0 0 1-2.9 3.9" />
+    <path d="M6.6 6.6C3.6 8.5 2 12 2 12s3.6 7 10 7c1.9 0 3.6-.6 5-1.5" />
+    <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" />
+    <path d="M3 3l18 18" />
+  </svg>
+`;
+
+const TOGGLE_LABELS = {
+  show: "Показать пароль",
+  hide: "Скрыть пароль",
+};
+
 function optionsTemplate(options) {
   return options
     .map(({ value, label }) => `<option value="${value}">${label}</option>`)
@@ -7,13 +28,14 @@ function optionsTemplate(options) {
 function controlTemplate({ name, type, placeholder, autocomplete, options }) {
   if (options) {
     return `
-      <select class="input__control" name="${name}" required>
+      <select class="input__control" name="${name}" autocomplete="${autocomplete}" required>
         <option value="" disabled selected hidden>${placeholder}</option>
         ${optionsTemplate(options)}
       </select>
     `;
   }
 
+  const passwordAttributes = type === "password" ? 'spellcheck="false"' : "";
   return `
     <input
       class="input__control"
@@ -21,15 +43,34 @@ function controlTemplate({ name, type, placeholder, autocomplete, options }) {
       type="${type}"
       placeholder="${placeholder}"
       autocomplete="${autocomplete}"
+      ${passwordAttributes}
     >
   `;
 }
 
-function template(config) {
-  const modifier = config.options ? " input_select" : "";
+function toggleTemplate() {
   return `
-    <div class="input${modifier}">
-      ${controlTemplate(config)}
+    <button class="input__toggle" type="button" aria-label="${TOGGLE_LABELS.show}" aria-pressed="false">
+      ${EYE_ICON}
+    </button>
+  `;
+}
+
+function modifierClass({ type, options }) {
+  if (options) {
+    return " input_select";
+  }
+  return type === "password" ? " input_password" : "";
+}
+
+function template(config) {
+  const toggle = config.type === "password" ? toggleTemplate() : "";
+  return `
+    <div class="input${modifierClass(config)}">
+      <div class="input__field">
+        ${controlTemplate(config)}
+        ${toggle}
+      </div>
       <p class="input__error"></p>
     </div>
   `;
@@ -67,6 +108,11 @@ export class Input {
         this.validate();
       }
     });
+
+    const toggle = this.#element.querySelector(".input__toggle");
+    if (toggle) {
+      this.#bindToggle(toggle);
+    }
   }
 
   validate() {
@@ -75,5 +121,19 @@ export class Input {
     this.#element.classList.toggle("input_invalid", Boolean(message));
     this.#control.setAttribute("aria-invalid", String(Boolean(message)));
     return !message;
+  }
+
+  #bindToggle(toggle) {
+    toggle.addEventListener("mousedown", (event) => event.preventDefault());
+    toggle.addEventListener("click", () => {
+      const isHidden = this.#control.type === "password";
+      this.#control.type = isHidden ? "text" : "password";
+      toggle.innerHTML = isHidden ? EYE_OFF_ICON : EYE_ICON;
+      toggle.setAttribute(
+        "aria-label",
+        isHidden ? TOGGLE_LABELS.hide : TOGGLE_LABELS.show,
+      );
+      toggle.setAttribute("aria-pressed", String(isHidden));
+    });
   }
 }

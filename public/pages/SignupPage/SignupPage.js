@@ -71,6 +71,7 @@ function fieldConfigs(valueOf) {
     {
       name: "gender",
       placeholder: "Выберите пол",
+      autocomplete: "sex",
       options: GENDERS,
       validate: validateGender,
     },

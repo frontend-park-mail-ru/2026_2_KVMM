@@ -4,6 +4,10 @@
   width: 100%;
 }
 
+.input__field {
+  position: relative;
+}
+
 .input__control {
   width: 100%;
   padding: 8px 12px;
@@ -20,6 +24,17 @@
   opacity: 1;
 }
 
+.input__control:-webkit-autofill {
+  box-shadow: 0 0 0 1000px var(--color-input) inset;
+  caret-color: var(--color-input-text);
+  -webkit-text-fill-color: var(--color-input-text);
+}
+
+.input__control:autofill {
+  box-shadow: 0 0 0 1000px var(--color-input) inset;
+  filter: none;
+}
+
 .input__control:focus {
   border-color: var(--color-primary);
 }
@@ -28,8 +43,30 @@
   border-color: var(--color-error);
 }
 
-.input_select {
-  position: relative;
+.input_password .input__control {
+  padding-right: 44px;
+}
+
+.input__toggle {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-input);
+  background: none;
+  color: var(--color-input-text);
+  cursor: pointer;
+  transform: translateY(-50%);
+}
+
+.input__toggle:focus-visible {
+  outline: 2px solid var(--color-primary);
 }
 
 .input_select .input__control {
@@ -46,7 +83,7 @@
   color: var(--color-input-text);
 }
 
-.input_select::after {
+.input_select .input__field::after {
   position: absolute;
   top: 15px;
   right: 16px;
