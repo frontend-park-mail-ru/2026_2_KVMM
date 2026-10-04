@@ -81,15 +81,25 @@ function template(post) {
   `;
 }
 
+/**
+ * Карточка поста ленты. Все данные с бэкенда экранируются.
+ */
 export class Post {
   #parent;
   #post;
 
+  /**
+   * @param {HTMLElement} parent Список постов.
+   * @param {object} post Пост из ответа GET /api/posts.
+   */
   constructor(parent, post) {
     this.#parent = parent;
     this.#post = post;
   }
 
+  /**
+   * Добавляет карточку в конец списка и сворачивает длинный текст.
+   */
   render() {
     this.#parent.insertAdjacentHTML("beforeend", template(this.#post));
     const element = this.#parent.lastElementChild;

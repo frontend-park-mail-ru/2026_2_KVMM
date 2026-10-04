@@ -23,6 +23,11 @@ const MONTHS = [
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+/**
+ * Экранирует строку для вставки в HTML-шаблон.
+ * @param {string|number} value Текст или число из данных бэкенда.
+ * @returns {string} Строка без активных HTML-символов.
+ */
 export function escapeHtml(value) {
   return String(value).replace(/[&<>"']/g, (char) => HTML_ESCAPES[char]);
 }
@@ -35,6 +40,12 @@ function pad(value) {
   return String(value).padStart(2, "0");
 }
 
+/**
+ * Дата поста: «Сегодня в 18:42», «Вчера в 18:42» или «5 октября в 18:42».
+ * @param {string} value Дата в формате ISO.
+ * @param {Date} [now] Текущий момент.
+ * @returns {string} Дата для показа.
+ */
 export function formatDate(value, now = new Date()) {
   const date = new Date(value);
   const time = `${pad(date.getHours())}:${pad(date.getMinutes())}`;

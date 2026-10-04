@@ -28,6 +28,9 @@ function template() {
   `;
 }
 
+/**
+ * Страница ленты: сайдбар, посты с бэкенда, подгрузка при прокрутке, выход.
+ */
 export class FeedPage {
   #parent;
   #router;
@@ -40,11 +43,18 @@ export class FeedPage {
   #hasError = false;
   #isDestroyed = false;
 
+  /**
+   * @param {HTMLElement} parent Контейнер страницы.
+   * @param {import("../../modules/router.js").Router} router Роутер для перехода на /login.
+   */
   constructor(parent, router) {
     this.#parent = parent;
     this.#router = router;
   }
 
+  /**
+   * Рисует страницу и загружает первую порцию постов.
+   */
   render() {
     this.#parent.insertAdjacentHTML("beforeend", template());
     const page = this.#parent.querySelector(".feed-page");
@@ -65,6 +75,9 @@ export class FeedPage {
     this.#loadPage();
   }
 
+  /**
+   * Снимает обработчик прокрутки и игнорирует ответы, пришедшие после ухода со страницы.
+   */
   destroy() {
     this.#isDestroyed = true;
     window.removeEventListener("scroll", this.#onScroll);

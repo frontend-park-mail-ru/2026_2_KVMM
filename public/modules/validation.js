@@ -117,10 +117,20 @@ function yearsAgo(today, years, extraDays = 0) {
   );
 }
 
+/**
+ * Убирает из телефона пробелы, скобки и дефисы.
+ * @param {string} value Телефон в любом формате.
+ * @returns {string} Телефон вида +79991234567.
+ */
 export function normalizePhone(value) {
   return value.replace(/[\s()-]/g, "");
 }
 
+/**
+ * Границы поля даты рождения для возраста от 14 до 120 лет.
+ * @param {Date} [today] Текущий момент, сравнение идёт по UTC.
+ * @returns {{min: string, max: string}} Даты в формате YYYY-MM-DD.
+ */
 export function birthdayRange(today = new Date()) {
   return {
     min: isoDate(yearsAgo(today, AGE.max + 1, 1)),
@@ -128,14 +138,29 @@ export function birthdayRange(today = new Date()) {
   };
 }
 
+/**
+ * Проверяет логин на форме входа.
+ * @param {string} value Логин, email или телефон.
+ * @returns {string} Текст ошибки или пустая строка.
+ */
 export function validateLogin(value) {
   return value.trim() ? "" : MESSAGES.required;
 }
 
+/**
+ * Проверяет пароль на форме входа: длина 8–64 и печатные ASCII без пробела.
+ * @param {string} value Пароль.
+ * @returns {string} Текст ошибки или пустая строка.
+ */
 export function validateLoginPassword(value) {
   return passwordLengthOrCharsError(value);
 }
 
+/**
+ * Проверяет логин при регистрации: латиница, цифры, _ и ., начинается с буквы, 4–32 символа.
+ * @param {string} value Логин.
+ * @returns {string} Текст ошибки или пустая строка.
+ */
 export function validateNickname(value) {
   const nickname = value.trim();
   if (!nickname) {
@@ -149,6 +174,12 @@ export function validateNickname(value) {
     : MESSAGES.nicknameLength;
 }
 
+/**
+ * Проверяет email. Пустой допустим, если указан телефон.
+ * @param {string} value Email.
+ * @param {string} phone Значение поля телефона.
+ * @returns {string} Текст ошибки или пустая строка.
+ */
 export function validateEmail(value, phone) {
   const email = value.trim();
   if (!email) {
@@ -157,6 +188,12 @@ export function validateEmail(value, phone) {
   return isEmail(email) ? "" : MESSAGES.email;
 }
 
+/**
+ * Проверяет телефон: + и 10–15 цифр. Пустой допустим, если указан email.
+ * @param {string} value Телефон, можно с пробелами, скобками и дефисами.
+ * @param {string} email Значение поля email.
+ * @returns {string} Текст ошибки или пустая строка.
+ */
 export function validatePhone(value, email) {
   const phone = normalizePhone(value);
   if (!phone) {
@@ -165,6 +202,13 @@ export function validatePhone(value, email) {
   return PHONE_PATTERN.test(phone) ? "" : MESSAGES.phone;
 }
 
+/**
+ * Проверяет имя, фамилию или отчество: буквы, между частями один пробел, дефис или апостроф, 2–32 символа.
+ * @param {string} value Значение поля.
+ * @param {"profile_name"|"surname"|"patronymic"} field Поле, для текста ошибки о длине.
+ * @param {boolean} [isRequired] Обязательно ли поле.
+ * @returns {string} Текст ошибки или пустая строка.
+ */
 export function validateName(value, field, isRequired = true) {
   const name = value.trim();
   if (!name) {
@@ -178,10 +222,22 @@ export function validateName(value, field, isRequired = true) {
     : NAME_LENGTH_MESSAGES[field];
 }
 
+/**
+ * Проверяет, что пол выбран.
+ * @param {string} value male, female или пустая строка.
+ * @returns {string} Текст ошибки или пустая строка.
+ */
 export function validateGender(value) {
   return value ? "" : MESSAGES.gender;
 }
 
+/**
+ * Проверяет дату рождения: существующая дата, возраст от 14 до 120 лет по UTC.
+ * @param {string} value Дата YYYY-MM-DD или пустая строка.
+ * @param {ValidityState} [validity] Состояние поля, badInput — дата введена не полностью.
+ * @param {Date} [today] Текущий момент.
+ * @returns {string} Текст ошибки или пустая строка.
+ */
 export function validateBirthday(value, validity, today = new Date()) {
   if (validity?.badInput) {
     return MESSAGES.birthdayInvalid;
@@ -200,6 +256,11 @@ export function validateBirthday(value, validity, today = new Date()) {
   return age < AGE.min ? MESSAGES.birthdayTooYoung : "";
 }
 
+/**
+ * Проверяет пароль при регистрации: 8–64 печатных ASCII без пробела, минимум одна буква и одна цифра.
+ * @param {string} value Пароль.
+ * @returns {string} Текст ошибки или пустая строка.
+ */
 export function validatePassword(value) {
   const error = passwordLengthOrCharsError(value);
   if (error) {
@@ -210,6 +271,12 @@ export function validatePassword(value) {
     : MESSAGES.passwordStrength;
 }
 
+/**
+ * Проверяет, что повтор совпадает с паролем.
+ * @param {string} value Повтор пароля.
+ * @param {string} password Пароль.
+ * @returns {string} Текст ошибки или пустая строка.
+ */
 export function validatePasswordConfirm(value, password) {
   if (!value) {
     return MESSAGES.required;

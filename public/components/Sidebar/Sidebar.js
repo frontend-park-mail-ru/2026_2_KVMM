@@ -21,17 +21,28 @@ function template() {
   `;
 }
 
+/**
+ * Боковое меню ленты с кнопкой «Выйти».
+ */
 export class Sidebar {
   #parent;
   #onLogout;
   #logout;
   #error;
 
+  /**
+   * @param {HTMLElement} parent Контейнер, в начало которого вставляется меню.
+   * @param {object} handlers Обработчики действий меню.
+   * @param {function(): void} handlers.onLogout Вызывается по нажатию «Выйти».
+   */
   constructor(parent, { onLogout }) {
     this.#parent = parent;
     this.#onLogout = onLogout;
   }
 
+  /**
+   * Вставляет меню и подписывается на нажатие «Выйти».
+   */
   render() {
     this.#parent.insertAdjacentHTML("afterbegin", template());
     const element = this.#parent.firstElementChild;
@@ -41,10 +52,18 @@ export class Sidebar {
     this.#logout.addEventListener("click", () => this.#onLogout());
   }
 
+  /**
+   * Блокирует кнопку «Выйти» на время запроса.
+   * @param {boolean} isLoggingOut Идёт ли запрос выхода.
+   */
   setLoggingOut(isLoggingOut) {
     this.#logout.disabled = isLoggingOut;
   }
 
+  /**
+   * Показывает ошибку под меню.
+   * @param {string} message Текст ошибки или пустая строка, чтобы скрыть.
+   */
   setError(message) {
     this.#error.textContent = message;
   }

@@ -114,7 +114,6 @@
   width: 20px;
   height: 20px;
   flex-shrink: 0;
-
 }
 
 .post__file {
@@ -129,12 +128,10 @@
   white-space: nowrap;
 }
 
-
 .post__actions {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-
 }
 
 .post__action-icon {
@@ -145,7 +142,6 @@
 
 .post__action_likes {
   min-width: 80px;
-
 }
 
 .post__action:nth-child(2) {

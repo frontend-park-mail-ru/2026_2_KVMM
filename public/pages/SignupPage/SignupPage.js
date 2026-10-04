@@ -136,6 +136,9 @@ function template() {
   `;
 }
 
+/**
+ * Страница регистрации.
+ */
 export class SignupPage {
   #parent;
   #router;
@@ -143,11 +146,18 @@ export class SignupPage {
   #submit;
   #serverError;
 
+  /**
+   * @param {HTMLElement} parent Контейнер страницы.
+   * @param {import("../../modules/router.js").Router} router Роутер для перехода в ленту после регистрации.
+   */
   constructor(parent, router) {
     this.#parent = parent;
     this.#router = router;
   }
 
+  /**
+   * Рисует форму регистрации и подписывается на ввод и отправку.
+   */
   render() {
     this.#parent.insertAdjacentHTML("beforeend", template());
 

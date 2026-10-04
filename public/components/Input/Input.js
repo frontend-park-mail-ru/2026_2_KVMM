@@ -95,6 +95,9 @@ function template(config) {
   `;
 }
 
+/**
+ * Поле формы с текстом ошибки под ним. Для пароля добавляет кнопку показа.
+ */
 export class Input {
   #parent;
   #config;
@@ -102,6 +105,10 @@ export class Input {
   #control;
   #error;
 
+  /**
+   * @param {HTMLElement} parent Контейнер, в конец которого добавляется поле.
+   * @param {object} config Настройки: name, type, placeholder, autocomplete, attributes, options и validate.
+   */
   constructor(parent, config) {
     this.#parent = parent;
     this.#config = config;
@@ -115,6 +122,9 @@ export class Input {
     return Boolean(this.#error.textContent);
   }
 
+  /**
+   * Вставляет поле в контейнер и подписывается на ввод и уход из поля.
+   */
   render() {
     this.#parent.insertAdjacentHTML("beforeend", template(this.#config));
     this.#element = this.#parent.lastElementChild;
@@ -134,6 +144,10 @@ export class Input {
     }
   }
 
+  /**
+   * Проверяет значение и показывает или убирает ошибку.
+   * @returns {boolean} true, если значение корректно.
+   */
   validate() {
     const message = this.#config.validate(this.value, this.#control.validity);
     this.#error.textContent = message;

@@ -46,6 +46,9 @@ function template() {
   `;
 }
 
+/**
+ * Страница входа.
+ */
 export class LoginPage {
   #parent;
   #router;
@@ -53,11 +56,18 @@ export class LoginPage {
   #submit;
   #serverError;
 
+  /**
+   * @param {HTMLElement} parent Контейнер страницы.
+   * @param {import("../../modules/router.js").Router} router Роутер для перехода в ленту после входа.
+   */
   constructor(parent, router) {
     this.#parent = parent;
     this.#router = router;
   }
 
+  /**
+   * Рисует форму входа и подписывается на отправку.
+   */
   render() {
     this.#parent.insertAdjacentHTML("beforeend", template());
 

@@ -1,6 +1,9 @@
 let profile = null;
 let csrfToken = "";
 
+/**
+ * Текущий пользователь: профиль и CSRF-токен хранятся в памяти вкладки.
+ */
 export const user = {
   get profile() {
     return profile;

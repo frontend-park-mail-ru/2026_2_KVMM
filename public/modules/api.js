@@ -19,6 +19,9 @@ async function request(method, path, { body, headers = {} } = {}) {
   return { status: response.status, data };
 }
 
+/**
+ * Запросы к API бэкенда. Каждый возвращает { status, data }, status 0 — сервер недоступен.
+ */
 export const api = {
   me: () => request("GET", "/auth/me"),
   login: (login, password) =>
