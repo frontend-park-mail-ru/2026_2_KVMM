@@ -45,8 +45,12 @@
 }
 
 .post__name {
+  display: -webkit-box;
+  overflow: hidden;
   font: var(--font-body-strong);
   overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .post__date {
@@ -59,6 +63,23 @@
   font: var(--font-body);
   white-space: pre-line;
   overflow-wrap: anywhere;
+}
+
+.post__text_collapsed {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 12;
+}
+
+.post__more {
+  align-self: flex-start;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--color-primary);
+  font: var(--font-body-strong);
+  cursor: pointer;
 }
 
 .post__media {
@@ -97,7 +118,15 @@
 }
 
 .post__file {
+  max-width: 100%;
   text-decoration: underline;
+}
+
+.post__file-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 
@@ -115,7 +144,6 @@
 }
 
 .post__action_likes {
-  width: 80px;
   min-width: 80px;
 
 }
