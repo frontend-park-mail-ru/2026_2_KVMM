@@ -2,7 +2,10 @@ import { api } from "../../modules/api.js";
 import { user } from "../../modules/user.js";
 import { serverErrorMessage } from "../../modules/errors.js";
 import {
+  MAX_LENGTH,
+  birthdayRange,
   normalizePhone,
+  validateBirthday,
   validateEmail,
   validateGender,
   validateName,
@@ -31,6 +34,7 @@ function fieldConfigs(valueOf) {
       type: "text",
       placeholder: "Введите логин",
       autocomplete: "username",
+      attributes: { maxlength: MAX_LENGTH.nickname },
       validate: validateNickname,
     },
     {
@@ -38,6 +42,7 @@ function fieldConfigs(valueOf) {
       type: "email",
       placeholder: "Введите email",
       autocomplete: "email",
+      attributes: { maxlength: MAX_LENGTH.email },
       validate: (value) => validateEmail(value, valueOf("phone_number")),
     },
     {
@@ -45,6 +50,7 @@ function fieldConfigs(valueOf) {
       type: "tel",
       placeholder: "Введите номер телефона",
       autocomplete: "tel",
+      attributes: { maxlength: MAX_LENGTH.phone },
       validate: (value) => validatePhone(value, valueOf("email")),
     },
     {
@@ -52,6 +58,7 @@ function fieldConfigs(valueOf) {
       type: "text",
       placeholder: "Введите имя",
       autocomplete: "given-name",
+      attributes: { maxlength: MAX_LENGTH.name },
       validate: (value) => validateName(value, "profile_name"),
     },
     {
@@ -59,6 +66,7 @@ function fieldConfigs(valueOf) {
       type: "text",
       placeholder: "Введите фамилию",
       autocomplete: "family-name",
+      attributes: { maxlength: MAX_LENGTH.name },
       validate: (value) => validateName(value, "surname"),
     },
     {
@@ -66,6 +74,7 @@ function fieldConfigs(valueOf) {
       type: "text",
       placeholder: "Введите отчество",
       autocomplete: "additional-name",
+      attributes: { maxlength: MAX_LENGTH.name },
       validate: (value) => validateName(value, "patronymic", false),
     },
     {
@@ -76,10 +85,23 @@ function fieldConfigs(valueOf) {
       validate: validateGender,
     },
     {
+      name: "birthday",
+      type: "date",
+      placeholder: "Дата рождения",
+      autocomplete: "bday",
+      attributes: {
+        ...birthdayRange(),
+        required: "required",
+        "aria-label": "Дата рождения",
+      },
+      validate: validateBirthday,
+    },
+    {
       name: "password",
       type: "password",
       placeholder: "Введите пароль",
       autocomplete: "new-password",
+      attributes: { maxlength: MAX_LENGTH.password },
       validate: validatePassword,
     },
     {
@@ -87,6 +109,7 @@ function fieldConfigs(valueOf) {
       type: "password",
       placeholder: "Повторите пароль",
       autocomplete: "new-password",
+      attributes: { maxlength: MAX_LENGTH.password },
       validate: (value) => validatePasswordConfirm(value, valueOf("password")),
     },
   ];
@@ -168,6 +191,7 @@ export class SignupPage {
       surname: valueOf("surname").trim(),
       patronymic: valueOf("patronymic").trim() || undefined,
       gender: valueOf("gender"),
+      birthday: valueOf("birthday"),
     };
   }
 

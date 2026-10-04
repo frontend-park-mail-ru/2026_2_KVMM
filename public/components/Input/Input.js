@@ -25,7 +25,20 @@ function optionsTemplate(options) {
     .join("");
 }
 
-function controlTemplate({ name, type, placeholder, autocomplete, options }) {
+function attributesTemplate(attributes = {}) {
+  return Object.entries(attributes)
+    .map(([name, value]) => `${name}="${value}"`)
+    .join(" ");
+}
+
+function controlTemplate({
+  name,
+  type,
+  placeholder,
+  autocomplete,
+  options,
+  attributes,
+}) {
   if (options) {
     return `
       <select class="input__control" name="${name}" autocomplete="${autocomplete}" required>
@@ -44,6 +57,7 @@ function controlTemplate({ name, type, placeholder, autocomplete, options }) {
       placeholder="${placeholder}"
       autocomplete="${autocomplete}"
       ${passwordAttributes}
+      ${attributesTemplate(attributes)}
     >
   `;
 }
@@ -60,14 +74,19 @@ function modifierClass({ type, options }) {
   if (options) {
     return " input_select";
   }
-  return type === "password" ? " input_password" : "";
+  if (type === "password" || type === "date") {
+    return ` input_${type}`;
+  }
+  return "";
 }
 
 function template(config) {
   const toggle = config.type === "password" ? toggleTemplate() : "";
+  const placeholder =
+    config.type === "date" ? ` data-placeholder="${config.placeholder}"` : "";
   return `
     <div class="input${modifierClass(config)}">
-      <div class="input__field">
+      <div class="input__field"${placeholder}>
         ${controlTemplate(config)}
         ${toggle}
       </div>
@@ -116,7 +135,7 @@ export class Input {
   }
 
   validate() {
-    const message = this.#config.validate(this.value);
+    const message = this.#config.validate(this.value, this.#control.validity);
     this.#error.textContent = message;
     this.#element.classList.toggle("input_invalid", Boolean(message));
     this.#control.setAttribute("aria-invalid", String(Boolean(message)));

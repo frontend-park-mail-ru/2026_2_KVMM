@@ -2,6 +2,7 @@ import { api } from "../../modules/api.js";
 import { user } from "../../modules/user.js";
 import { serverErrorMessage } from "../../modules/errors.js";
 import {
+  MAX_LENGTH,
   validateLogin,
   validateLoginPassword,
 } from "../../modules/validation.js";
@@ -13,6 +14,7 @@ const FIELDS = {
     type: "text",
     placeholder: "Введите логин",
     autocomplete: "username",
+    attributes: { maxlength: MAX_LENGTH.login },
     validate: validateLogin,
   },
   password: {
@@ -20,6 +22,7 @@ const FIELDS = {
     type: "password",
     placeholder: "Введите пароль",
     autocomplete: "current-password",
+    attributes: { maxlength: MAX_LENGTH.password },
     validate: validateLoginPassword,
   },
 };
