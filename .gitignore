@@ -37,3 +37,11 @@ Temporary Items
 *.icloud
 
 # End of https://www.toptal.com/developers/gitignore/api/macos
+
+.idea
+.idea/
+.git
+*.log
+*.pem
+*.key
+*.ppk

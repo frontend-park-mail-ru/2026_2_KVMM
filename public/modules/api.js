@@ -1,4 +1,4 @@
-const API_URL = "http://localhost:8080";
+const API_URL = "/api";
 
 async function request(method, path, { body, headers = {} } = {}) {
   const options = { method, credentials: "include", headers };
@@ -20,15 +20,15 @@ async function request(method, path, { body, headers = {} } = {}) {
 }
 
 export const api = {
-  me: () => request("GET", "/api/auth/me"),
+  me: () => request("GET", "/auth/me"),
   login: (login, password) =>
-    request("POST", "/api/auth/login", { body: { login, password } }),
-  register: (fields) => request("POST", "/api/auth/register", { body: fields }),
+    request("POST", "/auth/login", { body: { login, password } }),
+  register: (fields) => request("POST", "/auth/register", { body: fields }),
   logout: (csrfToken) =>
-    request("POST", "/api/auth/logout", {
+    request("POST", "/auth/logout", {
       headers: { "X-CSRF-Token": csrfToken },
     }),
   posts: (offset, limit) =>
-    request("GET", `/api/posts?offset=${offset}&limit=${limit}`),
-  mediaUrl: (path) => `${API_URL}${path}`,
+    request("GET", `/posts?offset=${offset}&limit=${limit}`),
+  mediaUrl: (path) => `${path}`,
 };
