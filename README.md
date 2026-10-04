@@ -13,10 +13,10 @@ Frontend-репозиторий команды KVMM. Проект: VK.com
 - [Сергей Шульгиненко](https://github.com/londonwaterloo) — Frontend
 - [Константин Галанин](https://github.com/KonstantinGalanin) — Backend
 - [Сергей Антоненко]() — СУБД
-- ??? — UX
+- [Юлия Кингсеп]() — UX
 
 ### Ссылки
 
-- [Деплой]()
+- [Деплой](http://161.104.106.151/)
 - [Backend repository](https://github.com/go-park-mail-ru/2026_2_KVMM)
-- [Figma]()
+- [Figma](https://www.figma.com/design/OaiulngLSECqOEqQ4tOq25/KVMM-%E2%80%94-UX?node-id=0-1)

@@ -1,0 +1,27 @@
+.button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 12px 20px;
+  border: none;
+  border-radius: var(--radius-button);
+  color: var(--color-button-text);
+  font: var(--font-body-strong);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.button_primary {
+  background: var(--color-success);
+}
+
+.button_secondary {
+  border: 1px solid var(--color-border);
+  background: var(--color-primary);
+}
+
+.button:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
