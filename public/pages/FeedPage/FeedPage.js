@@ -37,7 +37,7 @@ export class FeedPage {
   #sidebar;
   #list;
   #status;
-  #offset = 0;
+  #cursor = 0;
   #hasMore = true;
   #isLoading = false;
   #hasError = false;
@@ -110,7 +110,7 @@ export class FeedPage {
 
     this.#isLoading = true;
     this.#setStatus("loading");
-    const { status, data } = await api.posts(this.#offset, PAGE_SIZE);
+    const { status, data } = await api.posts(this.#cursor, PAGE_SIZE);
     this.#isLoading = false;
 
     if (this.#isDestroyed) {
@@ -128,7 +128,7 @@ export class FeedPage {
 
     data.posts.forEach((post) => new Post(this.#list, post).render());
     this.#hasMore = data.has_more;
-    this.#offset = data.next_offset ?? this.#offset + data.posts.length;
+    this.#cursor = data.next_cursor ?? this.#cursor + data.posts.length;
     this.#setStatus(this.#list.children.length ? "idle" : "empty");
 
     if (this.#isNearBottom()) {

@@ -31,7 +31,7 @@ export const api = {
     request("POST", "/auth/logout", {
       headers: { "X-CSRF-Token": csrfToken },
     }),
-  posts: (offset, limit) =>
-    request("GET", `/posts?offset=${offset}&limit=${limit}`),
+  posts: (cursor, limit) =>
+    request("GET", `/posts?cursor=${cursor}&limit=${limit}`),
   mediaUrl: (path) => `${path}`,
 };
