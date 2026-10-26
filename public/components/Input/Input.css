@@ -54,6 +54,13 @@
   display: none;
 }
 
+.input__control_textarea {
+  display: block;
+  height: 183px;
+  padding: 3px 12px;
+  resize: none;
+}
+
 .input__control_select {
   padding-right: 40px;
   appearance: none;

@@ -34,11 +34,10 @@
 }
 
 .checkbox__box_checked {
-  border-color: var(--color-primary);
   background: radial-gradient(
     circle,
-    var(--color-primary) 0 4.5px,
-    var(--color-surface) 5px
+    var(--color-primary) 0 6px,
+    var(--color-surface) 6.5px
   );
 }
 
@@ -52,7 +51,8 @@
 }
 
 .checkbox__text {
-  text-align: right;
+  text-align: left;
+  text-wrap: balance;
 }
 
 .checkbox__link {

@@ -38,7 +38,7 @@ function kindOf({ type, options }) {
   if (options) {
     return "select";
   }
-  return type === "password" || type === "date" ? type : "";
+  return ["password", "date", "textarea"].includes(type) ? type : "";
 }
 
 function controlTemplate(config, kind) {
@@ -51,6 +51,17 @@ function controlTemplate(config, kind) {
         <option class="input__option" value="" disabled selected hidden>${placeholder}</option>
         ${optionsTemplate(options)}
       </select>
+    `;
+  }
+
+  if (kind === "textarea") {
+    return `
+      <textarea
+        class="input__control${modifier}"
+        name="${name}"
+        placeholder="${placeholder}"
+        ${attributesTemplate(attributes)}
+      ></textarea>
     `;
   }
 
@@ -117,6 +128,15 @@ export class Input {
     return this.#control.value;
   }
 
+  /**
+   * Подставляет значение, например при возврате на шаг формы.
+   * @param {string} value Значение поля.
+   */
+  set value(value) {
+    this.#control.value = value;
+    this.#control.dispatchEvent(new Event("change"));
+  }
+
   get hasError() {
     return Boolean(this.#error.textContent);
   }
@@ -154,16 +174,23 @@ export class Input {
    */
   validate() {
     const message = this.#config.validate(this.value, this.#control.validity);
+    this.setError(message);
+    return !message;
+  }
+
+  /**
+   * Показывает ошибку под полем, например ответ сервера, или убирает её.
+   * @param {string} message Текст ошибки или пустая строка.
+   */
+  setError(message) {
     this.#error.textContent = message;
     this.#control.classList.toggle("input__control_invalid", Boolean(message));
     this.#control.setAttribute("aria-invalid", String(Boolean(message)));
-    return !message;
   }
 
   #bindDatePlaceholder() {
     const update = () => {
-      const isEmpty =
-        !this.#control.value && !this.#control.validity.badInput;
+      const isEmpty = !this.#control.value && !this.#control.validity.badInput;
       const isFocused = document.activeElement === this.#control;
       this.#field.classList.toggle(
         "input__field_placeholder",

@@ -12,6 +12,12 @@
   height: 82px;
 }
 
+.logo__icon_small {
+  width: 48px;
+  height: 48px;
+  margin: 2px 0;
+}
+
 .logo__text {
   font: var(--font-logo);
 }

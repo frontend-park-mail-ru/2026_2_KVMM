@@ -6,6 +6,7 @@ export const MAX_LENGTH = {
   email: 254,
   name: 32,
   password: 64,
+  bio: 256,
 };
 
 const MESSAGES = {
@@ -14,9 +15,11 @@ const MESSAGES = {
   nicknameChars:
     "Логин может содержать только латинские буквы, цифры, _ и . и начинаться с буквы",
   email: 'Введите правильный email "name@example.ru"',
+  emailRequired: "Введите email или нажмите «Возможно потом»",
   phone: "Введите номер в формате +7 (999) 123-45-67",
   phoneCountry: "Можно указать только российский номер, он начинается с +7",
-  phoneRegion: "Такого кода нет в российской нумерации: после +7 идёт 3, 4, 8 или 9",
+  phoneRegion:
+    "Такого кода нет в российской нумерации: после +7 идёт 3, 4, 8 или 9",
   contact: "Укажите email или номер телефона",
   nameChars: "Можно использовать только буквы, пробел, дефис и апостроф",
   passwordMin: "Пароль должен содержать минимум 8 символов",
@@ -29,6 +32,8 @@ const MESSAGES = {
   birthdayRequired: "Укажите дату рождения",
   birthdayTooYoung: "Регистрация доступна с 14 лет",
   birthdayInvalid: "Проверьте дату рождения",
+  consent: "Подтвердите согласие на обработку персональных данных",
+  bio: "Рассказ о себе должен быть не длиннее 256 символов",
 };
 
 const NAME_LENGTH_MESSAGES = {
@@ -302,4 +307,31 @@ export function validatePasswordConfirm(value, password) {
     return MESSAGES.required;
   }
   return value === password ? "" : MESSAGES.passwordMismatch;
+}
+
+/**
+ * Проверяет email на шаге «Добавьте email»: здесь поле обязательно, пропустить шаг можно отдельной кнопкой.
+ * @param {string} value Email.
+ * @returns {string} Текст ошибки или пустая строка.
+ */
+export function validateEmailRequired(value) {
+  return value.trim() ? validateEmail(value, "") : MESSAGES.emailRequired;
+}
+
+/**
+ * Проверяет согласие на обработку персональных данных — без него регистрация невозможна.
+ * @param {boolean} checked Отмечен ли чекбокс.
+ * @returns {string} Текст ошибки или пустая строка.
+ */
+export function validateConsent(checked) {
+  return checked ? "" : MESSAGES.consent;
+}
+
+/**
+ * Проверяет рассказ о себе: не длиннее 256 символов.
+ * @param {string} value Текст из поля «Расскажите о себе».
+ * @returns {string} Текст ошибки или пустая строка.
+ */
+export function validateBio(value) {
+  return length(value.trim()) <= MAX_LENGTH.bio ? "" : MESSAGES.bio;
 }
