@@ -1,12 +1,12 @@
 const EYE_ICON = `
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
     <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" />
     <circle cx="12" cy="12" r="3" />
   </svg>
 `;
 
 const EYE_OFF_ICON = `
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
     <path d="M10.6 5.1A10.4 10.4 0 0 1 12 5c6.4 0 10 7 10 7a17.6 17.6 0 0 1-2.9 3.9" />
     <path d="M6.6 6.6C3.6 8.5 2 12 2 12s3.6 7 10 7c1.9 0 3.6-.6 5-1.5" />
     <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" />
@@ -21,7 +21,10 @@ const TOGGLE_LABELS = {
 
 function optionsTemplate(options) {
   return options
-    .map(({ value, label }) => `<option value="${value}">${label}</option>`)
+    .map(
+      ({ value, label }) =>
+        `<option class="input__option" value="${value}">${label}</option>`,
+    )
     .join("");
 }
 
@@ -31,18 +34,21 @@ function attributesTemplate(attributes = {}) {
     .join(" ");
 }
 
-function controlTemplate({
-  name,
-  type,
-  placeholder,
-  autocomplete,
-  options,
-  attributes,
-}) {
+function kindOf({ type, options }) {
+  if (options) {
+    return "select";
+  }
+  return type === "password" || type === "date" ? type : "";
+}
+
+function controlTemplate(config, kind) {
+  const { name, type, placeholder, autocomplete, options, attributes } = config;
+  const modifier = kind ? ` input__control_${kind}` : "";
+
   if (options) {
     return `
-      <select class="input__control" name="${name}" autocomplete="${autocomplete}" required>
-        <option value="" disabled selected hidden>${placeholder}</option>
+      <select class="input__control${modifier}" name="${name}" autocomplete="${autocomplete}" required>
+        <option class="input__option" value="" disabled selected hidden>${placeholder}</option>
         ${optionsTemplate(options)}
       </select>
     `;
@@ -51,7 +57,7 @@ function controlTemplate({
   const passwordAttributes = type === "password" ? 'spellcheck="false"' : "";
   return `
     <input
-      class="input__control"
+      class="input__control${modifier}"
       name="${name}"
       type="${type}"
       placeholder="${placeholder}"
@@ -65,30 +71,22 @@ function controlTemplate({
 function toggleTemplate() {
   return `
     <button class="input__toggle" type="button" aria-label="${TOGGLE_LABELS.show}" aria-pressed="false">
-      ${EYE_ICON}
+      ${EYE_OFF_ICON}
     </button>
   `;
 }
 
-function modifierClass({ type, options }) {
-  if (options) {
-    return " input_select";
-  }
-  if (type === "password" || type === "date") {
-    return ` input_${type}`;
-  }
-  return "";
-}
-
 function template(config) {
-  const toggle = config.type === "password" ? toggleTemplate() : "";
+  const kind = kindOf(config);
+  const fieldModifier =
+    kind === "select" || kind === "date" ? ` input__field_${kind}` : "";
   const placeholder =
-    config.type === "date" ? ` data-placeholder="${config.placeholder}"` : "";
+    kind === "date" ? ` data-placeholder="${config.placeholder}"` : "";
   return `
-    <div class="input${modifierClass(config)}">
-      <div class="input__field"${placeholder}>
-        ${controlTemplate(config)}
-        ${toggle}
+    <div class="input">
+      <div class="input__field${fieldModifier}"${placeholder}>
+        ${controlTemplate(config, kind)}
+        ${kind === "password" ? toggleTemplate() : ""}
       </div>
       <p class="input__error"></p>
     </div>
@@ -96,12 +94,13 @@ function template(config) {
 }
 
 /**
- * Поле формы с текстом ошибки под ним. Для пароля добавляет кнопку показа.
+ * Поле формы с текстом ошибки под ним. Для пароля добавляет кнопку показа, для даты — подпись вместо пустой маски.
  */
 export class Input {
   #parent;
   #config;
   #element;
+  #field;
   #control;
   #error;
 
@@ -128,6 +127,7 @@ export class Input {
   render() {
     this.#parent.insertAdjacentHTML("beforeend", template(this.#config));
     this.#element = this.#parent.lastElementChild;
+    this.#field = this.#element.querySelector(".input__field");
     this.#control = this.#element.querySelector(".input__control");
     this.#error = this.#element.querySelector(".input__error");
 
@@ -139,6 +139,9 @@ export class Input {
       }
     });
 
+    if (this.#config.type === "date") {
+      this.#bindDatePlaceholder();
+    }
     const toggle = this.#element.querySelector(".input__toggle");
     if (toggle) {
       this.#bindToggle(toggle);
@@ -152,9 +155,25 @@ export class Input {
   validate() {
     const message = this.#config.validate(this.value, this.#control.validity);
     this.#error.textContent = message;
-    this.#element.classList.toggle("input_invalid", Boolean(message));
+    this.#control.classList.toggle("input__control_invalid", Boolean(message));
     this.#control.setAttribute("aria-invalid", String(Boolean(message)));
     return !message;
+  }
+
+  #bindDatePlaceholder() {
+    const update = () => {
+      const isEmpty =
+        !this.#control.value && !this.#control.validity.badInput;
+      const isFocused = document.activeElement === this.#control;
+      this.#field.classList.toggle(
+        "input__field_placeholder",
+        isEmpty && !isFocused,
+      );
+    };
+    ["focus", "blur", "input", "change"].forEach((type) =>
+      this.#control.addEventListener(type, update),
+    );
+    update();
   }
 
   #bindToggle(toggle) {
@@ -162,7 +181,7 @@ export class Input {
     toggle.addEventListener("click", () => {
       const isHidden = this.#control.type === "password";
       this.#control.type = isHidden ? "text" : "password";
-      toggle.innerHTML = isHidden ? EYE_OFF_ICON : EYE_ICON;
+      toggle.innerHTML = isHidden ? EYE_ICON : EYE_OFF_ICON;
       toggle.setAttribute(
         "aria-label",
         isHidden ? TOGGLE_LABELS.hide : TOGGLE_LABELS.show,

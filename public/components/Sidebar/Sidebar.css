@@ -6,8 +6,8 @@
   gap: 24px;
   align-self: start;
   padding: 16px 24px;
-  border-radius: var(--radius-panel);
-  background: var(--color-card);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
 }
 
 .sidebar__nav {
@@ -17,13 +17,13 @@
 }
 
 .sidebar__item {
-  color: var(--color-text-dark);
+  color: var(--color-text);
   font: var(--font-body-strong);
 }
 
 .sidebar__item_active {
   padding: 12px;
-  border-radius: var(--radius-nav-item);
+  border-radius: var(--radius-card);
   background: var(--color-surface);
 }
 
@@ -61,7 +61,7 @@
   }
 
   .sidebar__logo {
-    font: var(--font-display-compact);
+    font: var(--font-title);
   }
 
   .sidebar__nav {

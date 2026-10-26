@@ -6,8 +6,8 @@
   max-width: 410px;
   padding: 8px 45px 40px;
   border-radius: var(--radius-card);
-  background: var(--color-card);
-  color: var(--color-text-dark);
+  background: var(--color-surface);
+  color: var(--color-text);
 }
 
 .login-card__logo {
@@ -33,7 +33,7 @@
 
 .login-card__server-error {
   margin-top: 40px;
-  color: var(--color-error-server);
+  color: var(--color-error);
   font: var(--font-body);
   text-align: center;
 }
