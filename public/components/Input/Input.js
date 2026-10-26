@@ -107,7 +107,7 @@ export class Input {
 
   /**
    * @param {HTMLElement} parent Контейнер, в конец которого добавляется поле.
-   * @param {object} config Настройки: name, type, placeholder, autocomplete, attributes, options и validate.
+   * @param {object} config Настройки: name, type, placeholder, autocomplete, attributes, options, validate и mask — функция, которая подключает маску к полю.
    */
   constructor(parent, config) {
     this.#parent = parent;
@@ -131,6 +131,7 @@ export class Input {
     this.#control = this.#element.querySelector(".input__control");
     this.#error = this.#element.querySelector(".input__error");
 
+    this.#config.mask?.(this.#control);
     this.#control.addEventListener("blur", () => this.validate());
     this.#control.addEventListener("input", () => {
       if (this.hasError) {

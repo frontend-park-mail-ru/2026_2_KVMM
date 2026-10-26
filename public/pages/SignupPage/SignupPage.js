@@ -14,6 +14,7 @@ import {
   validatePasswordConfirm,
   validatePhone,
 } from "../../modules/validation.js";
+import { attachPhoneMask } from "../../modules/phoneMask.js";
 import { Input } from "../../components/Input/Input.js";
 
 const GENDERS = [
@@ -50,7 +51,7 @@ function fieldConfigs(valueOf) {
       type: "tel",
       placeholder: "Введите номер телефона",
       autocomplete: "tel",
-      attributes: { maxlength: MAX_LENGTH.phone },
+      mask: attachPhoneMask,
       validate: (value) => validatePhone(value, valueOf("email")),
     },
     {

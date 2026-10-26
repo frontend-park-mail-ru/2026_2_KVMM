@@ -2,7 +2,6 @@ export const MAX_LENGTH = {
   login: 254,
   nickname: 32,
   email: 254,
-  phone: 20,
   name: 32,
   password: 64,
 };
@@ -13,7 +12,8 @@ const MESSAGES = {
   nicknameChars:
     "Логин может содержать только латинские буквы, цифры, _ и . и начинаться с буквы",
   email: 'Введите правильный email "name@example.ru"',
-  phone: "Введите номер в формате +79991234567",
+  phone: "Введите номер в формате +7 (999) 123-45-67",
+  phoneCountry: "Можно указать только российский номер, он начинается с +7",
   contact: "Укажите email или номер телефона",
   nameChars: "Можно использовать только буквы, пробел, дефис и апостроф",
   passwordMin: "Пароль должен содержать минимум 8 символов",
@@ -37,13 +37,13 @@ const NAME_LENGTH_MESSAGES = {
 const NICKNAME_MIN_LENGTH = 4;
 const NAME_MIN_LENGTH = 2;
 const PASSWORD_MIN_LENGTH = 8;
-const EMAIL_LOCAL_MAX_LENGTH = 64;
 const AGE = { min: 14, max: 120 };
 
 const NICKNAME_PATTERN = /^[A-Za-z][A-Za-z0-9_.]*$/;
 const EMAIL_PATTERN =
-  /^[A-Za-z0-9_%+-]+(\.[A-Za-z0-9_%+-]+)*@([A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,63}$/;
-const PHONE_PATTERN = /^\+[1-9][0-9]{9,14}$/;
+  /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
+const PHONE_PATTERN = /^\+7\d{10}$/;
+const FOREIGN_PHONE_PATTERN = /^\+[0-689]/;
 const NAME_PATTERN = /^[\p{L}\p{M}]+([ '’-][\p{L}\p{M}]+)*$/u;
 const PASSWORD_CHARS_PATTERN = /^[\x21-\x7E]+$/;
 const DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
@@ -57,12 +57,7 @@ function isInRange(value, min, max) {
 }
 
 function isEmail(value) {
-  const local = value.slice(0, value.lastIndexOf("@"));
-  return (
-    EMAIL_PATTERN.test(value) &&
-    value.length <= MAX_LENGTH.email &&
-    local.length <= EMAIL_LOCAL_MAX_LENGTH
-  );
+  return EMAIL_PATTERN.test(value) && value.length <= MAX_LENGTH.email;
 }
 
 function passwordLengthOrCharsError(value) {
@@ -118,8 +113,8 @@ function yearsAgo(today, years, extraDays = 0) {
 }
 
 /**
- * Убирает из телефона пробелы, скобки и дефисы.
- * @param {string} value Телефон в любом формате.
+ * Убирает из телефона пробелы, скобки и дефисы маски.
+ * @param {string} value Телефон вида +7 (999) 123-45-67.
  * @returns {string} Телефон вида +79991234567.
  */
 export function normalizePhone(value) {
@@ -175,7 +170,7 @@ export function validateNickname(value) {
 }
 
 /**
- * Проверяет email. Пустой допустим, если указан телефон.
+ * Проверяет email по правилу WHATWG для input type=email, длина до 254 символов. Пустой допустим, если указан телефон.
  * @param {string} value Email.
  * @param {string} phone Значение поля телефона.
  * @returns {string} Текст ошибки или пустая строка.
@@ -189,8 +184,8 @@ export function validateEmail(value, phone) {
 }
 
 /**
- * Проверяет телефон: + и 10–15 цифр. Пустой допустим, если указан email.
- * @param {string} value Телефон, можно с пробелами, скобками и дефисами.
+ * Проверяет российский телефон: +7 и 10 цифр. Пустой допустим, если указан email.
+ * @param {string} value Телефон из поля с маской.
  * @param {string} email Значение поля email.
  * @returns {string} Текст ошибки или пустая строка.
  */
@@ -198,6 +193,9 @@ export function validatePhone(value, email) {
   const phone = normalizePhone(value);
   if (!phone) {
     return email.trim() ? "" : MESSAGES.contact;
+  }
+  if (FOREIGN_PHONE_PATTERN.test(phone)) {
+    return MESSAGES.phoneCountry;
   }
   return PHONE_PATTERN.test(phone) ? "" : MESSAGES.phone;
 }
