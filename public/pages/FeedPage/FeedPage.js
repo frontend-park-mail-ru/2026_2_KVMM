@@ -11,6 +11,7 @@ const STATUSES = {
   idle: "",
   loading: `<p>Загрузка...</p>`,
   empty: `<p>Здесь пока нет постов</p>`,
+  end: `<p>Нет более старых постов</p>`,
   error: `
     <p>${NETWORK_ERROR}</p>
     <button class="button button_secondary feed__retry" type="button">Повторить</button>
@@ -37,7 +38,7 @@ export class FeedPage {
   #sidebar;
   #list;
   #status;
-  #offset = 0;
+  #cursor = 0;
   #hasMore = true;
   #isLoading = false;
   #hasError = false;
@@ -110,7 +111,7 @@ export class FeedPage {
 
     this.#isLoading = true;
     this.#setStatus("loading");
-    const { status, data } = await api.posts(this.#offset, PAGE_SIZE);
+    const { status, data } = await api.posts(this.#cursor, PAGE_SIZE);
     this.#isLoading = false;
 
     if (this.#isDestroyed) {
@@ -120,19 +121,35 @@ export class FeedPage {
       this.#goToLogin();
       return;
     }
-    if (status !== 200) {
+    if (status !== 200 || !Array.isArray(data?.posts)) {
       this.#hasError = true;
       this.#setStatus("error");
       return;
     }
 
     data.posts.forEach((post) => new Post(this.#list, post).render());
-    this.#hasMore = data.has_more;
-    this.#offset = data.next_offset ?? this.#offset + data.posts.length;
-    this.#setStatus(this.#list.children.length ? "idle" : "empty");
+    this.#moveCursor(data);
+
+    if (!this.#list.children.length) {
+      this.#setStatus("empty");
+      return;
+    }
+    this.#setStatus(this.#hasMore ? "idle" : "end");
 
     if (this.#isNearBottom()) {
       this.#loadPage();
+    }
+  }
+
+  #moveCursor({ has_more: hasMore, next_cursor: nextCursor }) {
+    const isForward =
+      Number.isInteger(nextCursor) &&
+      nextCursor > 0 &&
+      (this.#cursor === 0 || nextCursor < this.#cursor);
+
+    this.#hasMore = hasMore === true && isForward;
+    if (this.#hasMore) {
+      this.#cursor = nextCursor;
     }
   }
 
