@@ -1,0 +1,17 @@
+.logo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 0;
+  color: var(--color-text);
+}
+
+.logo__icon {
+  display: block;
+  width: 82px;
+  height: 82px;
+}
+
+.logo__text {
+  font: var(--font-logo);
+}

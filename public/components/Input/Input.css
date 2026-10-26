@@ -50,6 +50,10 @@
   padding-right: 44px;
 }
 
+.input__control_password::-ms-reveal {
+  display: none;
+}
+
 .input__control_select {
   padding-right: 40px;
   appearance: none;

@@ -11,7 +11,7 @@ function itemTemplate(item) {
 function template() {
   return `
     <aside class="sidebar">
-      <p class="logo sidebar__logo">KVMM</p>
+      <p class="sidebar__logo">KVMM</p>
       <nav class="sidebar__nav">
         ${ITEMS.map(itemTemplate).join("")}
       </nav>

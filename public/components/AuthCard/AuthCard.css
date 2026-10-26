@@ -1,0 +1,66 @@
+.auth-card {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  width: 100%;
+  max-width: 410px;
+  padding: 36px 45px;
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.auth-card__form {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  margin: 0;
+}
+
+.auth-card__group {
+  display: flex;
+  flex-direction: column;
+}
+
+.auth-card__title {
+  margin: 0;
+  padding-bottom: 21px;
+  font: var(--font-title);
+  text-align: center;
+}
+
+.auth-card__fields {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.auth-card__server-error {
+  margin: 15px 0 0;
+  color: var(--color-error);
+  font: var(--font-caption);
+  text-align: center;
+}
+
+.auth-card__server-error:empty {
+  display: none;
+}
+
+.auth-card__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.auth-card__slogan {
+  margin: 0;
+  font: var(--font-caption);
+  text-align: center;
+}
+
+@media (max-width: 441px) {
+  .auth-card {
+    padding-right: 24px;
+    padding-left: 24px;
+  }
+}

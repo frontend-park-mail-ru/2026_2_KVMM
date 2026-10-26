@@ -16,6 +16,7 @@ import {
 } from "../../modules/validation.js";
 import { attachPhoneMask } from "../../modules/phoneMask.js";
 import { Input } from "../../components/Input/Input.js";
+import { logoTemplate } from "../../components/Logo/Logo.js";
 
 const GENDERS = [
   { value: "male", label: "Мужской" },
@@ -121,7 +122,7 @@ function template() {
     <main class="page page_auth">
       <section class="signup-card">
         <header class="signup-card__header">
-          <h1 class="logo">KVMM</h1>
+          ${logoTemplate()}
           <p class="signup-card__subtitle">Регистрация</p>
         </header>
         <form class="signup-card__form" novalidate>

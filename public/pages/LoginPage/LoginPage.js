@@ -8,6 +8,8 @@ import {
   validateLoginPassword,
 } from "../../modules/validation.js";
 import { Input } from "../../components/Input/Input.js";
+import { authLayoutTemplate } from "../../components/AuthLayout/AuthLayout.js";
+import { logoTemplate } from "../../components/Logo/Logo.js";
 
 const FIELDS = {
   login: {
@@ -29,22 +31,23 @@ const FIELDS = {
 };
 
 function template() {
-  return `
-    <main class="page page_auth">
-      <section class="login-card">
-        <h1 class="logo login-card__logo">KVMM</h1>
-        <p class="login-card__subtitle">Добро пожаловать</p>
-        <form class="login-card__form" novalidate>
-          <div class="login-card__fields"></div>
-          <p class="login-card__server-error" role="alert"></p>
-          <div class="login-card__actions">
-            <button class="button button_primary" type="submit">Войти</button>
-            <a class="button button_secondary" href="/signup" data-link>Зарегистрироваться</a>
-          </div>
-        </form>
-      </section>
-    </main>
-  `;
+  return authLayoutTemplate(`
+    <section class="auth-card">
+      ${logoTemplate("auth-card__logo")}
+      <form class="auth-card__form" novalidate>
+        <div class="auth-card__group">
+          <p class="auth-card__title">С возвращением</p>
+          <div class="auth-card__fields"></div>
+          <p class="auth-card__server-error" role="alert"></p>
+        </div>
+        <div class="auth-card__actions">
+          <button class="button button_primary" type="submit">Войти</button>
+          <a class="button button_secondary" href="/signup" data-link>Зарегистрироваться</a>
+        </div>
+      </form>
+      <p class="auth-card__slogan">Nexly - Люди. Идеи. Ближе.</p>
+    </section>
+  `);
 }
 
 /**
@@ -72,10 +75,10 @@ export class LoginPage {
   render() {
     this.#parent.insertAdjacentHTML("beforeend", template());
 
-    const form = this.#parent.querySelector(".login-card__form");
-    const fieldsContainer = form.querySelector(".login-card__fields");
+    const form = this.#parent.querySelector(".auth-card__form");
+    const fieldsContainer = form.querySelector(".auth-card__fields");
     this.#submit = form.querySelector("button[type=submit]");
-    this.#serverError = form.querySelector(".login-card__server-error");
+    this.#serverError = form.querySelector(".auth-card__server-error");
 
     this.#fields = {
       login: new Input(fieldsContainer, FIELDS.login),

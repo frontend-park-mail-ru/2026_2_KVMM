@@ -10,6 +10,11 @@
   background: var(--color-surface);
 }
 
+.sidebar__logo {
+  margin: 0;
+  font: var(--font-logo);
+}
+
 .sidebar__nav {
   display: flex;
   flex-direction: column;
