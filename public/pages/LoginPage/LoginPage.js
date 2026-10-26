@@ -3,6 +3,7 @@ import { user } from "../../modules/user.js";
 import { serverErrorMessage } from "../../modules/errors.js";
 import {
   MAX_LENGTH,
+  normalizeLogin,
   validateLogin,
   validateLoginPassword,
 } from "../../modules/validation.js";
@@ -100,7 +101,7 @@ export class LoginPage {
 
     this.#submit.disabled = true;
     const response = await api.login(
-      this.#fields.login.value.trim(),
+      normalizeLogin(this.#fields.login.value),
       this.#fields.password.value,
     );
     this.#submit.disabled = false;

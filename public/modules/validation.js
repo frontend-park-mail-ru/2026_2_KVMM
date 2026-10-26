@@ -1,3 +1,5 @@
+import { applyPhoneMask } from "./phoneMask.js";
+
 export const MAX_LENGTH = {
   login: 254,
   nickname: 32,
@@ -14,6 +16,7 @@ const MESSAGES = {
   email: 'Введите правильный email "name@example.ru"',
   phone: "Введите номер в формате +7 (999) 123-45-67",
   phoneCountry: "Можно указать только российский номер, он начинается с +7",
+  phoneRegion: "Такого кода нет в российской нумерации: после +7 идёт 3, 4, 8 или 9",
   contact: "Укажите email или номер телефона",
   nameChars: "Можно использовать только буквы, пробел, дефис и апостроф",
   passwordMin: "Пароль должен содержать минимум 8 символов",
@@ -42,8 +45,10 @@ const AGE = { min: 14, max: 120 };
 const NICKNAME_PATTERN = /^[A-Za-z][A-Za-z0-9_.]*$/;
 const EMAIL_PATTERN =
   /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
-const PHONE_PATTERN = /^\+7\d{10}$/;
+const PHONE_PATTERN = /^\+7[3489]\d{9}$/;
 const FOREIGN_PHONE_PATTERN = /^\+[0-689]/;
+const NON_RUSSIAN_CODE_PATTERN = /^\+7[0-2567]/;
+const PHONE_LIKE_PATTERN = /^[\d\s()+-]+$/;
 const NAME_PATTERN = /^[\p{L}\p{M}]+([ '’-][\p{L}\p{M}]+)*$/u;
 const PASSWORD_CHARS_PATTERN = /^[\x21-\x7E]+$/;
 const DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
@@ -184,7 +189,21 @@ export function validateEmail(value, phone) {
 }
 
 /**
- * Проверяет российский телефон: +7 и 10 цифр. Пустой допустим, если указан email.
+ * Приводит логин, похожий на телефон (8 999 123-45-67, +7 (999)…), к виду +79991234567, остальное только обрезает.
+ * @param {string} value Логин, email или телефон с формы входа.
+ * @returns {string} Логин для отправки на бэк.
+ */
+export function normalizeLogin(value) {
+  const login = value.trim();
+  if (!PHONE_LIKE_PATTERN.test(login)) {
+    return login;
+  }
+  const phone = normalizePhone(applyPhoneMask(login).value);
+  return PHONE_PATTERN.test(phone) ? phone : login;
+}
+
+/**
+ * Проверяет российский телефон: +7, код на 3, 4, 8 или 9 и ещё 9 цифр. Пустой допустим, если указан email.
  * @param {string} value Телефон из поля с маской.
  * @param {string} email Значение поля email.
  * @returns {string} Текст ошибки или пустая строка.
@@ -196,6 +215,9 @@ export function validatePhone(value, email) {
   }
   if (FOREIGN_PHONE_PATTERN.test(phone)) {
     return MESSAGES.phoneCountry;
+  }
+  if (NON_RUSSIAN_CODE_PATTERN.test(phone)) {
+    return MESSAGES.phoneRegion;
   }
   return PHONE_PATTERN.test(phone) ? "" : MESSAGES.phone;
 }
