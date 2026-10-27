@@ -1,70 +1,55 @@
-const ITEMS = ["Профиль", "Лента", "Сообщества", "Мессенджер", "Друзья"];
-const ACTIVE_ITEM = "Лента";
+const ITEMS = [
+  { label: "Лента", icon: "feed-active", isActive: true },
+  { label: "Профиль", icon: "profile" },
+  { label: "Сообщения", icon: "messages" },
+  { label: "Сообщества", icon: "communities" },
+  { label: "Друзья", icon: "friends" },
+  { label: "Настройки", icon: "settings" },
+];
 
-function itemTemplate(item) {
-  if (item === ACTIVE_ITEM) {
-    return `<span class="sidebar__item sidebar__item_active" aria-current="page">${item}</span>`;
-  }
-  return `<span class="sidebar__item">${item}</span>`;
+const SLOGAN = "Nexly - Люди. Идеи. Ближе.";
+
+function itemTemplate({ label, icon, isActive }) {
+  const current = isActive ? ' aria-current="page"' : "";
+  const labelModifier = isActive ? " sidebar__label_active" : "";
+  return `
+    <li class="sidebar__item"${current}>
+      <img class="sidebar__icon" src="/components/Sidebar/icons/${icon}.svg" width="24" height="24" alt="">
+      <span class="sidebar__label${labelModifier}">${label}</span>
+    </li>
+  `;
 }
 
 function template() {
   return `
     <aside class="sidebar">
-      <p class="sidebar__logo">KVMM</p>
-      <nav class="sidebar__nav">
-        ${ITEMS.map(itemTemplate).join("")}
+      <nav class="sidebar__menu" aria-label="Разделы">
+        <ul class="sidebar__list">
+          ${ITEMS.map(itemTemplate).join("")}
+        </ul>
       </nav>
-      <button class="sidebar__item sidebar__logout" type="button">Выйти</button>
-      <p class="sidebar__error" role="alert"></p>
+      <p class="sidebar__slogan">${SLOGAN}</p>
     </aside>
   `;
 }
 
 /**
- * Боковое меню ленты с кнопкой «Выйти».
+ * Боковое меню разделов: активна только лента, остальные пункты пока без перехода.
  */
 export class Sidebar {
   #parent;
-  #onLogout;
-  #logout;
-  #error;
 
   /**
-   * @param {HTMLElement} parent Контейнер, в начало которого вставляется меню.
-   * @param {object} handlers Обработчики действий меню.
-   * @param {function(): void} handlers.onLogout Вызывается по нажатию «Выйти».
+   * @param {HTMLElement} parent Контейнер, в который вставляется меню.
    */
-  constructor(parent, { onLogout }) {
+  constructor(parent) {
     this.#parent = parent;
-    this.#onLogout = onLogout;
   }
 
   /**
-   * Вставляет меню и подписывается на нажатие «Выйти».
+   * Вставляет меню в контейнер.
    */
   render() {
-    this.#parent.insertAdjacentHTML("afterbegin", template());
-    const element = this.#parent.firstElementChild;
-    this.#logout = element.querySelector(".sidebar__logout");
-    this.#error = element.querySelector(".sidebar__error");
-
-    this.#logout.addEventListener("click", () => this.#onLogout());
-  }
-
-  /**
-   * Блокирует кнопку «Выйти» на время запроса.
-   * @param {boolean} isLoggingOut Идёт ли запрос выхода.
-   */
-  setLoggingOut(isLoggingOut) {
-    this.#logout.disabled = isLoggingOut;
-  }
-
-  /**
-   * Показывает ошибку под меню.
-   * @param {string} message Текст ошибки или пустая строка, чтобы скрыть.
-   */
-  setError(message) {
-    this.#error.textContent = message;
+    this.#parent.insertAdjacentHTML("beforeend", template());
   }
 }

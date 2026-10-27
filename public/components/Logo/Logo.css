@@ -6,6 +6,12 @@
   color: var(--color-text);
 }
 
+.logo_header {
+  flex-direction: row;
+  gap: 23px;
+  text-decoration: none;
+}
+
 .logo__icon {
   display: block;
   width: 82px;
@@ -20,4 +26,17 @@
 
 .logo__text {
   font: var(--font-logo);
+}
+
+.logo__wordmark {
+  display: block;
+  width: 110px;
+  height: 44px;
+  margin-top: 6px;
+}
+
+@media (max-width: 767px) {
+  .logo__wordmark {
+    display: none;
+  }
 }

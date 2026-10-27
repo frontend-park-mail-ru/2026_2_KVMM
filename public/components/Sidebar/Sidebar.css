@@ -1,93 +1,77 @@
 .sidebar {
-  position: sticky;
-  top: 24px;
   display: flex;
   flex-direction: column;
-  gap: 24px;
-  align-self: start;
-  padding: 16px 24px;
+  gap: 12px;
+}
+
+.sidebar__menu {
+  padding: 10px;
   border-radius: var(--radius-card);
   background: var(--color-surface);
 }
 
-.sidebar__logo {
-  margin: 0;
-  font: var(--font-logo);
-}
-
-.sidebar__nav {
+.sidebar__list {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
 .sidebar__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 42px;
+  padding: 0 12px;
   color: var(--color-text);
-  font: var(--font-body-strong);
+  font: var(--font-body);
 }
 
-.sidebar__item_active {
-  padding: 12px;
-  border-radius: var(--radius-card);
-  background: var(--color-surface);
+.sidebar__icon {
+  display: block;
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
 }
 
-.sidebar__logout {
-  padding: 0;
-  border: none;
-  background: none;
-  text-align: left;
-  cursor: pointer;
+.sidebar__label {
+  white-space: nowrap;
 }
 
-.sidebar__logout:disabled {
-  cursor: default;
-  opacity: 0.6;
+.sidebar__label_active {
+  background: var(--gradient-brand);
+  background-clip: text;
+  color: transparent;
 }
 
-.sidebar__error {
-  color: var(--color-error);
+.sidebar__slogan {
+  margin: 0;
   font: var(--font-caption);
-}
-
-.sidebar__error:empty {
-  display: none;
+  text-align: center;
 }
 
 @media (max-width: 767px) {
-  .sidebar {
-    top: 16px;
-    z-index: 1;
-    flex-direction: row;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 8px 16px;
-    padding: 8px 16px;
+  .sidebar__menu {
+    padding: 4px;
   }
 
-  .sidebar__logo {
-    font: var(--font-title);
-  }
-
-  .sidebar__nav {
-    flex: 1;
+  .sidebar__list {
     flex-direction: row;
-    align-items: center;
-    gap: 16px;
+    gap: 4px;
     overflow-x: auto;
-    white-space: nowrap;
     scrollbar-width: none;
   }
 
-  .sidebar__item_active {
-    padding: 6px 12px;
-  }
-
-  .sidebar__logout {
+  .sidebar__item {
     flex-shrink: 0;
+    gap: 8px;
+    height: 40px;
+    padding: 0 10px;
   }
 
-  .sidebar__error {
-    flex-basis: 100%;
+  .sidebar__slogan {
+    display: none;
   }
 }

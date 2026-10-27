@@ -22,6 +22,14 @@
   background: var(--color-primary);
 }
 
+.button_outline {
+  padding: 7px 24px;
+  border: 2px solid var(--color-primary);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: var(--font-body);
+}
+
 .button:focus-visible {
   outline: 2px solid var(--color-primary);
   outline-offset: 2px;

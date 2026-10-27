@@ -8,6 +8,7 @@
 @import url("components/AuthLayout/AuthLayout.css");
 @import url("components/AuthCard/AuthCard.css");
 @import url("components/FileField/FileField.css");
+@import url("components/Header/Header.css");
 @import url("components/Sidebar/Sidebar.css");
 @import url("components/Post/Post.css");
 @import url("pages/FeedPage/FeedPage.css");

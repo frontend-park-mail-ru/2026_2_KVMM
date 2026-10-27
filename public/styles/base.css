@@ -32,8 +32,3 @@ select,
 textarea {
   font: inherit;
 }
-
-h1,
-p {
-  margin: 0;
-}

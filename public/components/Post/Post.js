@@ -3,7 +3,7 @@ import { escapeHtml, formatDate } from "../../modules/utils.js";
 
 const IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "gif", "webp", "avif"];
 const VIDEO_EXTENSIONS = ["mp4", "webm", "ogg", "mov"];
-const SHOW_MORE = "Показать полностью";
+const SHOW_MORE = "Читать еще";
 
 function fileName(path) {
   return path.split("/").pop();
@@ -60,24 +60,21 @@ function template(post) {
       ${text ? `<p class="post__text post__text_collapsed">${escapeHtml(text)}</p>` : ""}
       ${visual.map(mediaTemplate).join("")}
       ${files.length ? `<div class="post__files">${files.map(mediaTemplate).join("")}</div>` : ""}
-<footer class="post__actions">
-
-  <span class="post__action post__action_likes">
-    <img src="/components/Post/icons/like.svg" alt="" class="post__action-icon">
-    ${escapeHtml(post.likes_count)}
-  </span>
-
-  <span class="post__action">
-    <img src="/components/Post/icons/comment.svg" alt="" class="post__action-icon">
-    Комментарии
-  </span>
-
-  <span class="post__action">
-    <img src="/components/Post/icons/reply.svg" alt="" class="post__action-icon">
-    Поделиться
-  </span>
-
-</footer>
+      <footer class="post__actions">
+        <span class="post__action">
+          <img class="post__action-icon" src="/components/Post/icons/like.svg" width="20" height="20" alt="Нравится">
+          ${escapeHtml(post.likes_count)}
+        </span>
+        <span class="post__action">
+          <img class="post__action-icon" src="/components/Post/icons/comment.svg" width="20" height="20" alt="">
+          Комментарии
+        </span>
+        <span class="post__action">
+          <img class="post__action-icon" src="/components/Post/icons/share.svg" width="20" height="20" alt="">
+          Поделиться
+        </span>
+      </footer>
+    </article>
   `;
 }
 
