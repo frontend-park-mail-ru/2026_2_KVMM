@@ -1,6 +1,8 @@
 .file-field {
   position: relative;
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 20px;
+  column-gap: 10px;
   align-items: center;
   width: 100%;
   height: 42px;
@@ -13,7 +15,8 @@
 }
 
 .file-field_disabled {
-  cursor: default;
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 
 .file-field__control {
@@ -25,8 +28,14 @@
 }
 
 .file-field__text {
-  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.file-field__icon {
+  display: block;
+  justify-self: center;
+  width: 12px;
+  height: 12px;
 }
