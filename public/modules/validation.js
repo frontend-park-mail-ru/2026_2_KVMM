@@ -1,10 +1,12 @@
+import { applyPhoneMask } from "./phoneMask.js";
+
 export const MAX_LENGTH = {
   login: 254,
   nickname: 32,
   email: 254,
-  phone: 20,
   name: 32,
   password: 64,
+  bio: 256,
 };
 
 const MESSAGES = {
@@ -13,7 +15,10 @@ const MESSAGES = {
   nicknameChars:
     "Логин может содержать только латинские буквы, цифры, _ и . и начинаться с буквы",
   email: 'Введите правильный email "name@example.ru"',
-  phone: "Введите номер в формате +79991234567",
+  phone: "Введите номер в формате +7 (999) 123-45-67",
+  phoneCountry: "Можно указать только российский номер, он начинается с +7",
+  phoneRegion:
+    "Такого кода нет в российской нумерации: после +7 идёт 3, 4, 8 или 9",
   contact: "Укажите email или номер телефона",
   nameChars: "Можно использовать только буквы, пробел, дефис и апостроф",
   passwordMin: "Пароль должен содержать минимум 8 символов",
@@ -26,6 +31,8 @@ const MESSAGES = {
   birthdayRequired: "Укажите дату рождения",
   birthdayTooYoung: "Регистрация доступна с 14 лет",
   birthdayInvalid: "Проверьте дату рождения",
+  consent: "Подтвердите согласие на обработку персональных данных",
+  bio: "Рассказ о себе должен быть не длиннее 256 символов",
 };
 
 const NAME_LENGTH_MESSAGES = {
@@ -37,13 +44,15 @@ const NAME_LENGTH_MESSAGES = {
 const NICKNAME_MIN_LENGTH = 4;
 const NAME_MIN_LENGTH = 2;
 const PASSWORD_MIN_LENGTH = 8;
-const EMAIL_LOCAL_MAX_LENGTH = 64;
 const AGE = { min: 14, max: 120 };
 
 const NICKNAME_PATTERN = /^[A-Za-z][A-Za-z0-9_.]*$/;
 const EMAIL_PATTERN =
-  /^[A-Za-z0-9_%+-]+(\.[A-Za-z0-9_%+-]+)*@([A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,63}$/;
-const PHONE_PATTERN = /^\+[1-9][0-9]{9,14}$/;
+  /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
+const PHONE_PATTERN = /^\+7[3489]\d{9}$/;
+const FOREIGN_PHONE_PATTERN = /^\+[0-689]/;
+const NON_RUSSIAN_CODE_PATTERN = /^\+7[0-2567]/;
+const PHONE_LIKE_PATTERN = /^[\d\s()+-]+$/;
 const NAME_PATTERN = /^[\p{L}\p{M}]+([ '’-][\p{L}\p{M}]+)*$/u;
 const PASSWORD_CHARS_PATTERN = /^[\x21-\x7E]+$/;
 const DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
@@ -57,12 +66,7 @@ function isInRange(value, min, max) {
 }
 
 function isEmail(value) {
-  const local = value.slice(0, value.lastIndexOf("@"));
-  return (
-    EMAIL_PATTERN.test(value) &&
-    value.length <= MAX_LENGTH.email &&
-    local.length <= EMAIL_LOCAL_MAX_LENGTH
-  );
+  return EMAIL_PATTERN.test(value) && value.length <= MAX_LENGTH.email;
 }
 
 function passwordLengthOrCharsError(value) {
@@ -118,8 +122,8 @@ function yearsAgo(today, years, extraDays = 0) {
 }
 
 /**
- * Убирает из телефона пробелы, скобки и дефисы.
- * @param {string} value Телефон в любом формате.
+ * Убирает из телефона пробелы, скобки и дефисы маски.
+ * @param {string} value Телефон вида +7 (999) 123-45-67.
  * @returns {string} Телефон вида +79991234567.
  */
 export function normalizePhone(value) {
@@ -175,7 +179,7 @@ export function validateNickname(value) {
 }
 
 /**
- * Проверяет email. Пустой допустим, если указан телефон.
+ * Проверяет email по правилу WHATWG для input type=email, длина до 254 символов. Пустой допустим, если указан телефон.
  * @param {string} value Email.
  * @param {string} phone Значение поля телефона.
  * @returns {string} Текст ошибки или пустая строка.
@@ -189,8 +193,22 @@ export function validateEmail(value, phone) {
 }
 
 /**
- * Проверяет телефон: + и 10–15 цифр. Пустой допустим, если указан email.
- * @param {string} value Телефон, можно с пробелами, скобками и дефисами.
+ * Приводит логин, похожий на телефон (8 999 123-45-67, +7 (999)…), к виду +79991234567, остальное только обрезает.
+ * @param {string} value Логин, email или телефон с формы входа.
+ * @returns {string} Логин для отправки на бэк.
+ */
+export function normalizeLogin(value) {
+  const login = value.trim();
+  if (!PHONE_LIKE_PATTERN.test(login)) {
+    return login;
+  }
+  const phone = normalizePhone(applyPhoneMask(login).value);
+  return PHONE_PATTERN.test(phone) ? phone : login;
+}
+
+/**
+ * Проверяет российский телефон: +7, код на 3, 4, 8 или 9 и ещё 9 цифр. Пустой допустим, если указан email.
+ * @param {string} value Телефон из поля с маской.
  * @param {string} email Значение поля email.
  * @returns {string} Текст ошибки или пустая строка.
  */
@@ -198,6 +216,12 @@ export function validatePhone(value, email) {
   const phone = normalizePhone(value);
   if (!phone) {
     return email.trim() ? "" : MESSAGES.contact;
+  }
+  if (FOREIGN_PHONE_PATTERN.test(phone)) {
+    return MESSAGES.phoneCountry;
+  }
+  if (NON_RUSSIAN_CODE_PATTERN.test(phone)) {
+    return MESSAGES.phoneRegion;
   }
   return PHONE_PATTERN.test(phone) ? "" : MESSAGES.phone;
 }
@@ -282,4 +306,22 @@ export function validatePasswordConfirm(value, password) {
     return MESSAGES.required;
   }
   return value === password ? "" : MESSAGES.passwordMismatch;
+}
+
+/**
+ * Проверяет согласие на обработку персональных данных — без него регистрация невозможна.
+ * @param {boolean} checked Отмечен ли чекбокс.
+ * @returns {string} Текст ошибки или пустая строка.
+ */
+export function validateConsent(checked) {
+  return checked ? "" : MESSAGES.consent;
+}
+
+/**
+ * Проверяет рассказ о себе: не длиннее 256 символов.
+ * @param {string} value Текст из поля «Расскажите о себе».
+ * @returns {string} Текст ошибки или пустая строка.
+ */
+export function validateBio(value) {
+  return length(value.trim()) <= MAX_LENGTH.bio ? "" : MESSAGES.bio;
 }

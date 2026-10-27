@@ -1,0 +1,41 @@
+.file-field {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 20px;
+  column-gap: 10px;
+  align-items: center;
+  width: 100%;
+  height: 42px;
+  padding: 3px 12px;
+  border-radius: var(--radius-field);
+  background: var(--color-field);
+  color: var(--color-text-secondary);
+  font: var(--font-body);
+  cursor: pointer;
+}
+
+.file-field_disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.file-field__control {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  opacity: 0;
+}
+
+.file-field__text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-field__icon {
+  display: block;
+  justify-self: center;
+  width: 12px;
+  height: 12px;
+}

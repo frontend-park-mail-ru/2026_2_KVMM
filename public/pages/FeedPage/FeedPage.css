@@ -1,16 +1,37 @@
 .feed-page {
-  display: grid;
-  grid-template-columns: clamp(220px, 21.2vw, 305px) minmax(0, 827px);
-  column-gap: clamp(24px, 9.6vw, 138px);
-  align-items: start;
   max-width: 1440px;
   min-height: 100vh;
   margin: 0 auto;
-  padding: 24px clamp(16px, 6.25vw, 90px) 24px clamp(16px, 5.56vw, 80px);
+  padding: 0 24px 24px;
+}
+
+.feed-page__header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding-top: 12px;
+  background: var(--color-page);
+}
+
+.feed-page__body {
+  display: grid;
+  grid-template-columns: 212px minmax(0, 900px) 212px;
+  column-gap: 34px;
+  justify-content: space-between;
+  align-items: start;
+  margin-top: 12px;
+}
+
+.feed-page__aside {
+  position: sticky;
+  top: 92px;
 }
 
 .feed {
-  margin-top: 11px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
 }
 
 .feed__list {
@@ -19,33 +40,83 @@
   gap: 16px;
 }
 
+.feed__list:empty {
+  display: none;
+}
+
 .feed__status {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
-  padding: 24px 0;
-  color: var(--color-text-secondary);
-  font: var(--font-body);
-  text-align: center;
+  gap: 16px;
 }
 
 .feed__status:empty {
   display: none;
 }
 
+.feed__status_fill {
+  justify-content: center;
+  min-height: calc(100vh - 116px);
+}
+
+.feed__message {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font: var(--font-body);
+  text-align: center;
+  cursor: default;
+}
+
+.feed__spinner {
+  display: block;
+  width: 20px;
+  height: 20px;
+  animation: feed-spin 1s linear infinite;
+}
+
 .feed__retry {
   width: auto;
 }
 
+@keyframes feed-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .feed__spinner {
+    animation: none;
+  }
+}
+
+@media (max-width: 1199px) {
+  .feed-page__body {
+    grid-template-columns: 212px minmax(0, 900px);
+    justify-content: start;
+  }
+}
+
 @media (max-width: 767px) {
   .feed-page {
-    grid-template-columns: minmax(0, 1fr);
-    row-gap: 16px;
-    padding: 16px;
+    padding: 0 16px 16px;
   }
 
-  .feed {
-    margin-top: 0;
+  .feed-page__header {
+    padding-top: 16px;
+  }
+
+  .feed-page__body {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 12px;
+  }
+
+  .feed-page__aside {
+    position: static;
+  }
+
+  .feed__status_fill {
+    min-height: calc(100vh - 220px);
   }
 }

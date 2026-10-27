@@ -1,43 +1,59 @@
 import { api } from "../../modules/api.js";
 import { user } from "../../modules/user.js";
 import { NETWORK_ERROR } from "../../modules/errors.js";
+import { Header } from "../../components/Header/Header.js";
 import { Sidebar } from "../../components/Sidebar/Sidebar.js";
 import { Post } from "../../components/Post/Post.js";
 
 const PAGE_SIZE = 10;
 const LOAD_THRESHOLD = 600;
 
-const STATUSES = {
-  idle: "",
-  loading: `<p>Загрузка...</p>`,
-  empty: `<p>Здесь пока нет постов</p>`,
-  error: `
-    <p>${NETWORK_ERROR}</p>
-    <button class="button button_secondary feed__retry" type="button">Повторить</button>
-  `,
+const MESSAGES = {
+  loading: "Загружаем ленту",
+  empty: "Здесь пока нет постов",
+  end: "Нет более старых постов",
+  error: "Произошла ошибка, обновите страницу",
 };
+
+const SPINNER = `<img class="feed__spinner" draggable="false" src="/pages/FeedPage/spinner.svg" width="20" height="20" alt="Загружаем ещё посты">`;
+const RETRY = `<button class="button button_outline feed__retry" type="button">Обновить</button>`;
+
+function statusTemplate(status, hasPosts) {
+  if (status === "idle") {
+    return "";
+  }
+  if (status === "loading" && hasPosts) {
+    return SPINNER;
+  }
+  const message = `<p class="feed__message">${MESSAGES[status]}</p>`;
+  return status === "error" ? message + RETRY : message;
+}
 
 function template() {
   return `
     <div class="feed-page">
-      <main class="feed">
-        <div class="feed__list"></div>
-        <div class="feed__status" role="status"></div>
-      </main>
+      <div class="feed-page__header"></div>
+      <div class="feed-page__body">
+        <div class="feed-page__aside"></div>
+        <main class="feed">
+          <div class="feed__list"></div>
+          <div class="feed__status" role="status"></div>
+        </main>
+      </div>
     </div>
   `;
 }
 
 /**
- * Страница ленты: сайдбар, посты с бэкенда, подгрузка при прокрутке, выход.
+ * Страница ленты: шапка с выходом, меню разделов, посты с бэкенда и подгрузка при прокрутке.
  */
 export class FeedPage {
   #parent;
   #router;
-  #sidebar;
+  #header;
   #list;
   #status;
-  #offset = 0;
+  #cursor = 0;
   #hasMore = true;
   #isLoading = false;
   #hasError = false;
@@ -61,8 +77,11 @@ export class FeedPage {
     this.#list = page.querySelector(".feed__list");
     this.#status = page.querySelector(".feed__status");
 
-    this.#sidebar = new Sidebar(page, { onLogout: () => this.#logout() });
-    this.#sidebar.render();
+    this.#header = new Header(page.querySelector(".feed-page__header"), {
+      onLogout: () => this.#logout(),
+    });
+    this.#header.render();
+    new Sidebar(page.querySelector(".feed-page__aside")).render();
 
     this.#status.addEventListener("click", (event) => {
       if (event.target.closest(".feed__retry")) {
@@ -95,7 +114,12 @@ export class FeedPage {
   }
 
   #setStatus(status) {
-    this.#status.innerHTML = STATUSES[status];
+    const hasPosts = this.#list.children.length > 0;
+    this.#status.classList.toggle(
+      "feed__status_fill",
+      !hasPosts && status !== "idle",
+    );
+    this.#status.innerHTML = statusTemplate(status, hasPosts);
   }
 
   #goToLogin() {
@@ -110,7 +134,7 @@ export class FeedPage {
 
     this.#isLoading = true;
     this.#setStatus("loading");
-    const { status, data } = await api.posts(this.#offset, PAGE_SIZE);
+    const { status, data } = await api.posts(this.#cursor, PAGE_SIZE);
     this.#isLoading = false;
 
     if (this.#isDestroyed) {
@@ -120,25 +144,41 @@ export class FeedPage {
       this.#goToLogin();
       return;
     }
-    if (status !== 200) {
+    if (status !== 200 || !Array.isArray(data?.posts)) {
       this.#hasError = true;
       this.#setStatus("error");
       return;
     }
 
     data.posts.forEach((post) => new Post(this.#list, post).render());
-    this.#hasMore = data.has_more;
-    this.#offset = data.next_offset ?? this.#offset + data.posts.length;
-    this.#setStatus(this.#list.children.length ? "idle" : "empty");
+    this.#moveCursor(data);
+
+    if (!this.#list.children.length) {
+      this.#setStatus("empty");
+      return;
+    }
+    this.#setStatus(this.#hasMore ? "idle" : "end");
 
     if (this.#isNearBottom()) {
       this.#loadPage();
     }
   }
 
+  #moveCursor({ has_more: hasMore, next_cursor: nextCursor }) {
+    const isForward =
+      Number.isInteger(nextCursor) &&
+      nextCursor > 0 &&
+      (this.#cursor === 0 || nextCursor < this.#cursor);
+
+    this.#hasMore = hasMore === true && isForward;
+    if (this.#hasMore) {
+      this.#cursor = nextCursor;
+    }
+  }
+
   async #logout() {
-    this.#sidebar.setError("");
-    this.#sidebar.setLoggingOut(true);
+    this.#header.setError("");
+    this.#header.setLoggingOut(true);
     const { status } = await api.logout(user.csrfToken);
 
     if (status === 204 || status === 401) {
@@ -146,7 +186,7 @@ export class FeedPage {
       return;
     }
 
-    this.#sidebar.setLoggingOut(false);
-    this.#sidebar.setError(NETWORK_ERROR);
+    this.#header.setLoggingOut(false);
+    this.#header.setError(NETWORK_ERROR);
   }
 }

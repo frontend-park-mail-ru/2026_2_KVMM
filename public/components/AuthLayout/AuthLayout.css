@@ -1,0 +1,51 @@
+.auth-layout {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 16px;
+}
+
+.auth-layout__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.auth-layout__blob {
+  position: absolute;
+  width: 630px;
+  height: 715px;
+  background: url("blob.svg") center / 100% 100% no-repeat;
+}
+
+.auth-layout__blob_top {
+  top: -212px;
+  left: -68px;
+}
+
+.auth-layout__blob_bottom {
+  right: -33px;
+  bottom: 0;
+  transform: rotate(180deg);
+}
+
+@media (max-width: 767px) {
+  .auth-layout__blob {
+    width: 315px;
+    height: 358px;
+  }
+
+  .auth-layout__blob_top {
+    top: -106px;
+    left: -34px;
+  }
+
+  .auth-layout__blob_bottom {
+    right: -16px;
+  }
+}

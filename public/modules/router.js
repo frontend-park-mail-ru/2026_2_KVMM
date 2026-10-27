@@ -13,7 +13,7 @@ export class Router {
 
   /**
    * @param {HTMLElement} root Элемент, в который рендерятся страницы.
-   * @param {object} routes Маршруты: путь → { page: класс страницы, auth: нужна ли авторизация }.
+   * @param {object} routes Маршруты: путь → { page: класс страницы, auth: нужна ли авторизация, redirect: функция, которая по пути возвращает другой путь или null }.
    */
   constructor(root, routes) {
     this.#root = root;
@@ -61,7 +61,7 @@ export class Router {
   #resolve(path) {
     const route = this.#routes[path];
     if (route && route.auth === user.isAuthorized) {
-      return path;
+      return route.redirect?.(path) ?? path;
     }
 
     return user.isAuthorized ? USER_HOME : GUEST_HOME;
