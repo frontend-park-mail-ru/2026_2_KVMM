@@ -6,7 +6,7 @@ function template() {
       ${logoTemplate("header__logo", "header")}
       <p class="header__error" role="alert"></p>
       <button class="header__logout" type="button" aria-label="Выйти">
-        <img class="header__logout-icon" src="/components/Header/icons/logout.svg" width="24" height="24" alt="">
+        <img class="header__logout-icon" draggable="false" src="/components/Header/icons/logout.svg" width="24" height="24" alt="">
       </button>
     </header>
   `;

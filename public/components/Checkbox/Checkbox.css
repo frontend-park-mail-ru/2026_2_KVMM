@@ -65,6 +65,7 @@
   color: var(--color-error);
   font: var(--font-caption);
   text-align: left;
+  cursor: default;
 }
 
 .checkbox__error:empty {

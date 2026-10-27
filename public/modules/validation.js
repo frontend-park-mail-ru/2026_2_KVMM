@@ -15,7 +15,6 @@ const MESSAGES = {
   nicknameChars:
     "Логин может содержать только латинские буквы, цифры, _ и . и начинаться с буквы",
   email: 'Введите правильный email "name@example.ru"',
-  emailRequired: "Введите email или нажмите «Возможно потом»",
   phone: "Введите номер в формате +7 (999) 123-45-67",
   phoneCountry: "Можно указать только российский номер, он начинается с +7",
   phoneRegion:
@@ -307,15 +306,6 @@ export function validatePasswordConfirm(value, password) {
     return MESSAGES.required;
   }
   return value === password ? "" : MESSAGES.passwordMismatch;
-}
-
-/**
- * Проверяет email на шаге «Добавьте email»: здесь поле обязательно, пропустить шаг можно отдельной кнопкой.
- * @param {string} value Email.
- * @returns {string} Текст ошибки или пустая строка.
- */
-export function validateEmailRequired(value) {
-  return value.trim() ? validateEmail(value, "") : MESSAGES.emailRequired;
 }
 
 /**

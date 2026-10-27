@@ -4,12 +4,15 @@
   align-items: center;
   margin: 0;
   color: var(--color-text);
+  cursor: default;
+  user-select: none;
 }
 
 .logo_header {
   flex-direction: row;
   gap: 23px;
   text-decoration: none;
+  cursor: pointer;
 }
 
 .logo__icon {

@@ -62,15 +62,15 @@ function template(post) {
       ${files.length ? `<div class="post__files">${files.map(mediaTemplate).join("")}</div>` : ""}
       <footer class="post__actions">
         <span class="post__action">
-          <img class="post__action-icon" src="/components/Post/icons/like.svg" width="20" height="20" alt="Нравится">
+          <img class="post__action-icon" draggable="false" src="/components/Post/icons/like.svg" width="20" height="20" alt="Нравится">
           ${escapeHtml(post.likes_count)}
         </span>
         <span class="post__action">
-          <img class="post__action-icon" src="/components/Post/icons/comment.svg" width="20" height="20" alt="">
+          <img class="post__action-icon" draggable="false" src="/components/Post/icons/comment.svg" width="20" height="20" alt="">
           Комментарии
         </span>
         <span class="post__action">
-          <img class="post__action-icon" src="/components/Post/icons/share.svg" width="20" height="20" alt="">
+          <img class="post__action-icon" draggable="false" src="/components/Post/icons/share.svg" width="20" height="20" alt="">
           Поделиться
         </span>
       </footer>

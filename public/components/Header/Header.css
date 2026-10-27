@@ -6,6 +6,7 @@
   padding: 0 10px 0 22px;
   border-radius: var(--radius-card);
   background: var(--color-surface);
+  user-select: none;
 }
 
 .header__logo {
@@ -17,6 +18,7 @@
   color: var(--color-error);
   font: var(--font-caption);
   text-align: right;
+  cursor: default;
 }
 
 .header__error:empty {

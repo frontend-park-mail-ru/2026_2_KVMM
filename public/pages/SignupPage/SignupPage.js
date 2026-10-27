@@ -12,7 +12,6 @@ import {
   validateBirthday,
   validateConsent,
   validateEmail,
-  validateEmailRequired,
   validateGender,
   validateName,
   validateNickname,
@@ -21,7 +20,11 @@ import {
   validatePhone,
 } from "../../modules/validation.js";
 import { attachPhoneMask } from "../../modules/phoneMask.js";
-import { SIGNUP_STEPS, signupDraft } from "../../modules/signupDraft.js";
+import {
+  SIGNUP_STEPS,
+  signupDraft,
+  signupRedirect,
+} from "../../modules/signupDraft.js";
 import { Input } from "../../components/Input/Input.js";
 import { Checkbox } from "../../components/Checkbox/Checkbox.js";
 import { authLayoutTemplate } from "../../components/AuthLayout/AuthLayout.js";
@@ -38,6 +41,24 @@ const DEPENDENT_FIELDS = {
   password: ["confirm_password"],
 };
 
+const REQUIRED_FIELDS = [
+  "nickname",
+  "password",
+  "confirm_password",
+  "profile_name",
+  "surname",
+  "gender",
+  "birthday",
+];
+
+const OPTIONAL_PLACEHOLDERS = {
+  patronymic: "Введите отчество (необязательно)",
+  bio: "Расскажите о себе (необязательно)",
+};
+
+const REQUIRED_HINT = "* — обязательные поля";
+const CONTACT_HINT = "Заполните хотя бы одно поле";
+
 const CONSENT_LABEL =
   'Я даю согласие на <span class="checkbox__link">обработку персональных данных</span>';
 
@@ -47,15 +68,17 @@ const ARROW_ICONS = {
     '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6" /></svg>',
 };
 
-const SLOGAN = "Nexly - Люди. Идеи. Ближе.";
+const SLOGAN = "Nexly&nbsp;— Люди. Идеи. Ближе.";
 
 const STEPS = {
   "/signup": {
+    label: "логин и пароль",
     title: "Добро пожаловать",
     card: "auth-card_gap_large",
     fields: ["nickname", "password", "confirm_password"],
     fieldsModifier: "auth-card__fields_compact",
     consent: true,
+    hint: REQUIRED_HINT,
     slogan: true,
     actions: [
       { kind: "next", style: "secondary", label: "Зарегистрироваться" },
@@ -63,30 +86,23 @@ const STEPS = {
     ],
   },
   "/signup/email": {
-    title: "Добавьте email это поможет защитить ваш аккаунт",
+    label: "email или телефон",
+    title: "Добавьте email или телефон — это поможет защитить ваш аккаунт",
     card: "auth-card_gap_large auth-card_padding_large",
-    fields: ["email"],
-    validators: { email: validateEmailRequired },
-    actions: [
-      { kind: "next", style: "primary", label: "Подтвердить" },
-      { kind: "skip", style: "secondary", label: "Возможно потом" },
-    ],
+    fields: ["email", "phone_number"],
+    hint: CONTACT_HINT,
+    actions: [{ kind: "next", style: "primary", label: "Подтвердить" }],
   },
   "/signup/about": {
+    label: "о себе",
     title: "Расскажи нам о себе",
     card: "auth-card_padding_large",
-    fields: [
-      "phone_number",
-      "email",
-      "profile_name",
-      "surname",
-      "patronymic",
-      "gender",
-      "birthday",
-    ],
+    fields: ["profile_name", "surname", "patronymic", "gender", "birthday"],
+    hint: REQUIRED_HINT,
     actions: [{ kind: "next", style: "primary", label: "Продолжить" }],
   },
   "/signup/photo": {
+    label: "фото",
     title: "Добавьте фото профиля",
     card: "auth-card_gap_small auth-card_padding_large",
     fields: ["bio"],
@@ -216,7 +232,18 @@ function fieldsTemplate(step, content = "") {
   return `<div class="auth-card__fields${modifier}">${content}</div>`;
 }
 
-function arrowsTemplate(path) {
+function stepsTemplate(current) {
+  const steps = SIGNUP_STEPS.map((path, index) => {
+    const label = `Шаг ${index + 1} из ${SIGNUP_STEPS.length}: ${STEPS[path].label}`;
+    const isCurrent = path === current;
+    const modifier = isCurrent ? " auth-card__step_current" : "";
+    const ariaCurrent = isCurrent ? ' aria-current="step"' : "";
+    return `<button class="auth-card__step${modifier}" type="button" data-action="step" data-step="${path}" aria-label="${label}" title="${label}"${ariaCurrent}></button>`;
+  });
+  return `<nav class="auth-card__steps" aria-label="Шаги регистрации">${steps.join("")}</nav>`;
+}
+
+function navTemplate(path) {
   const index = SIGNUP_STEPS.indexOf(path);
   const back =
     index > 0
@@ -226,19 +253,27 @@ function arrowsTemplate(path) {
     index < SIGNUP_STEPS.length - 1
       ? `<button class="auth-card__arrow auth-card__arrow_forward auth-card__arrow_hidden" type="button" data-action="forward" aria-label="Вперёд">${ARROW_ICONS.forward}</button>`
       : "";
-  return back + forward;
+  return back + stepsTemplate(path) + forward;
+}
+
+function placeholderFor(name, placeholder) {
+  if (REQUIRED_FIELDS.includes(name)) {
+    return `${placeholder} *`;
+  }
+  return OPTIONAL_PLACEHOLDERS[name] ?? placeholder;
 }
 
 function stepTemplate(step, path) {
+  const hint = step.hint ? `<p class="auth-card__hint">${step.hint}</p>` : "";
   return authLayoutTemplate(`
-    <section class="auth-card ${step.card}">
+    <section class="auth-card ${step.card} auth-card_stepped">
       ${logoTemplate("auth-card__logo")}
       ${formTemplate(
         step,
-        `<p class="auth-card__title">${step.title}</p>${fieldsTemplate(step)}`,
+        `<p class="auth-card__title">${step.title}</p>${fieldsTemplate(step)}${hint}`,
       )}
       ${step.slogan ? `<p class="auth-card__slogan">${SLOGAN}</p>` : ""}
-      ${arrowsTemplate(path)}
+      ${navTemplate(path)}
     </section>
   `);
 }
@@ -248,31 +283,29 @@ function photoStepTemplate(step, path) {
     <label class="file-field file-field_disabled">
       <input class="file-field__control" type="file" accept="image/png, image/jpeg" disabled aria-disabled="true">
       <span class="file-field__text">Фото можно добавить позже</span>
-      <img class="file-field__icon" src="/components/FileField/plus.svg" width="12" height="12" alt="">
+      <img class="file-field__icon" draggable="false" src="/components/FileField/plus.svg" width="12" height="12" alt="">
     </label>
   `;
   return authLayoutTemplate(`
-    <section class="auth-card ${step.card}">
+    <section class="auth-card ${step.card} auth-card_stepped">
       ${logoTemplate("auth-card__logo", "small")}
       <p class="auth-card__title auth-card__title_compact">${step.title}</p>
-      <img class="auth-card__avatar" src="/pages/SignupPage/avatar-placeholder.svg" width="320" height="185" alt="">
+      <img class="auth-card__avatar" draggable="false" src="/pages/SignupPage/avatar-placeholder.svg" width="320" height="185" alt="">
       ${formTemplate(
         step,
         `${fieldsTemplate(step, fileField)}<p class="auth-card__server-error" role="alert"></p>`,
       )}
-      ${arrowsTemplate(path)}
+      ${navTemplate(path)}
     </section>
   `);
 }
 
 function stepOfField(field) {
-  return [...SIGNUP_STEPS]
-    .reverse()
-    .find((path) => STEPS[path].fields.includes(field));
+  return SIGNUP_STEPS.find((path) => STEPS[path].fields.includes(field));
 }
 
 /**
- * Регистрация из четырёх шагов: логин и пароль, email, данные о себе, фото и рассказ о себе. Значения шагов хранит черновик в памяти, на бэк уходит один запрос в конце.
+ * Регистрация из четырёх шагов: логин и пароль, email или телефон, данные о себе, фото и рассказ о себе. Значения шагов хранит черновик в памяти, на бэк уходит один запрос в конце.
  */
 export class SignupPage {
   #parent;
@@ -282,6 +315,7 @@ export class SignupPage {
   #fields = {};
   #consent = null;
   #buttons = [];
+  #steps = [];
   #forward = null;
   #serverError = null;
   #isDestroyed = false;
@@ -310,11 +344,12 @@ export class SignupPage {
     const card = this.#parent.querySelector(".auth-card");
     const form = card.querySelector(".auth-card__form");
     this.#buttons = [...card.querySelectorAll("button")];
+    this.#steps = [...card.querySelectorAll(".auth-card__step")];
     this.#forward = card.querySelector('[data-action="forward"]');
     this.#serverError = form.querySelector(".auth-card__server-error");
     this.#renderFields(form.querySelector(".auth-card__fields"));
     this.#showPendingError();
-    this.#updateForward();
+    this.#updateNav();
 
     form.addEventListener("input", (event) => this.#onEdit(event.target));
     form.addEventListener("change", (event) => this.#onEdit(event.target));
@@ -326,9 +361,10 @@ export class SignupPage {
       this.#runAction(submit.kind);
     });
     card.addEventListener("click", (event) => {
-      const action = event.target.closest("[data-action]")?.dataset.action;
+      const target = event.target.closest("[data-action]");
+      const action = target?.dataset.action;
       if (action && !SUBMIT_KINDS.includes(action)) {
-        this.#runAction(action);
+        this.#runAction(action, target.dataset.step);
       }
     });
   }
@@ -345,8 +381,12 @@ export class SignupPage {
       this.#fields[name] ? this.#fields[name].value : signupDraft.value(name),
     );
     this.#step.fields.forEach((name) => {
-      const validate = this.#step.validators?.[name] ?? configs[name].validate;
-      const field = new Input(container, { ...configs[name], name, validate });
+      const placeholder = placeholderFor(name, configs[name].placeholder);
+      const field = new Input(container, {
+        ...configs[name],
+        name,
+        placeholder,
+      });
       field.render();
       field.value = signupDraft.value(name);
       this.#fields[name] = field;
@@ -375,7 +415,7 @@ export class SignupPage {
       return;
     }
     signupDraft.reopen(this.#path);
-    this.#updateForward();
+    this.#updateNav();
     signupDraft.set(
       target.name,
       target.type === "checkbox" ? target.checked : target.value,
@@ -386,11 +426,20 @@ export class SignupPage {
       .forEach((field) => field.validate());
   }
 
-  #updateForward() {
+  #updateNav() {
     this.#forward?.classList.toggle(
       "auth-card__arrow_hidden",
       !signupDraft.isComplete(this.#path),
     );
+    this.#steps.forEach((button) => {
+      const path = button.dataset.step;
+      const isCurrent = path === this.#path;
+      button.classList.toggle(
+        "auth-card__step_done",
+        !isCurrent && signupDraft.isComplete(path),
+      );
+      button.disabled = isCurrent || signupRedirect(path) !== null;
+    });
   }
 
   #goTo(offset) {
@@ -398,17 +447,15 @@ export class SignupPage {
     this.#router.navigate(SIGNUP_STEPS[index]);
   }
 
-  #runAction(kind) {
-    if (kind === "login") {
-      signupDraft.clear();
+  #runAction(kind, step) {
+    if (kind === "step") {
+      this.#router.navigate(step);
     } else if (kind === "back") {
       this.#goTo(-1);
     } else if (kind === "forward") {
       this.#goTo(1);
     } else if (kind === "next") {
-      this.#goNext(true);
-    } else if (kind === "skip") {
-      this.#goNext(false);
+      this.#goNext();
     } else if (kind === "register") {
       this.#register(true);
     } else if (kind === "register-without-bio") {
@@ -426,8 +473,8 @@ export class SignupPage {
     return !results.includes(false);
   }
 
-  #goNext(shouldValidate) {
-    if (shouldValidate && !this.#validateStep()) {
+  #goNext() {
+    if (!this.#validateStep()) {
       return;
     }
     signupDraft.complete(this.#path);
@@ -456,6 +503,9 @@ export class SignupPage {
     this.#buttons.forEach((button) => {
       button.disabled = isBusy;
     });
+    if (!isBusy) {
+      this.#updateNav();
+    }
   }
 
   async #register(withBio) {

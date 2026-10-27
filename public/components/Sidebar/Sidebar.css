@@ -2,6 +2,8 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+  cursor: default;
+  user-select: none;
 }
 
 .sidebar__menu {
@@ -44,6 +46,7 @@
   background: var(--gradient-brand);
   background-clip: text;
   color: transparent;
+  font: var(--font-body-strong);
 }
 
 .sidebar__slogan {

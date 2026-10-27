@@ -1,3 +1,6 @@
+import { applyPhoneMask } from "./phoneMask.js";
+import { normalizeLogin } from "./validation.js";
+
 export const SIGNUP_STEPS = [
   "/signup",
   "/signup/email",
@@ -5,12 +8,24 @@ export const SIGNUP_STEPS = [
   "/signup/photo",
 ];
 
+const PHONE_PATTERN = /^\+7\d{10}$/;
+
 let values = {};
 let completed = new Set();
 let fieldError = null;
+let loginTarget = null;
+
+function loginFieldOf(login) {
+  if (login.includes("@")) {
+    return "email";
+  }
+  return PHONE_PATTERN.test(normalizeLogin(login))
+    ? "phone_number"
+    : "nickname";
+}
 
 /**
- * Черновик регистрации в памяти: значения полей между шагами и пройденные шаги. В хранилище браузера не пишется, потому что в нём пароль.
+ * Черновик входа и регистрации в памяти: значения полей между шагами и страницами, пройденные шаги. В хранилище браузера не пишется, потому что в нём пароль.
  */
 export const signupDraft = {
   value: (name) => values[name] ?? "",
@@ -28,10 +43,36 @@ export const signupDraft = {
     fieldError = null;
     return error;
   },
+  applyLogin: (login, password) => {
+    const value = login.trim();
+    const field = loginFieldOf(value);
+    const stored =
+      field === "phone_number" ? applyPhoneMask(value).value : value;
+    if (
+      loginTarget &&
+      loginTarget.field !== field &&
+      values[loginTarget.field] === loginTarget.value
+    ) {
+      values[loginTarget.field] = "";
+    }
+    values[field] = stored;
+    values.password = password;
+    loginTarget = { field, value: stored };
+    completed = new Set();
+  },
+  loginPrefill: () => {
+    const field =
+      loginTarget?.field ??
+      ["nickname", "email", "phone_number"].find((name) => values[name]);
+    const login = field ? (values[field] ?? "") : "";
+    loginTarget = field ? { field, value: login } : null;
+    return { login, password: values.password ?? "" };
+  },
   clear: () => {
     values = {};
     completed = new Set();
     fieldError = null;
+    loginTarget = null;
   },
 };
 

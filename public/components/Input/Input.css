@@ -91,11 +91,13 @@
 
 .input__field_select::after {
   position: absolute;
-  top: 9px;
-  right: 15px;
-  color: var(--color-text);
-  font: var(--font-body);
-  content: "↓";
+  top: 0;
+  right: 14px;
+  bottom: 0;
+  width: 14px;
+  background: var(--color-text);
+  content: "";
+  mask: url("icons/chevron-down.svg") center / 14px 8px no-repeat;
   pointer-events: none;
 }
 
@@ -143,6 +145,7 @@
   color: var(--color-error);
   font: var(--font-caption);
   text-align: left;
+  cursor: default;
 }
 
 .input__error:empty {

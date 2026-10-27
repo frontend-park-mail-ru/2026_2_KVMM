@@ -7,6 +7,7 @@ import {
   validateLogin,
   validateLoginPassword,
 } from "../../modules/validation.js";
+import { signupDraft } from "../../modules/signupDraft.js";
 import { Input } from "../../components/Input/Input.js";
 import { authLayoutTemplate } from "../../components/AuthLayout/AuthLayout.js";
 import { logoTemplate } from "../../components/Logo/Logo.js";
@@ -45,7 +46,7 @@ function template() {
           <a class="button button_secondary" href="/signup" data-link>Зарегистрироваться</a>
         </div>
       </form>
-      <p class="auth-card__slogan">Nexly - Люди. Идеи. Ближе.</p>
+      <p class="auth-card__slogan">Nexly&nbsp;— Люди. Идеи. Ближе.</p>
     </section>
   `);
 }
@@ -86,6 +87,16 @@ export class LoginPage {
     };
     Object.values(this.#fields).forEach((field) => field.render());
 
+    const { login, password } = signupDraft.loginPrefill();
+    this.#fields.login.value = login;
+    this.#fields.password.value = password;
+
+    form.addEventListener("input", () => {
+      signupDraft.applyLogin(
+        this.#fields.login.value,
+        this.#fields.password.value,
+      );
+    });
     form.addEventListener("submit", (event) => {
       event.preventDefault();
       this.#submitForm();
@@ -110,6 +121,7 @@ export class LoginPage {
     this.#submit.disabled = false;
 
     if (response.status === 200) {
+      signupDraft.clear();
       user.set(response.data);
       this.#router.navigate("/feed");
       return;
