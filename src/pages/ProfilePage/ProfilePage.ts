@@ -9,6 +9,7 @@ import type { Router } from "../../modules/router";
 import { user } from "../../modules/user";
 import { registerFieldError, serverErrorMessage } from "../../modules/errors";
 import { escapeHtml } from "../../modules/utils";
+import { displayName } from "../../modules/profileName";
 import { signupDraft } from "../../modules/signupDraft";
 import { AppLayout } from "../../components/AppLayout/AppLayout";
 import { PostList } from "../../components/PostList/PostList";
@@ -28,14 +29,6 @@ const PROFILE_PATH = "/profile";
 const EMAIL_CODE_PATH = "/profile/code";
 const PHONE_TAKEN = "Этот номер уже используется";
 const EMAIL_TAKEN = "Этот email уже занят";
-
-function displayName(profile: Profile): string {
-  const name = [profile.profile_name, profile.surname]
-    .map((part) => part?.trim())
-    .filter(Boolean)
-    .join(" ");
-  return name || profile.nickname;
-}
 
 function cardTemplate(profile: Profile, avatarUrl: string): string {
   const name = displayName(profile);

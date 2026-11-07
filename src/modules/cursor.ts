@@ -32,3 +32,29 @@ export function nextCursor(
     hasMore: canContinue,
   };
 }
+
+/**
+ * Следующее смещение списка, который отдаётся по смещению (друзья, заявки). Подгрузка продолжается, только если бэк обещает ещё элементы и смещение растёт — иначе список мог бы зациклиться.
+ * @param current Текущее смещение, 0 — начало.
+ * @param page Ответ бэка.
+ * @param page.has_more Есть ли ещё элементы.
+ * @param page.next_cursor Смещение следующей страницы.
+ * @returns Новое смещение и признак, есть ли что подгружать.
+ */
+export function nextOffset(
+  current: number,
+  {
+    has_more: hasMore,
+    next_cursor: next,
+  }: { has_more: boolean; next_cursor?: number },
+): CursorState {
+  const canContinue =
+    hasMore === true &&
+    typeof next === "number" &&
+    Number.isInteger(next) &&
+    next > current;
+  return {
+    cursor: canContinue ? (next as number) : current,
+    hasMore: canContinue,
+  };
+}

@@ -5,6 +5,7 @@ import profileActiveIcon from "./icons/profile-active.svg";
 import messagesIcon from "./icons/messages.svg";
 import communitiesIcon from "./icons/communities.svg";
 import friendsIcon from "./icons/friends.svg";
+import friendsActiveIcon from "./icons/friends-active.svg";
 import settingsIcon from "./icons/settings.svg";
 
 /**
@@ -38,7 +39,13 @@ const ITEMS: SidebarItem[] = [
   },
   { section: "messages", label: "Сообщения", icon: messagesIcon },
   { section: "communities", label: "Сообщества", icon: communitiesIcon },
-  { section: "friends", label: "Друзья", icon: friendsIcon },
+  {
+    section: "friends",
+    label: "Друзья",
+    icon: friendsIcon,
+    activeIcon: friendsActiveIcon,
+    href: "/friends",
+  },
   { section: "settings", label: "Настройки", icon: settingsIcon },
 ];
 

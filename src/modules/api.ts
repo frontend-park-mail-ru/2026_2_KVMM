@@ -64,6 +64,56 @@ export interface UserPostsResponse extends FeedResponse {
 }
 
 /**
+ * Краткий профиль человека в списках друзей: имя и текущая аватарка.
+ */
+export interface ShortProfile {
+  id: number;
+  nickname: string;
+  profile_name?: string;
+  surname?: string;
+  patronymic?: string;
+  avatar_urls?: string;
+}
+
+/**
+ * Связь с другим человеком: master отправил запрос, slave получил. profile — вторая сторона.
+ */
+export interface Relationship {
+  profile_id_master: number;
+  profile_id_slave: number;
+  profile: ShortProfile;
+  relationships_status: "request" | "accepted" | "canceled";
+  relationships_type: string;
+  created_at: string;
+}
+
+/**
+ * Страница списка с подгрузкой по смещению: next_cursor — сколько элементов уже отдано.
+ */
+export interface OffsetPage {
+  cursor: number;
+  limit: number;
+  has_more: boolean;
+  next_cursor?: number;
+}
+
+/**
+ * Страница связей.
+ */
+export interface RelationshipsResponse extends OffsetPage {
+  relationships: Relationship[];
+}
+
+/**
+ * Страница возможных знакомых: друзья друзей и число общих друзей.
+ */
+export interface SuggestionsResponse extends OffsetPage {
+  profiles: { profile: ShortProfile; common_count: number }[];
+}
+
+const FRIENDSHIP = "friendship";
+
+/**
  * Ответ на вход, регистрацию и запрос текущего пользователя.
  */
 export interface Session {
@@ -205,6 +255,38 @@ export const api = {
   deletePost: (postId: number) =>
     request<null>("DELETE", `/posts/delete?post_id=${postId}`),
   avatars: () => request<{ avatars: Avatar[] }>("GET", "/profile/avatars"),
+  friends: (cursor: number) =>
+    request<RelationshipsResponse>(
+      "GET",
+      `/relationships/list?relationships_status=accepted&relationships_type=${FRIENDSHIP}&cursor=${cursor}`,
+    ),
+  sentRequests: (cursor: number) =>
+    request<RelationshipsResponse>(
+      "GET",
+      `/relationships/list?relationships_status=request&relationships_type=${FRIENDSHIP}&cursor=${cursor}`,
+    ),
+  incomingRequests: (cursor: number) =>
+    request<RelationshipsResponse>(
+      "GET",
+      `/relationships/requests?relationships_type=${FRIENDSHIP}&cursor=${cursor}`,
+    ),
+  suggestions: (cursor: number) =>
+    request<SuggestionsResponse>(
+      "GET",
+      `/relationships/suggestions?cursor=${cursor}`,
+    ),
+  addFriend: (profileId: number) =>
+    request<Relationship>("POST", "/relationships/create", {
+      body: { profile_id_slave: profileId, relationships_type: FRIENDSHIP },
+    }),
+  acceptFriend: (profileId: number) =>
+    request<Relationship>("PATCH", "/relationships/accept", {
+      body: { profile_id: profileId, relationships_type: FRIENDSHIP },
+    }),
+  removeFriend: (profileId: number) =>
+    request<Relationship>("DELETE", "/relationships/cancle", {
+      body: { profile_id: profileId, relationships_type: FRIENDSHIP },
+    }),
   deleteAvatar: (avatarId: number) =>
     request<null>("DELETE", `/profile/avatars/${avatarId}`),
   mediaUrl: (path: string) => `${path}`,
