@@ -51,7 +51,10 @@ const ITEMS: SidebarItem[] = [
 
 const SLOGAN = "Nexly&nbsp;— Люди. Идеи. Ближе.";
 
-function itemTemplate(item: SidebarItem, active: SidebarSection): string {
+function itemTemplate(
+  item: SidebarItem,
+  active: SidebarSection | null,
+): string {
   const isActive = item.section === active;
   const icon = isActive && item.activeIcon ? item.activeIcon : item.icon;
   const labelModifier = isActive ? " sidebar__label_active" : "";
@@ -66,7 +69,7 @@ function itemTemplate(item: SidebarItem, active: SidebarSection): string {
   return `<li class="sidebar__entry">${entry}</li>`;
 }
 
-function template(active: SidebarSection): string {
+function template(active: SidebarSection | null): string {
   return `
     <aside class="sidebar">
       <nav class="sidebar__menu" aria-label="Разделы">
@@ -84,13 +87,13 @@ function template(active: SidebarSection): string {
  */
 export class Sidebar {
   #parent: HTMLElement;
-  #section: SidebarSection;
+  #section: SidebarSection | null;
 
   /**
    * @param parent Контейнер, в который вставляется меню.
-   * @param section Активный раздел.
+   * @param section Активный раздел или null, если страница вне меню.
    */
-  constructor(parent: HTMLElement, section: SidebarSection) {
+  constructor(parent: HTMLElement, section: SidebarSection | null) {
     this.#parent = parent;
     this.#section = section;
   }

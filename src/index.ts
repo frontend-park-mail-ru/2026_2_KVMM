@@ -8,6 +8,7 @@ import { FeedPage } from "./pages/FeedPage/FeedPage";
 import { ProfilePage } from "./pages/ProfilePage/ProfilePage";
 import { EmailCodePage } from "./pages/EmailCodePage/EmailCodePage";
 import { FriendsPage } from "./pages/FriendsPage/FriendsPage";
+import { UserPage } from "./pages/UserPage/UserPage";
 import { SIGNUP_STEPS, signupDraft } from "./modules/signupDraft";
 import type { Route } from "./modules/router";
 
@@ -34,6 +35,12 @@ const routes: Record<string, Route> = {
   "/profile": { page: ProfilePage, auth: true },
   "/profile/code": emailCodeRoute("/profile"),
   "/friends": { page: FriendsPage, auth: true },
+  "/profile/:id": {
+    page: UserPage,
+    auth: true,
+    redirect: (_path, { id }) =>
+      Number(id) === user.profile?.id ? "/profile" : null,
+  },
 };
 
 const router = new Router(

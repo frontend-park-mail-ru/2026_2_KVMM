@@ -3,6 +3,7 @@ import type { ApiResult, ShortProfile } from "../../modules/api";
 import { nextOffset } from "../../modules/cursor";
 import { displayName } from "../../modules/profileName";
 import { escapeHtml } from "../../modules/utils";
+import { people } from "../../modules/people";
 
 /**
  * Кнопка в строке человека: name уходит в data-action, kind задаёт вид.
@@ -63,10 +64,10 @@ function itemTemplate(person: ShortProfile, actions: PersonAction[]): string {
     .join("");
   return `
     <li class="people__item" data-id="${person.id}">
-      <span class="people__person">
+      <a class="people__person" href="/profile/${person.id}" data-link draggable="false">
         ${avatarTemplate(person, name)}
         <span class="people__name" title="${escapeHtml(name)}">${escapeHtml(name)}</span>
-      </span>
+      </a>
       <span class="people__actions">${buttons}</span>
     </li>
   `;
@@ -217,6 +218,10 @@ export class PeopleSection {
 
   #append(person: ShortProfile, position: InsertPosition): void {
     this.#people.set(person.id, person);
+    people.remember(person.id, {
+      name: displayName(person),
+      avatarUrl: person.avatar_urls ?? "",
+    });
     this.#list.insertAdjacentHTML(
       position,
       itemTemplate(person, this.#config.actions),

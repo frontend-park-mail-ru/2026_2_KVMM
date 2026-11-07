@@ -260,7 +260,7 @@ export const api = {
       "GET",
       `/relationships/list?relationships_status=accepted&relationships_type=${FRIENDSHIP}&cursor=${cursor}`,
     ),
-  sentRequests: (cursor: number) =>
+  pendingRelationships: (cursor: number) =>
     request<RelationshipsResponse>(
       "GET",
       `/relationships/list?relationships_status=request&relationships_type=${FRIENDSHIP}&cursor=${cursor}`,

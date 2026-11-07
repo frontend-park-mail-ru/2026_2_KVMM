@@ -94,7 +94,7 @@ export class FriendsPage {
       actions: [{ name: "cancel", label: "Отменить", kind: "danger" }],
       load: async (cursor) =>
         relationshipsPage(
-          await api.sentRequests(cursor),
+          await api.pendingRelationships(cursor),
           (master) => master === me,
         ),
       onAction,

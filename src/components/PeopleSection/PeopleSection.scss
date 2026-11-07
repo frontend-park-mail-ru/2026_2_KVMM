@@ -46,6 +46,13 @@
     padding: 5px 8px;
     color: var(--color-text);
     font: var(--font-body);
+    text-decoration: none;
+
+    &:focus-visible {
+      border-radius: var(--radius-field);
+      outline: 2px solid var(--color-primary);
+      outline-offset: -2px;
+    }
   }
 
   &__avatar {

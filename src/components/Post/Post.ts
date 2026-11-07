@@ -6,6 +6,7 @@ import commentIcon from "./icons/comment.svg";
 import shareIcon from "./icons/share.svg";
 import editIcon from "./icons/edit.svg";
 import { user } from "../../modules/user";
+import { people } from "../../modules/people";
 
 /**
  * Настройки карточки: onEdit включает карандаш у постов текущего пользователя.
@@ -55,20 +56,40 @@ function mediaTemplate(path: string): string {
   return `<a class="post__file" href="${url}" title="${name}" target="_blank" rel="noopener noreferrer"><span class="post__file-name">${name}</span></a>`;
 }
 
+/**
+ * Адрес страницы автора: своя — /profile, чужая — /profile/id. У постов сообществ ссылки нет.
+ * @param post Пост.
+ * @returns Путь или пустая строка.
+ */
+function authorPath(post: PostData): string {
+  const id = post.author_profile_id;
+  if (!id) {
+    return "";
+  }
+  return id === user.profile?.id ? "/profile" : `/profile/${id}`;
+}
+
 function template(post: PostData, canEdit: boolean): string {
   const { author, post_text: text, media_urls: media = [] } = post;
   const authorName = author.name;
   const visual = media.filter((path) => mediaKind(path) !== "file");
   const files = media.filter((path) => mediaKind(path) === "file");
+  const path = authorPath(post);
+  const authorBlock = `
+    ${avatarTemplate(author)}
+    <div class="post__author">
+      <p class="post__name" title="${escapeHtml(authorName)}">${escapeHtml(authorName)}</p>
+      <time class="post__date" datetime="${escapeHtml(post.created_at)}">${formatDate(post.created_at)}</time>
+    </div>
+  `;
+  const profile = path
+    ? `<a class="post__profile" href="${path}" data-link draggable="false">${authorBlock}</a>`
+    : `<div class="post__profile">${authorBlock}</div>`;
 
   return `
     <article class="post">
       <header class="post__header">
-        ${avatarTemplate(author)}
-        <div class="post__author">
-          <p class="post__name" title="${escapeHtml(authorName)}">${escapeHtml(authorName)}</p>
-          <time class="post__date" datetime="${escapeHtml(post.created_at)}">${formatDate(post.created_at)}</time>
-        </div>
+        ${profile}
         ${canEdit ? `<button class="post__edit" type="button" aria-label="Редактировать пост"><img class="post__edit-icon" draggable="false" src="${editIcon}" width="20" height="48" alt=""></button>` : ""}
       </header>
       ${text ? `<p class="post__text post__text_collapsed">${escapeHtml(text)}</p>` : ""}
@@ -110,6 +131,12 @@ export class Post {
     this.#parent = parent;
     this.#post = post;
     this.#options = options;
+    if (post.author_profile_id) {
+      people.remember(post.author_profile_id, {
+        name: post.author.name,
+        avatarUrl: post.author.avatar_urls ?? "",
+      });
+    }
   }
 
   /**

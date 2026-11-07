@@ -9,17 +9,62 @@ export interface Page {
 }
 
 /**
- * Класс страницы: создаётся роутером для каждого перехода.
+ * Параметры пути: для маршрута /profile/:id и пути /profile/7 — { id: "7" }.
  */
-export type PageClass = new (root: HTMLElement, router: Router) => Page;
+export type RouteParams = Record<string, string>;
 
 /**
- * Маршрут: класс страницы, нужна ли авторизация и необязательный редирект, который по пути возвращает другой путь или null.
+ * Класс страницы: создаётся роутером для каждого перехода.
+ */
+export type PageClass = new (
+  root: HTMLElement,
+  router: Router,
+  params: RouteParams,
+) => Page;
+
+/**
+ * Маршрут: класс страницы, нужна ли авторизация и необязательный редирект, который по пути и параметрам возвращает другой путь или null.
  */
 export interface Route {
   page: PageClass;
   auth: boolean;
-  redirect?: (path: string) => string | null;
+  redirect?: (path: string, params: RouteParams) => string | null;
+}
+
+interface Match {
+  route: Route;
+  params: RouteParams;
+}
+
+const PARAM = /^:(\w+)$/;
+const ID_PATTERN = /^[1-9]\d{0,15}$/;
+
+/**
+ * Сопоставляет путь с шаблоном маршрута. Параметр :name совпадает с положительным целым id — других параметров в приложении нет.
+ * @param pattern Шаблон, например /profile/:id.
+ * @param path Путь без query и hash.
+ * @returns Параметры или null, если путь не подходит.
+ */
+export function matchPath(pattern: string, path: string): RouteParams | null {
+  const expected = pattern.split("/");
+  const actual = path.split("/");
+  if (expected.length !== actual.length) {
+    return null;
+  }
+  const params: RouteParams = {};
+  for (let index = 0; index < expected.length; index++) {
+    const name = PARAM.exec(expected[index])?.[1];
+    if (!name) {
+      if (expected[index] !== actual[index]) {
+        return null;
+      }
+    } else if (ID_PATTERN.test(actual[index])) {
+      params[name] = actual[index];
+    } else {
+      return null;
+    }
+  }
+  return params;
 }
 
 const GUEST_HOME = "/login";
@@ -80,20 +125,34 @@ export class Router {
     this.#render(target);
   }
 
+  #match(path: string): Match | null {
+    const exact = this.#routes[path];
+    if (exact) {
+      return { route: exact, params: {} };
+    }
+    for (const [pattern, route] of Object.entries(this.#routes)) {
+      const params = pattern.includes(":") ? matchPath(pattern, path) : null;
+      if (params) {
+        return { route, params };
+      }
+    }
+    return null;
+  }
+
   #resolve(path: string): string {
-    const route = this.#routes[path];
-    if (route && route.auth === user.isAuthorized) {
-      return route.redirect?.(path) ?? path;
+    const match = this.#match(path);
+    if (match && match.route.auth === user.isAuthorized) {
+      return match.route.redirect?.(path, match.params) ?? path;
     }
 
     return user.isAuthorized ? USER_HOME : GUEST_HOME;
   }
 
   #render(path: string): void {
-    const { page: PageView } = this.#routes[path];
+    const { route, params } = this.#match(path) as Match;
     this.#page?.destroy?.();
     this.#root.innerHTML = "";
-    this.#page = new PageView(this.#root, this);
+    this.#page = new route.page(this.#root, this, params);
     this.#page.render();
   }
 }

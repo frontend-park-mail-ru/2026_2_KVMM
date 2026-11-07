@@ -24,15 +24,19 @@ function template(): string {
 export class AppLayout {
   #parent: HTMLElement;
   #router: Router;
-  #section: SidebarSection;
+  #section: SidebarSection | null;
   #header!: Header;
 
   /**
    * @param parent Контейнер страницы.
    * @param router Роутер для перехода на /login после выхода.
-   * @param section Активный раздел меню.
+   * @param section Активный раздел меню или null, если страница вне меню (чужой профиль).
    */
-  constructor(parent: HTMLElement, router: Router, section: SidebarSection) {
+  constructor(
+    parent: HTMLElement,
+    router: Router,
+    section: SidebarSection | null,
+  ) {
     this.#parent = parent;
     this.#router = router;
     this.#section = section;

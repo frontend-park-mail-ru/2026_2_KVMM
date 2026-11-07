@@ -8,7 +8,6 @@ import type {
 import type { Router } from "../../modules/router";
 import { user } from "../../modules/user";
 import { registerFieldError, serverErrorMessage } from "../../modules/errors";
-import { escapeHtml } from "../../modules/utils";
 import { displayName } from "../../modules/profileName";
 import { signupDraft } from "../../modules/signupDraft";
 import { AppLayout } from "../../components/AppLayout/AppLayout";
@@ -17,6 +16,10 @@ import { PostEditor } from "../../components/PostEditor/PostEditor";
 import { ProfileEditor } from "../../components/ProfileEditor/ProfileEditor";
 import type { ProfileChanges } from "../../components/ProfileEditor/ProfileEditor";
 import { confirmDialog } from "../../components/Dialog/Dialog";
+import {
+  bindAvatarFallback,
+  profileCardTemplate,
+} from "../../components/ProfileCard/ProfileCard";
 
 const MESSAGES = {
   loading: "Загружаем вашу страницу",
@@ -30,23 +33,16 @@ const EMAIL_CODE_PATH = "/profile/code";
 const PHONE_TAKEN = "Этот номер уже используется";
 const EMAIL_TAKEN = "Этот email уже занят";
 
+const EDIT_BUTTON =
+  '<button class="button button_pill" type="button" data-action="edit-profile">Редактировать профиль</button>';
+
 function cardTemplate(profile: Profile, avatarUrl: string): string {
-  const name = displayName(profile);
-  const letter = [...name][0]?.toUpperCase() ?? "?";
-  const bio = profile.bio?.trim();
-  const image = avatarUrl
-    ? `<img class="profile-card__avatar-image" src="${escapeHtml(avatarUrl)}" alt="">`
-    : "";
-  return `
-    <section class="profile-card">
-      <div class="profile-card__main">
-        <div class="profile-card__avatar">${escapeHtml(letter)}${image}</div>
-        <h1 class="profile-card__name" title="${escapeHtml(name)}">${escapeHtml(name)}</h1>
-        <button class="profile-card__edit button button_pill" type="button" data-action="edit-profile">Редактировать профиль</button>
-      </div>
-      ${bio ? `<p class="profile-card__bio">О себе: ${escapeHtml(bio)}</p>` : ""}
-    </section>
-  `;
+  return profileCardTemplate({
+    name: displayName(profile),
+    avatarUrl,
+    bio: profile.bio,
+    actions: EDIT_BUTTON,
+  });
 }
 
 /**
@@ -132,11 +128,7 @@ export class ProfilePage {
     const card = this.#card.nextElementSibling as HTMLElement;
     this.#card.remove();
     this.#card = card;
-    card
-      .querySelector(".profile-card__avatar-image")
-      ?.addEventListener("error", (event) =>
-        (event.target as HTMLElement).remove(),
-      );
+    bindAvatarFallback(card);
   }
 
   #applyProfile(profile: Profile): void {
