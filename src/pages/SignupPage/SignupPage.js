@@ -29,6 +29,8 @@ import { Input } from "../../components/Input/Input.js";
 import { Checkbox } from "../../components/Checkbox/Checkbox.js";
 import { authLayoutTemplate } from "../../components/AuthLayout/AuthLayout.js";
 import { logoTemplate } from "../../components/Logo/Logo.js";
+import plusIcon from "../../components/FileField/plus.svg";
+import avatarPlaceholder from "./avatar-placeholder.svg";
 
 const GENDERS = [
   { value: "male", label: "Мужской" },
@@ -283,14 +285,14 @@ function photoStepTemplate(step, path) {
     <label class="file-field file-field_disabled">
       <input class="file-field__control" type="file" accept="image/png, image/jpeg" disabled aria-disabled="true">
       <span class="file-field__text">Фото можно добавить позже</span>
-      <img class="file-field__icon" draggable="false" src="/components/FileField/plus.svg" width="12" height="12" alt="">
+      <img class="file-field__icon" draggable="false" src="${plusIcon}" width="12" height="12" alt="">
     </label>
   `;
   return authLayoutTemplate(`
     <section class="auth-card ${step.card} auth-card_stepped">
       ${logoTemplate("auth-card__logo", "small")}
       <p class="auth-card__title auth-card__title_compact">${step.title}</p>
-      <img class="auth-card__avatar" draggable="false" src="/pages/SignupPage/avatar-placeholder.svg" width="320" height="185" alt="">
+      <img class="auth-card__avatar" draggable="false" src="${avatarPlaceholder}" width="320" height="185" alt="">
       ${formTemplate(
         step,
         `${fieldsTemplate(step, fileField)}<p class="auth-card__server-error" role="alert"></p>`,

@@ -1,3 +1,4 @@
+import "./index.css";
 import { api } from "./modules/api.js";
 import { user } from "./modules/user.js";
 import { Router } from "./modules/router.js";

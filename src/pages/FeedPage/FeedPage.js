@@ -4,6 +4,7 @@ import { NETWORK_ERROR } from "../../modules/errors.js";
 import { Header } from "../../components/Header/Header.js";
 import { Sidebar } from "../../components/Sidebar/Sidebar.js";
 import { Post } from "../../components/Post/Post.js";
+import spinnerIcon from "./spinner.svg";
 
 const PAGE_SIZE = 10;
 const LOAD_THRESHOLD = 600;
@@ -15,7 +16,7 @@ const MESSAGES = {
   error: "Произошла ошибка, обновите страницу",
 };
 
-const SPINNER = `<img class="feed__spinner" draggable="false" src="/pages/FeedPage/spinner.svg" width="20" height="20" alt="Загружаем ещё посты">`;
+const SPINNER = `<img class="feed__spinner" draggable="false" src="${spinnerIcon}" width="20" height="20" alt="Загружаем ещё посты">`;
 const RETRY = `<button class="button button_outline feed__retry" type="button">Обновить</button>`;
 
 function statusTemplate(status, hasPosts) {

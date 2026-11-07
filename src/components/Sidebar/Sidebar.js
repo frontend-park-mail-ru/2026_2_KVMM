@@ -1,10 +1,17 @@
+import feedActiveIcon from "./icons/feed-active.svg";
+import profileIcon from "./icons/profile.svg";
+import messagesIcon from "./icons/messages.svg";
+import communitiesIcon from "./icons/communities.svg";
+import friendsIcon from "./icons/friends.svg";
+import settingsIcon from "./icons/settings.svg";
+
 const ITEMS = [
-  { label: "Лента", icon: "feed-active", isActive: true },
-  { label: "Профиль", icon: "profile" },
-  { label: "Сообщения", icon: "messages" },
-  { label: "Сообщества", icon: "communities" },
-  { label: "Друзья", icon: "friends" },
-  { label: "Настройки", icon: "settings" },
+  { label: "Лента", icon: feedActiveIcon, isActive: true },
+  { label: "Профиль", icon: profileIcon },
+  { label: "Сообщения", icon: messagesIcon },
+  { label: "Сообщества", icon: communitiesIcon },
+  { label: "Друзья", icon: friendsIcon },
+  { label: "Настройки", icon: settingsIcon },
 ];
 
 const SLOGAN = "Nexly&nbsp;— Люди. Идеи. Ближе.";
@@ -14,7 +21,7 @@ function itemTemplate({ label, icon, isActive }) {
   const labelModifier = isActive ? " sidebar__label_active" : "";
   return `
     <li class="sidebar__item"${current}>
-      <img class="sidebar__icon" draggable="false" src="/components/Sidebar/icons/${icon}.svg" width="24" height="24" alt="">
+      <img class="sidebar__icon" draggable="false" src="${icon}" width="24" height="24" alt="">
       <span class="sidebar__label${labelModifier}">${label}</span>
     </li>
   `;

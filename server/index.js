@@ -1,14 +1,21 @@
 'use strict';
 
 const express = require('express');
+const fs = require('fs');
 const http = require('http');
 const morgan = require('morgan');
 const path = require('path');
 const app = express();
 
-const publicDir = path.resolve(__dirname, '..', 'public');
-const indexFile = path.join(publicDir, 'index.html');
+const distDir = path.resolve(__dirname, '..', 'dist');
+const assetsDir = path.join(distDir, 'assets') + path.sep;
+const indexFile = path.join(distDir, 'index.html');
 const backendUrl = new URL(process.env.BACKEND_URL || 'http://localhost:8080');
+
+if (!fs.existsSync(indexFile)) {
+    console.error('Нет сборки в dist/: сначала выполните npm run build');
+    process.exit(1);
+}
 
 app.use(morgan('dev'));
 
@@ -36,7 +43,14 @@ app.use('/api', (req, res) => {
     req.pipe(proxyRequest);
 });
 
-app.use(express.static(publicDir));
+app.use(
+    express.static(distDir, {
+        setHeaders(res, filePath) {
+            const isHashed = filePath.startsWith(assetsDir);
+            res.setHeader('Cache-Control', isHashed ? 'public, max-age=31536000, immutable' : 'no-cache');
+        },
+    }),
+);
 
 app.use((req, res) => {
     if (req.method !== 'GET' || path.extname(req.path)) {
@@ -44,6 +58,7 @@ app.use((req, res) => {
         return;
     }
 
+    res.setHeader('Cache-Control', 'no-cache');
     res.sendFile(indexFile);
 });
 

@@ -3,7 +3,7 @@ import jsdoc from "eslint-plugin-jsdoc";
 import globals from "globals";
 
 export default [
-  { ignores: ["node_modules/"] },
+  { ignores: ["node_modules/", "dist/", ".design/"] },
   js.configs.recommended,
   {
     rules: {
@@ -14,7 +14,7 @@ export default [
     },
   },
   {
-    files: ["server/**/*.js"],
+    files: ["server/**/*.js", "webpack.config.js"],
     languageOptions: {
       ecmaVersion: "latest",
       sourceType: "commonjs",
@@ -22,7 +22,7 @@ export default [
     },
   },
   {
-    files: ["public/**/*.js"],
+    files: ["src/**/*.js"],
     ...jsdoc.configs["flat/recommended-error"],
     languageOptions: {
       ecmaVersion: "latest",

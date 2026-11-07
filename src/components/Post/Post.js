@@ -1,5 +1,8 @@
 import { api } from "../../modules/api.js";
 import { escapeHtml, formatDate } from "../../modules/utils.js";
+import likeIcon from "./icons/like.svg";
+import commentIcon from "./icons/comment.svg";
+import shareIcon from "./icons/share.svg";
 
 const IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "gif", "webp", "avif"];
 const VIDEO_EXTENSIONS = ["mp4", "webm", "ogg", "mov"];
@@ -62,15 +65,15 @@ function template(post) {
       ${files.length ? `<div class="post__files">${files.map(mediaTemplate).join("")}</div>` : ""}
       <footer class="post__actions">
         <span class="post__action">
-          <img class="post__action-icon" draggable="false" src="/components/Post/icons/like.svg" width="20" height="20" alt="Нравится">
+          <img class="post__action-icon" draggable="false" src="${likeIcon}" width="20" height="20" alt="Нравится">
           ${escapeHtml(post.likes_count)}
         </span>
         <span class="post__action">
-          <img class="post__action-icon" draggable="false" src="/components/Post/icons/comment.svg" width="20" height="20" alt="">
+          <img class="post__action-icon" draggable="false" src="${commentIcon}" width="20" height="20" alt="">
           Комментарии
         </span>
         <span class="post__action">
-          <img class="post__action-icon" draggable="false" src="/components/Post/icons/share.svg" width="20" height="20" alt="">
+          <img class="post__action-icon" draggable="false" src="${shareIcon}" width="20" height="20" alt="">
           Поделиться
         </span>
       </footer>
