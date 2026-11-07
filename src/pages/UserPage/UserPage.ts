@@ -4,6 +4,7 @@ import type { Router, RouteParams } from "../../modules/router";
 import { user } from "../../modules/user";
 import { people } from "../../modules/people";
 import { findRelation } from "../../modules/relations";
+import { openChat } from "../../modules/chats";
 import type { RelationStatus } from "../../modules/relations";
 import { displayName } from "../../modules/profileName";
 import { serverErrorMessage } from "../../modules/errors";
@@ -38,6 +39,8 @@ const ACTIONS: Record<RelationStatus, string> = {
     button("decline", "Отклонить заявку", " button_alert"),
   friend: button("remove", "Удалить из друзей", " button_alert"),
 };
+
+const WRITE_BUTTON = button("write", "Написать");
 
 const NEXT_RELATION: Record<string, RelationStatus> = {
   add: "sent",
@@ -125,7 +128,8 @@ export class UserPage {
   }
 
   #renderCard(): void {
-    const actions = this.#relation ? ACTIONS[this.#relation] : "";
+    const actions =
+      (this.#relation ? ACTIONS[this.#relation] : "") + WRITE_BUTTON;
     const error = `<p class="profile-card__error" role="alert">${escapeHtml(this.#error)}</p>`;
     this.#card.insertAdjacentHTML(
       "afterend",
@@ -190,7 +194,35 @@ export class UserPage {
     return api.removeFriend(this.#profileId);
   }
 
+  async #write(): Promise<void> {
+    this.#setButtonsDisabled(true);
+    const response = await openChat(this.#profileId);
+    if (this.#isDestroyed) {
+      return;
+    }
+    if (response.status === 401) {
+      this.#goToLogin();
+      return;
+    }
+    if (response.data?.id) {
+      this.#router.navigate(`/chats/${response.data.id}`);
+      return;
+    }
+    this.#error = serverErrorMessage(response);
+    this.#renderCard();
+  }
+
+  #setButtonsDisabled(isDisabled: boolean): void {
+    this.#card
+      .querySelectorAll("button")
+      .forEach((element) => (element.disabled = isDisabled));
+  }
+
   async #act(action: string): Promise<void> {
+    if (action === "write") {
+      this.#write();
+      return;
+    }
     if (!(action in NEXT_RELATION)) {
       return;
     }
@@ -204,9 +236,7 @@ export class UserPage {
         return;
       }
     }
-    this.#card
-      .querySelectorAll("button")
-      .forEach((element) => (element.disabled = true));
+    this.#setButtonsDisabled(true);
     const response = await this.#send(action);
     if (this.#isDestroyed) {
       return;

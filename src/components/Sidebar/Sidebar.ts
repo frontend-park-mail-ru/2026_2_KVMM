@@ -3,6 +3,7 @@ import feedActiveIcon from "./icons/feed-active.svg";
 import profileIcon from "./icons/profile.svg";
 import profileActiveIcon from "./icons/profile-active.svg";
 import messagesIcon from "./icons/messages.svg";
+import messagesActiveIcon from "./icons/messages-active.svg";
 import communitiesIcon from "./icons/communities.svg";
 import friendsIcon from "./icons/friends.svg";
 import friendsActiveIcon from "./icons/friends-active.svg";
@@ -37,7 +38,13 @@ const ITEMS: SidebarItem[] = [
     activeIcon: profileActiveIcon,
     href: "/profile",
   },
-  { section: "messages", label: "Сообщения", icon: messagesIcon },
+  {
+    section: "messages",
+    label: "Сообщения",
+    icon: messagesIcon,
+    activeIcon: messagesActiveIcon,
+    href: "/chats",
+  },
   { section: "communities", label: "Сообщества", icon: communitiesIcon },
   {
     section: "friends",

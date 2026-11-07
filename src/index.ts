@@ -10,6 +10,8 @@ import { ProfilePage } from "./pages/ProfilePage/ProfilePage";
 import { EmailCodePage } from "./pages/EmailCodePage/EmailCodePage";
 import { FriendsPage } from "./pages/FriendsPage/FriendsPage";
 import { UserPage } from "./pages/UserPage/UserPage";
+import { ChatsPage } from "./pages/ChatsPage/ChatsPage";
+import { ConversationPage } from "./pages/ConversationPage/ConversationPage";
 import { SIGNUP_STEPS, signupDraft } from "./modules/signupDraft";
 import type { Route } from "./modules/router";
 
@@ -36,6 +38,8 @@ const routes: Record<string, Route> = {
   "/profile": { page: ProfilePage, auth: true },
   "/profile/code": emailCodeRoute("/profile"),
   "/friends": { page: FriendsPage, auth: true },
+  "/chats": { page: ChatsPage, auth: true },
+  "/chats/:id": { page: ConversationPage, auth: true },
   "/profile/:id": {
     page: UserPage,
     auth: true,
