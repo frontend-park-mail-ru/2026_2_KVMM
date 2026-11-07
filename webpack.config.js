@@ -79,6 +79,7 @@ module.exports = (env, argv) => {
                     context: ['/api'],
                     target: process.env.BACKEND_URL || 'http://localhost:8080',
                     changeOrigin: true,
+                    ws: true,
                 },
             ],
         },

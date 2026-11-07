@@ -1,6 +1,7 @@
 import "./index.scss";
 import { api, isSession } from "./modules/api";
 import { user } from "./modules/user";
+import { chatSocket } from "./modules/chatSocket";
 import { Router } from "./modules/router";
 import { LoginPage } from "./pages/LoginPage/LoginPage";
 import { SignupPage } from "./pages/SignupPage/SignupPage";
@@ -47,6 +48,14 @@ const router = new Router(
   document.getElementById("root") as HTMLElement,
   routes,
 );
+
+user.onChange(() => {
+  if (user.isAuthorized) {
+    chatSocket.start();
+  } else {
+    chatSocket.stop();
+  }
+});
 
 const { status, data } = await api.me();
 if (status === 200 && isSession(data)) {

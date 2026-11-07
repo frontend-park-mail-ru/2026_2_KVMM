@@ -76,6 +76,56 @@ export interface ShortProfile {
 }
 
 /**
+ * Сообщение в чате. message_text = null у удалённых сообщений.
+ */
+export interface ChatMessage {
+  id: number;
+  chat_id: number;
+  author_id: number;
+  message_text: string | null;
+  repost_from?: number;
+  reply_from?: number;
+  created_at: string;
+  updated_at?: string;
+  deleted_at?: string;
+}
+
+/**
+ * Личный чат. Из участников берём только короткий профиль: остальные поля бэк отдавать не должен.
+ */
+export interface Chat {
+  id: number;
+  participants?: ShortProfile[];
+  last_message?: ChatMessage;
+  streak_days: number;
+  created_at: string;
+}
+
+/**
+ * Страница списка чатов, новые сначала. next_cursor — id последнего чата.
+ */
+export interface ChatsResponse {
+  chats: Chat[];
+  cursor: number;
+  limit: number;
+  has_more: boolean;
+  next_cursor?: number;
+}
+
+/**
+ * Страница сообщений чата, новые сначала. parents — сообщения, на которые есть ответы или репосты.
+ */
+export interface MessagesResponse {
+  messages: ChatMessage[];
+  parents: ChatMessage[];
+  chat_id: number;
+  cursor: number;
+  limit: number;
+  has_more: boolean;
+  next_cursor?: number;
+}
+
+/**
  * Связь с другим человеком: master отправил запрос, slave получил. profile — вторая сторона.
  */
 export interface Relationship {
@@ -171,15 +221,16 @@ export interface Avatar {
 
 interface RequestOptions {
   body?: unknown;
+  csrf?: boolean;
 }
 
 async function request<T>(
   method: string,
   path: string,
-  { body }: RequestOptions = {},
+  { body, csrf = method !== "GET" }: RequestOptions = {},
 ): Promise<ApiResult<T>> {
   const headers: Record<string, string> = {};
-  if (method !== "GET" && user.csrfToken) {
+  if (csrf && user.csrfToken) {
     headers["X-CSRF-Token"] = user.csrfToken;
   }
   const options: RequestInit = { method, credentials: "include", headers };
@@ -289,5 +340,19 @@ export const api = {
     }),
   deleteAvatar: (avatarId: number) =>
     request<null>("DELETE", `/profile/avatars/${avatarId}`),
+  chats: (cursor: number) =>
+    request<ChatsResponse>("GET", `/chats/list?cursor=${cursor}`, {
+      csrf: true,
+    }),
+  chatMessages: (chatId: number, cursor: number) =>
+    request<MessagesResponse>(
+      "GET",
+      `/chats/messages?chat_id=${chatId}&cursor=${cursor}`,
+      { csrf: true },
+    ),
+  createChat: (profileId: number) =>
+    request<Chat>("POST", "/chats/create", {
+      body: { profile_id: profileId },
+    }),
   mediaUrl: (path: string) => `${path}`,
 };

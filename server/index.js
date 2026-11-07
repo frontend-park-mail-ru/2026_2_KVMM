@@ -69,6 +69,46 @@ app.use((req, res) => {
 
 const port = process.env.PORT || 8001;
 
-app.listen(port, function () {
+const server = app.listen(port, function () {
     console.log(`Listening on http://localhost:${port}`);
+});
+
+server.on('upgrade', (req, socket, head) => {
+    if (!req.url.startsWith('/api/')) {
+        socket.destroy();
+        return;
+    }
+
+    const proxyRequest = http.request({
+        hostname: backendUrl.hostname,
+        port: backendUrl.port,
+        path: req.url,
+        method: req.method,
+        headers: { ...req.headers, host: backendUrl.host },
+    });
+
+    proxyRequest.on('upgrade', (proxyResponse, proxySocket, proxyHead) => {
+        const lines = [`HTTP/1.1 ${proxyResponse.statusCode} ${proxyResponse.statusMessage}`];
+        for (let i = 0; i < proxyResponse.rawHeaders.length; i += 2) {
+            lines.push(`${proxyResponse.rawHeaders[i]}: ${proxyResponse.rawHeaders[i + 1]}`);
+        }
+        socket.write(lines.join('\r\n') + '\r\n\r\n');
+        if (proxyHead.length) {
+            socket.write(proxyHead);
+        }
+        if (head.length) {
+            proxySocket.write(head);
+        }
+        proxySocket.pipe(socket).pipe(proxySocket);
+        proxySocket.on('error', () => socket.destroy());
+        socket.on('error', () => proxySocket.destroy());
+    });
+
+    proxyRequest.on('response', (proxyResponse) => {
+        socket.end(`HTTP/1.1 ${proxyResponse.statusCode} ${proxyResponse.statusMessage}\r\nConnection: close\r\n\r\n`);
+        proxyResponse.resume();
+    });
+
+    proxyRequest.on('error', () => socket.destroy());
+    proxyRequest.end();
 });
