@@ -3,4 +3,4 @@ declare module "*.svg" {
   export default url;
 }
 
-declare module "*.css";
+declare module "*.scss";

@@ -24,6 +24,9 @@ module.exports = (env, argv) => {
         devtool: isProduction ? 'source-map' : 'eval-cheap-module-source-map',
         resolve: {
             extensions: ['.ts', '.js'],
+            alias: {
+                '@': srcDir,
+            },
         },
         module: {
             rules: [
@@ -34,8 +37,13 @@ module.exports = (env, argv) => {
                     use: 'babel-loader',
                 },
                 {
-                    test: /\.css$/,
-                    use: [MiniCssExtractPlugin.loader, 'css-loader'],
+                    test: /\.scss$/,
+                    use: [
+                        MiniCssExtractPlugin.loader,
+                        { loader: 'css-loader', options: { importLoaders: 2 } },
+                        'postcss-loader',
+                        'sass-loader',
+                    ],
                 },
                 {
                     test: /\.(svg|png|jpe?g|gif|webp|woff2?)$/i,

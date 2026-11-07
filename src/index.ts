@@ -1,4 +1,4 @@
-import "./index.css";
+import "./index.scss";
 import { api } from "./modules/api";
 import type { Session } from "./modules/api";
 import { user } from "./modules/user";

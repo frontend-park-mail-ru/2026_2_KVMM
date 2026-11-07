@@ -15,7 +15,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ["server/**/*.js", "webpack.config.js"],
+    files: ["server/**/*.js", "webpack.config.js", "postcss.config.js"],
     languageOptions: {
       ecmaVersion: "latest",
       sourceType: "commonjs",
