@@ -1,12 +1,13 @@
-import { api } from "../../modules/api";
-import { isSession } from "../../modules/api";
-import type { RegisterFields } from "../../modules/api";
+import { api, isSession } from "../../modules/api";
+import type { ApiResult, Profile, RegisterFields } from "../../modules/api";
 import type { Router } from "../../modules/router";
 import { user } from "../../modules/user";
 import { registerFieldError, serverErrorMessage } from "../../modules/errors";
 import {
   MAX_LENGTH,
   birthdayRange,
+  normalizePhone,
+  validateAvatarFile,
   validateBio,
   validateBirthday,
   validateConsent,
@@ -21,25 +22,19 @@ import {
 import { attachPhoneMask } from "../../modules/phoneMask";
 import {
   SIGNUP_STEPS,
+  isStepAvailable,
   signupDraft,
-  signupRedirect,
 } from "../../modules/signupDraft";
 import { Input } from "../../components/Input/Input";
 import type { InputConfig, InputOption } from "../../components/Input/Input";
 import { Checkbox } from "../../components/Checkbox/Checkbox";
+import { FileField } from "../../components/FileField/FileField";
 import { authLayoutTemplate } from "../../components/AuthLayout/AuthLayout";
 import { logoTemplate } from "../../components/Logo/Logo";
-import plusIcon from "../../components/FileField/plus.svg";
 import avatarPlaceholder from "./avatar-placeholder.svg";
 
 type ActionKind =
-  | "next"
-  | "login"
-  | "register"
-  | "register-without-bio"
-  | "step"
-  | "back"
-  | "forward";
+  "login" | "register" | "save" | "skip" | "step" | "back" | "forward";
 
 interface StepAction {
   kind: ActionKind;
@@ -90,6 +85,10 @@ const OPTIONAL_PLACEHOLDERS: Record<string, string> = {
 
 const REQUIRED_HINT = "* — обязательные поля";
 const CONTACT_HINT = "Заполните хотя бы одно поле";
+const PHONE_TAKEN = "Этот номер уже используется";
+const EMAIL_TAKEN = "Этот email уже занят";
+const FIELD_REJECTED = "Сервер не принял это значение, проверьте его";
+const PHOTO_HINT = "Формат: png, jpg, jpeg; до 5мб";
 
 const PRIVACY_URL = "/public/privacy.pdf";
 
@@ -102,6 +101,12 @@ const ARROW_ICONS = {
 };
 
 const SLOGAN = "Nexly&nbsp;— Люди. Идеи. Ближе.";
+
+const SKIP: StepAction = {
+  kind: "skip",
+  style: "secondary",
+  label: "Возможно потом",
+};
 
 const STEPS: Record<string, Step> = {
   "/signup": {
@@ -124,7 +129,7 @@ const STEPS: Record<string, Step> = {
     card: "auth-card_gap_large auth-card_padding_large",
     fields: ["email", "phone_number"],
     hint: CONTACT_HINT,
-    actions: [{ kind: "next", style: "primary", label: "Подтвердить" }],
+    actions: [{ kind: "save", style: "primary", label: "Подтвердить" }, SKIP],
   },
   "/signup/about": {
     label: "о себе",
@@ -132,7 +137,7 @@ const STEPS: Record<string, Step> = {
     card: "auth-card_padding_large",
     fields: ["profile_name", "surname", "patronymic", "gender", "birthday"],
     hint: REQUIRED_HINT,
-    actions: [{ kind: "next", style: "primary", label: "Продолжить" }],
+    actions: [{ kind: "save", style: "primary", label: "Продолжить" }, SKIP],
   },
   "/signup/photo": {
     label: "фото",
@@ -141,18 +146,11 @@ const STEPS: Record<string, Step> = {
     fields: ["bio"],
     fieldsModifier: "auth-card__fields_profile",
     photo: true,
-    actions: [
-      { kind: "register", style: "primary", label: "Продолжить" },
-      {
-        kind: "register-without-bio",
-        style: "secondary",
-        label: "Возможно потом",
-      },
-    ],
+    actions: [{ kind: "save", style: "primary", label: "Продолжить" }, SKIP],
   },
 };
 
-const SUBMIT_KINDS: string[] = ["next", "register"];
+const SUBMIT_KINDS: string[] = ["register", "save"];
 
 function fieldConfigs(
   valueOf: (name: string) => string,
@@ -262,9 +260,9 @@ function formTemplate(step: Step, groupContent: string): string {
   `;
 }
 
-function fieldsTemplate(step: Step, content: string = ""): string {
+function fieldsTemplate(step: Step): string {
   const modifier = step.fieldsModifier ? ` ${step.fieldsModifier}` : "";
-  return `<div class="auth-card__fields${modifier}">${content}</div>`;
+  return `<div class="auth-card__fields${modifier}"></div>`;
 }
 
 function stepsTemplate(current: string): string {
@@ -280,8 +278,9 @@ function stepsTemplate(current: string): string {
 
 function navTemplate(path: string): string {
   const index = SIGNUP_STEPS.indexOf(path);
+  const previous = SIGNUP_STEPS[index - 1];
   const back =
-    index > 0
+    previous && isStepAvailable(previous, user.isAuthorized)
       ? `<button class="auth-card__arrow auth-card__arrow_back" type="button" data-action="back" aria-label="Назад">${ARROW_ICONS.back}</button>`
       : "";
   const forward =
@@ -314,13 +313,6 @@ function stepTemplate(step: Step, path: string): string {
 }
 
 function photoStepTemplate(step: Step, path: string): string {
-  const fileField = `
-    <label class="file-field file-field_disabled">
-      <input class="file-field__control" type="file" accept="image/png, image/jpeg" disabled aria-disabled="true">
-      <span class="file-field__text">Фото можно добавить позже</span>
-      <img class="file-field__icon" draggable="false" src="${plusIcon}" width="12" height="12" alt="">
-    </label>
-  `;
   return authLayoutTemplate(`
     <section class="auth-card ${step.card} auth-card_stepped">
       ${logoTemplate("auth-card__logo", "small")}
@@ -328,19 +320,15 @@ function photoStepTemplate(step: Step, path: string): string {
       <img class="auth-card__avatar" draggable="false" src="${avatarPlaceholder}" width="320" height="185" alt="">
       ${formTemplate(
         step,
-        `${fieldsTemplate(step, fileField)}<p class="auth-card__server-error" role="alert"></p>`,
+        `${fieldsTemplate(step)}<p class="auth-card__server-error" role="alert"></p>`,
       )}
       ${navTemplate(path)}
     </section>
   `);
 }
 
-function stepOfField(field: string): string | undefined {
-  return SIGNUP_STEPS.find((path) => STEPS[path].fields.includes(field));
-}
-
 /**
- * Регистрация из четырёх шагов: логин и пароль, email или телефон, данные о себе, фото и рассказ о себе. Значения шагов хранит черновик в памяти, на бэк уходит один запрос в конце.
+ * Регистрация в четыре шага: шаг 1 создаёт аккаунт, шаги 2–4 дозаполняют профиль уже вошедшего пользователя — контакты, данные о себе, фото и рассказ о себе. Любой из шагов 2–4 можно пропустить.
  */
 export class SignupPage {
   #parent: HTMLElement;
@@ -349,10 +337,13 @@ export class SignupPage {
   #step!: Step;
   #fields: Record<string, Input> = {};
   #consent: Checkbox | null = null;
+  #photo: FileField | null = null;
+  #avatar: HTMLImageElement | null = null;
+  #previewUrl = "";
   #buttons: HTMLButtonElement[] = [];
   #steps: HTMLButtonElement[] = [];
   #forward: HTMLButtonElement | null = null;
-  #serverError: HTMLElement | null = null;
+  #serverError!: HTMLElement;
   #isDestroyed = false;
 
   /**
@@ -378,16 +369,17 @@ export class SignupPage {
 
     const card = this.#parent.querySelector(".auth-card") as HTMLElement;
     const form = card.querySelector(".auth-card__form") as HTMLFormElement;
-    this.#buttons = [...card.querySelectorAll("button")];
     this.#steps = [
       ...card.querySelectorAll<HTMLButtonElement>(".auth-card__step"),
     ];
     this.#forward = card.querySelector<HTMLButtonElement>(
       '[data-action="forward"]',
     );
-    this.#serverError = form.querySelector<HTMLElement>(
+    this.#avatar = card.querySelector<HTMLImageElement>(".auth-card__avatar");
+    this.#serverError = form.querySelector(
       ".auth-card__server-error",
-    );
+    ) as HTMLElement;
+    this.#buttons = [...card.querySelectorAll("button")];
     this.#renderFields(form.querySelector(".auth-card__fields") as HTMLElement);
     this.#showPendingError();
     this.#updateNav();
@@ -417,13 +409,27 @@ export class SignupPage {
   }
 
   /**
-   * Отмечает страницу закрытой, чтобы ответ сервера после ухода со страницы не обрабатывался.
+   * Отмечает страницу закрытой, чтобы ответ сервера после ухода со страницы не обрабатывался, и освобождает превью фото.
    */
   destroy(): void {
     this.#isDestroyed = true;
+    if (this.#previewUrl) {
+      URL.revokeObjectURL(this.#previewUrl);
+    }
   }
 
   #renderFields(container: HTMLElement): void {
+    if (this.#step.photo) {
+      this.#photo = new FileField(container, {
+        name: "avatar",
+        hint: PHOTO_HINT,
+        accept: "image/png, image/jpeg",
+        validate: validateAvatarFile,
+        onChange: (file) => this.#showPreview(file),
+      });
+      this.#photo.render();
+    }
+
     const configs = fieldConfigs((name) =>
       this.#fields[name] ? this.#fields[name].value : signupDraft.text(name),
     );
@@ -450,6 +456,18 @@ export class SignupPage {
     }
   }
 
+  #showPreview(file: File | null): void {
+    if (!this.#avatar) {
+      return;
+    }
+    if (this.#previewUrl) {
+      URL.revokeObjectURL(this.#previewUrl);
+    }
+    this.#previewUrl = file ? URL.createObjectURL(file) : "";
+    this.#avatar.src = this.#previewUrl || avatarPlaceholder;
+    this.#avatar.classList.toggle("auth-card__avatar_photo", Boolean(file));
+  }
+
   #showPendingError(): void {
     const error = signupDraft.takeFieldError();
     if (error && this.#fields[error.field]) {
@@ -458,7 +476,7 @@ export class SignupPage {
   }
 
   #onEdit(target: HTMLInputElement): void {
-    if (!target.name) {
+    if (!target.name || target.type === "file") {
       return;
     }
     signupDraft.reopen(this.#path);
@@ -481,30 +499,37 @@ export class SignupPage {
     this.#steps.forEach((button) => {
       const path = button.dataset.step ?? "";
       const isCurrent = path === this.#path;
+      const isAvailable = isStepAvailable(path, user.isAuthorized);
       button.classList.toggle(
         "auth-card__step_done",
-        !isCurrent && signupDraft.isComplete(path),
+        !isCurrent &&
+          (signupDraft.isComplete(path) ||
+            (path === SIGNUP_STEPS[0] && user.isAuthorized)),
       );
-      button.disabled = isCurrent || signupRedirect(path) !== null;
+      button.disabled = isCurrent || !isAvailable;
     });
   }
 
   #goTo(offset: number): void {
     const index = SIGNUP_STEPS.indexOf(this.#path) + offset;
+    if (index >= SIGNUP_STEPS.length) {
+      this.#finish();
+      return;
+    }
     this.#router.navigate(SIGNUP_STEPS[index]);
   }
 
   #runAction(kind: ActionKind, step?: string): void {
-    if (kind === "step") {
-      this.#router.navigate(step ?? "");
+    if (kind === "step" && step) {
+      this.#router.navigate(step);
     } else if (kind === "back") {
       this.#goTo(-1);
-    } else if (kind === "forward") {
+    } else if (kind === "forward" || kind === "skip") {
       this.#goTo(1);
-    } else if (kind === "next") {
-      this.#goNext();
-    } else if (kind === "register" || kind === "register-without-bio") {
+    } else if (kind === "register") {
       this.#register();
+    } else if (kind === "save") {
+      this.#save();
     }
   }
 
@@ -515,26 +540,14 @@ export class SignupPage {
     if (this.#consent) {
       results.push(this.#consent.validate());
     }
+    if (this.#photo) {
+      results.push(this.#photo.validate());
+    }
     return !results.includes(false);
   }
 
-  #goNext(): void {
-    if (!this.#validateStep()) {
-      return;
-    }
-    signupDraft.complete(this.#path);
-    this.#goTo(1);
-  }
-
-  #payload(): RegisterFields {
-    const value = (name: string): string =>
-      this.#fields[name]?.value ?? signupDraft.text(name);
-    return {
-      nickname: value("nickname").trim(),
-      password: value("password"),
-      confirm_password: value("confirm_password"),
-      privacy_policy_allowed: true,
-    };
+  #value(name: string): string {
+    return this.#fields[name]?.value ?? signupDraft.text(name);
   }
 
   #setBusy(isBusy: boolean): void {
@@ -546,39 +559,181 @@ export class SignupPage {
     }
   }
 
+  #showError(response: ApiResult<unknown>, field?: string): void {
+    const fieldError = registerFieldError(response);
+    const target = fieldError?.field ?? field;
+    if (response.status === 400 && target && this.#fields[target]) {
+      this.#fields[target].setError(fieldError?.message ?? FIELD_REJECTED);
+      return;
+    }
+    if (response.status === 401) {
+      user.clear();
+      this.#router.navigate("/login");
+      return;
+    }
+    this.#serverError.textContent = serverErrorMessage(response);
+  }
+
+  #completeStep(): void {
+    signupDraft.complete(this.#path);
+    this.#goTo(1);
+  }
+
+  #finish(): void {
+    signupDraft.clear();
+    this.#router.navigate("/feed", true);
+  }
+
   async #register(): Promise<void> {
-    (this.#serverError as HTMLElement).textContent = "";
+    this.#serverError.textContent = "";
     if (!this.#validateStep()) {
       return;
     }
 
+    const payload: RegisterFields = {
+      nickname: this.#value("nickname").trim(),
+      password: this.#value("password"),
+      confirm_password: this.#value("confirm_password"),
+      privacy_policy_allowed: true,
+    };
     this.#setBusy(true);
-    const response = await api.register(this.#payload());
+    const response = await api.register(payload);
     if (this.#isDestroyed) {
       return;
     }
     this.#setBusy(false);
 
     if (response.status === 201 && isSession(response.data)) {
-      signupDraft.clear();
       user.set(response.data);
-      this.#router.navigate("/feed", true);
+      signupDraft.forgetPasswords();
+      signupDraft.complete(this.#path);
+      this.#router.navigate(SIGNUP_STEPS[1], true);
       return;
     }
 
     const fieldError = registerFieldError(response);
-    const target = fieldError && stepOfField(fieldError.field);
-    if (target && target !== this.#path) {
-      signupDraft.setFieldError(fieldError);
-      signupDraft.reopen(target);
-      this.#router.navigate(target);
-      return;
-    }
-    if (target && fieldError) {
+    if (fieldError && this.#fields[fieldError.field]) {
       this.#fields[fieldError.field].setError(fieldError.message);
       return;
     }
-    (this.#serverError as HTMLElement).textContent =
-      serverErrorMessage(response);
+    this.#serverError.textContent = serverErrorMessage(response);
+  }
+
+  async #save(): Promise<void> {
+    this.#serverError.textContent = "";
+    if (!this.#validateStep()) {
+      return;
+    }
+    this.#setBusy(true);
+    if (this.#path === "/signup/email") {
+      await this.#saveContacts();
+    } else if (this.#path === "/signup/about") {
+      await this.#saveAbout();
+    } else {
+      await this.#savePhoto();
+    }
+    if (!this.#isDestroyed) {
+      this.#setBusy(false);
+    }
+  }
+
+  #applyProfile(response: ApiResult<Profile>): boolean {
+    if (response.status === 200 && response.data?.id) {
+      user.setProfile(response.data);
+      return true;
+    }
+    return false;
+  }
+
+  async #saveContacts(): Promise<void> {
+    const email = this.#value("email").trim();
+    const phone = normalizePhone(this.#value("phone_number"));
+    const profile = user.profile;
+
+    if (phone && phone !== profile?.phone_number) {
+      const response = await api.updateProfile({ phone_number: phone });
+      if (this.#isDestroyed) {
+        return;
+      }
+      if (!this.#applyProfile(response)) {
+        if (response.status === 409) {
+          this.#fields.phone_number.setError(PHONE_TAKEN);
+        } else {
+          this.#showError(response, "phone_number");
+        }
+        return;
+      }
+    }
+
+    if (email && email.toLowerCase() !== profile?.email?.toLowerCase()) {
+      const response = await api.requestEmailChange(email);
+      if (this.#isDestroyed) {
+        return;
+      }
+      if (response.status === 200) {
+        signupDraft.setPendingEmail(email);
+        this.#router.navigate("/signup/code");
+        return;
+      }
+      if (response.status === 409) {
+        this.#fields.email.setError(EMAIL_TAKEN);
+      } else {
+        this.#showError(response, "email");
+      }
+      return;
+    }
+
+    this.#completeStep();
+  }
+
+  async #saveAbout(): Promise<void> {
+    const patronymic = this.#value("patronymic").trim();
+    const response = await api.updateProfile({
+      profile_name: this.#value("profile_name").trim(),
+      surname: this.#value("surname").trim(),
+      ...(patronymic ? { patronymic } : {}),
+      gender: this.#value("gender"),
+      birthday: this.#value("birthday"),
+    });
+    if (this.#isDestroyed) {
+      return;
+    }
+    if (this.#applyProfile(response)) {
+      this.#completeStep();
+      return;
+    }
+    this.#showError(response);
+  }
+
+  async #savePhoto(): Promise<void> {
+    const file = this.#photo?.file ?? null;
+    if (file) {
+      const response = await api.uploadAvatar(file);
+      if (this.#isDestroyed) {
+        return;
+      }
+      if (response.status !== 201) {
+        if (response.status === 400 || response.status === 409) {
+          this.#photo?.setError(serverErrorMessage(response));
+        } else {
+          this.#showError(response);
+        }
+        return;
+      }
+    }
+
+    const bio = this.#value("bio").trim();
+    if (bio) {
+      const response = await api.updateProfile({ bio });
+      if (this.#isDestroyed) {
+        return;
+      }
+      if (!this.#applyProfile(response)) {
+        this.#showError(response, "bio");
+        return;
+      }
+    }
+
+    this.#finish();
   }
 }

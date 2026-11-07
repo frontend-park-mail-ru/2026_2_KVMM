@@ -90,6 +90,28 @@ export interface RegisterFields {
   privacy_policy_allowed: true;
 }
 
+/**
+ * Поля профиля, которые можно изменить. Пустая строка очищает необязательное поле.
+ */
+export interface ProfileUpdate {
+  phone_number?: string;
+  profile_name?: string;
+  surname?: string;
+  patronymic?: string;
+  gender?: string;
+  birthday?: string;
+  bio?: string;
+}
+
+/**
+ * Загруженная аватарка.
+ */
+export interface Avatar {
+  id: number;
+  url: string;
+  created_at: string;
+}
+
 interface RequestOptions {
   body?: unknown;
 }
@@ -105,7 +127,9 @@ async function request<T>(
   }
   const options: RequestInit = { method, credentials: "include", headers };
 
-  if (body) {
+  if (body instanceof FormData) {
+    options.body = body;
+  } else if (body) {
     headers["Content-Type"] = "application/json";
     options.body = JSON.stringify(body);
   }
@@ -130,9 +154,7 @@ async function request<T>(
  */
 export function isSession(data: unknown): data is Session {
   const session = data as Session | null;
-  return Boolean(
-    session?.profile && typeof session.csrf_token === "string",
-  );
+  return Boolean(session?.profile && typeof session.csrf_token === "string");
 }
 
 /**
@@ -147,5 +169,20 @@ export const api = {
   logout: () => request<null>("POST", "/auth/logout"),
   feed: (cursor: number, limit: number) =>
     request<FeedResponse>("GET", `/feed?cursor=${cursor}&limit=${limit}`),
+  updateProfile: (fields: ProfileUpdate) =>
+    request<Profile>("PATCH", "/profile/update", { body: fields }),
+  uploadAvatar: (file: File) => {
+    const form = new FormData();
+    form.append("avatar", file);
+    return request<Avatar>("POST", "/profile/avatar", { body: form });
+  },
+  requestEmailChange: (email: string) =>
+    request<{ message: string }>("POST", "/auth/email/change", {
+      body: { email },
+    }),
+  confirmEmail: (email: string, code: string) =>
+    request<Profile>("POST", "/auth/email/confirm", {
+      body: { email, code },
+    }),
   mediaUrl: (path: string) => `${path}`,
 };

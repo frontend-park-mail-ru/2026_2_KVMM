@@ -33,7 +33,14 @@ const MESSAGES = {
   birthdayInvalid: "Проверьте дату рождения",
   consent: "Подтвердите согласие на обработку персональных данных",
   bio: "Рассказ о себе должен быть не длиннее 256 символов",
+  code: "Введите 6 цифр из письма",
+  avatarType: "Можно загрузить только png или jpg",
+  avatarSize: "Файл должен быть не больше 5 МБ",
 };
+
+const AVATAR_TYPES = ["image/png", "image/jpeg"];
+const AVATAR_MAX_BYTES = 5 * 1024 * 1024;
+const CODE_PATTERN = /^\d{6}$/;
 
 /**
  * Поле имени, фамилии или отчества.
@@ -353,4 +360,32 @@ export function validateConsent(checked: boolean): string {
  */
 export function validateBio(value: string): string {
   return length(value.trim()) <= MAX_LENGTH.bio ? "" : MESSAGES.bio;
+}
+
+/**
+ * Проверяет код из письма: ровно 6 цифр.
+ * @param value Код из поля.
+ * @returns Текст ошибки или пустая строка.
+ */
+export function validateEmailCode(value: string): string {
+  const code = value.trim();
+  if (!code) {
+    return MESSAGES.required;
+  }
+  return CODE_PATTERN.test(code) ? "" : MESSAGES.code;
+}
+
+/**
+ * Проверяет фото профиля по макету: png или jpg, не больше 5 МБ. Без файла ошибки нет — фото необязательно.
+ * @param file Выбранный файл или null.
+ * @returns Текст ошибки или пустая строка.
+ */
+export function validateAvatarFile(file: File | null): string {
+  if (!file) {
+    return "";
+  }
+  if (!AVATAR_TYPES.includes(file.type)) {
+    return MESSAGES.avatarType;
+  }
+  return file.size <= AVATAR_MAX_BYTES ? "" : MESSAGES.avatarSize;
 }

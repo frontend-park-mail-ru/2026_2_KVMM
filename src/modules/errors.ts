@@ -19,6 +19,13 @@ const SERVER_ERRORS: Record<string, string> = {
   invalid_credentials: "Неверный логин или пароль",
   already_exists:
     "Пользователь с таким логином, email или телефоном уже существует",
+  invalid_code_or_request: "Неверный или устаревший код",
+  email_delivery_failed:
+    "Не удалось отправить письмо. Новый код можно запросить через 2 минуты",
+  csrf_failed: "Сессия устарела, обновите страницу",
+  unauthorized: "Сессия истекла, войдите снова",
+  invalid_avatar: "Можно загрузить только изображение png или jpg",
+  avatar_limit: "Загружено максимальное число фото",
 };
 
 const REGISTER_FIELD_PATTERNS: [RegExp, string, string?][] = [
@@ -47,10 +54,11 @@ export function serverErrorMessage({
   status,
   data,
 }: ApiResult<unknown>): string {
-  if (status === 0 || status >= 500) {
-    return NETWORK_ERROR;
+  const known = status === 0 ? undefined : SERVER_ERRORS[data?.code ?? ""];
+  if (known) {
+    return known;
   }
-  return SERVER_ERRORS[data?.code ?? ""] ?? DEFAULT_ERROR;
+  return status === 0 || status >= 500 ? NETWORK_ERROR : DEFAULT_ERROR;
 }
 
 /**

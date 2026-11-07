@@ -1,21 +1,25 @@
 .file-field {
-  position: relative;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 20px;
-  column-gap: 10px;
-  align-items: center;
   width: 100%;
-  height: 42px;
-  padding: 3px 12px;
-  border-radius: var(--radius-field);
-  background: var(--color-field);
-  color: var(--color-text-secondary);
-  font: var(--font-body);
-  cursor: pointer;
 
-  &_disabled {
-    cursor: not-allowed;
-    opacity: 0.6;
+  &__box {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 20px;
+    column-gap: 10px;
+    align-items: center;
+    width: 100%;
+    height: 42px;
+    padding: 3px 12px;
+    border-radius: var(--radius-field);
+    background: var(--color-field);
+    color: var(--color-text-secondary);
+    font: var(--font-body);
+    cursor: pointer;
+
+    &:has(.file-field__control:focus-visible) {
+      outline: 2px solid var(--color-primary);
+      outline-offset: 2px;
+    }
   }
 
   &__control {
@@ -37,5 +41,17 @@
     justify-self: center;
     width: 12px;
     height: 12px;
+  }
+
+  &__error {
+    margin: 4px 0 0;
+    color: var(--color-error);
+    font: var(--font-caption);
+    text-align: left;
+    cursor: default;
+
+    &:empty {
+      display: none;
+    }
   }
 }

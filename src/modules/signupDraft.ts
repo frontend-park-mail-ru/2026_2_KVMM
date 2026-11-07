@@ -9,6 +9,14 @@ interface LoginTarget {
   value: string;
 }
 
+/**
+ * Email, на который отправлен код подтверждения, и момент отправки.
+ */
+export interface PendingEmail {
+  email: string;
+  sentAt: number;
+}
+
 export const SIGNUP_STEPS = [
   "/signup",
   "/signup/email",
@@ -22,6 +30,7 @@ let values: Record<string, DraftValue> = {};
 let completed = new Set<string>();
 let fieldError: FieldError | null = null;
 let loginTarget: LoginTarget | null = null;
+let pendingEmail: PendingEmail | null = null;
 
 function loginFieldOf(login: string): string {
   if (login.includes("@")) {
@@ -77,23 +86,30 @@ export const signupDraft = {
     loginTarget = field ? { field, value: login } : null;
     return { login, password: String(values.password ?? "") };
   },
+  forgetPasswords: (): void => {
+    delete values.password;
+    delete values.confirm_password;
+    loginTarget = null;
+  },
+  setPendingEmail: (email: string, sentAt: number = Date.now()): void => {
+    pendingEmail = { email, sentAt };
+  },
+  pendingEmail: (): PendingEmail | null => pendingEmail,
   clear: (): void => {
     values = {};
     completed = new Set();
     fieldError = null;
     loginTarget = null;
+    pendingEmail = null;
   },
 };
 
 /**
- * Первый непройденный шаг регистрации перед запрошенным.
- * @param path Запрошенный шаг.
- * @returns Путь шага, на который нужно вернуть пользователя, или null.
+ * Доступен ли шаг регистрации: гостю — только создание аккаунта, вошедшему — только дозаполнение профиля.
+ * @param path Путь шага.
+ * @param isAuthorized Вошёл ли пользователь.
+ * @returns true, если на шаг можно перейти.
  */
-export function signupRedirect(path: string): string | null {
-  const index = SIGNUP_STEPS.indexOf(path);
-  const missing = SIGNUP_STEPS.slice(0, index).find(
-    (step) => !completed.has(step),
-  );
-  return missing ?? null;
+export function isStepAvailable(path: string, isAuthorized: boolean): boolean {
+  return (path === SIGNUP_STEPS[0]) !== isAuthorized;
 }

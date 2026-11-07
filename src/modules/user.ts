@@ -24,6 +24,10 @@ export const user = {
     csrfToken = data.csrf_token;
   },
 
+  setProfile(data: Profile): void {
+    profile = data;
+  },
+
   clear(): void {
     profile = null;
     csrfToken = "";

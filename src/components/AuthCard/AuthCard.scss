@@ -79,6 +79,34 @@
     display: block;
     width: 100%;
     height: auto;
+
+    &_photo {
+      width: 185px;
+      height: 185px;
+      margin: 0 auto;
+      border-radius: var(--radius-round);
+      object-fit: cover;
+    }
+  }
+
+  &__resend {
+    align-self: center;
+    margin: 15px 0 0;
+    padding: 0;
+    border: none;
+    background: none;
+    color: var(--color-link);
+    font: var(--font-body);
+    cursor: pointer;
+
+    &:disabled {
+      cursor: default;
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--color-primary);
+      outline-offset: 2px;
+    }
   }
 
   &__server-error {

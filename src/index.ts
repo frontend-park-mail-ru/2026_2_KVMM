@@ -5,18 +5,25 @@ import { Router } from "./modules/router";
 import { LoginPage } from "./pages/LoginPage/LoginPage";
 import { SignupPage } from "./pages/SignupPage/SignupPage";
 import { FeedPage } from "./pages/FeedPage/FeedPage";
-import { SIGNUP_STEPS, signupRedirect } from "./modules/signupDraft";
+import { EmailCodePage } from "./pages/EmailCodePage/EmailCodePage";
+import { SIGNUP_STEPS, signupDraft } from "./modules/signupDraft";
+import type { Route } from "./modules/router";
 
 const signupRoutes = Object.fromEntries(
-  SIGNUP_STEPS.map((path) => [
+  SIGNUP_STEPS.map((path, index) => [
     path,
-    { page: SignupPage, auth: false, redirect: signupRedirect },
+    { page: SignupPage, auth: index > 0 },
   ]),
 );
 
-const routes = {
+const routes: Record<string, Route> = {
   "/login": { page: LoginPage, auth: false },
   ...signupRoutes,
+  "/signup/code": {
+    page: EmailCodePage,
+    auth: true,
+    redirect: () => (signupDraft.pendingEmail() ? null : SIGNUP_STEPS[1]),
+  },
   "/feed": { page: FeedPage, auth: true },
 };
 
