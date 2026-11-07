@@ -1,12 +1,12 @@
 import { api } from "../../modules/api";
-import type { RegisterFields, Session } from "../../modules/api";
+import { isSession } from "../../modules/api";
+import type { RegisterFields } from "../../modules/api";
 import type { Router } from "../../modules/router";
 import { user } from "../../modules/user";
 import { registerFieldError, serverErrorMessage } from "../../modules/errors";
 import {
   MAX_LENGTH,
   birthdayRange,
-  normalizePhone,
   validateBio,
   validateBirthday,
   validateConsent,
@@ -91,8 +91,9 @@ const OPTIONAL_PLACEHOLDERS: Record<string, string> = {
 const REQUIRED_HINT = "* — обязательные поля";
 const CONTACT_HINT = "Заполните хотя бы одно поле";
 
-const CONSENT_LABEL =
-  'Я даю согласие на <span class="checkbox__link">обработку персональных данных</span>';
+const PRIVACY_URL = "/public/privacy.pdf";
+
+const CONSENT_LABEL = `Я даю согласие на <a class="checkbox__link" href="${PRIVACY_URL}" target="_blank" rel="noopener noreferrer">обработку персональных данных</a>`;
 
 const ARROW_ICONS = {
   back: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6" /></svg>',
@@ -113,7 +114,7 @@ const STEPS: Record<string, Step> = {
     hint: REQUIRED_HINT,
     slogan: true,
     actions: [
-      { kind: "next", style: "secondary", label: "Зарегистрироваться" },
+      { kind: "register", style: "secondary", label: "Зарегистрироваться" },
       { kind: "login", style: "primary", label: "Войти" },
     ],
   },
@@ -304,7 +305,7 @@ function stepTemplate(step: Step, path: string): string {
       ${logoTemplate("auth-card__logo")}
       ${formTemplate(
         step,
-        `<p class="auth-card__title">${step.title}</p>${fieldsTemplate(step)}${hint}`,
+        `<p class="auth-card__title">${step.title}</p>${fieldsTemplate(step)}${hint}<p class="auth-card__server-error" role="alert"></p>`,
       )}
       ${step.slogan ? `<p class="auth-card__slogan">${SLOGAN}</p>` : ""}
       ${navTemplate(path)}
@@ -502,10 +503,8 @@ export class SignupPage {
       this.#goTo(1);
     } else if (kind === "next") {
       this.#goNext();
-    } else if (kind === "register") {
-      this.#register(true);
-    } else if (kind === "register-without-bio") {
-      this.#register(false);
+    } else if (kind === "register" || kind === "register-without-bio") {
+      this.#register();
     }
   }
 
@@ -527,21 +526,14 @@ export class SignupPage {
     this.#goTo(1);
   }
 
-  #payload(withBio: boolean): RegisterFields {
-    const value = (name: string): string => signupDraft.text(name);
-    const bio = value("bio").trim();
+  #payload(): RegisterFields {
+    const value = (name: string): string =>
+      this.#fields[name]?.value ?? signupDraft.text(name);
     return {
       nickname: value("nickname").trim(),
-      email: value("email").trim() || undefined,
-      phone_number: normalizePhone(value("phone_number")) || undefined,
       password: value("password"),
       confirm_password: value("confirm_password"),
-      profile_name: value("profile_name").trim(),
-      surname: value("surname").trim(),
-      patronymic: value("patronymic").trim() || undefined,
-      gender: value("gender"),
-      birthday: value("birthday"),
-      bio: withBio && bio ? bio : undefined,
+      privacy_policy_allowed: true,
     };
   }
 
@@ -554,22 +546,22 @@ export class SignupPage {
     }
   }
 
-  async #register(withBio: boolean): Promise<void> {
+  async #register(): Promise<void> {
     (this.#serverError as HTMLElement).textContent = "";
-    if (withBio && !this.#validateStep()) {
+    if (!this.#validateStep()) {
       return;
     }
 
     this.#setBusy(true);
-    const response = await api.register(this.#payload(withBio));
+    const response = await api.register(this.#payload());
     if (this.#isDestroyed) {
       return;
     }
     this.#setBusy(false);
 
-    if (response.status === 201) {
+    if (response.status === 201 && isSession(response.data)) {
       signupDraft.clear();
-      user.set(response.data as Session);
+      user.set(response.data);
       this.#router.navigate("/feed", true);
       return;
     }

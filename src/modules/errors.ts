@@ -13,6 +13,8 @@ const DEFAULT_ERROR = "Проверьте правильность заполн�
 
 const FIELD_REJECTED = "Сервер не принял это значение, проверьте его";
 
+const NICKNAME_TAKEN = "Этот логин уже занят";
+
 const SERVER_ERRORS: Record<string, string> = {
   invalid_credentials: "Неверный логин или пароль",
   already_exists:
@@ -52,7 +54,7 @@ export function serverErrorMessage({
 }
 
 /**
- * Поле регистрации, к которому относится ответ бэка: 409 — к логину (бэк не говорит, что именно занято), 400 — по тексту ошибки.
+ * Поле регистрации, к которому относится ответ бэка: 409 — логин занят (бэк принимает при регистрации только логин), 400 — по тексту ошибки.
  * @param response Результат запроса из api.ts.
  * @param response.status HTTP-статус.
  * @param response.data Тело ответа с кодом и описанием ошибки.
@@ -63,7 +65,7 @@ export function registerFieldError({
   data,
 }: ApiResult<unknown>): FieldError | null {
   if (status === 409 && data?.code === "already_exists") {
-    return { field: "nickname", message: SERVER_ERRORS.already_exists };
+    return { field: "nickname", message: NICKNAME_TAKEN };
   }
   const message = data?.message;
   if (status !== 400 || typeof message !== "string") {

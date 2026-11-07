@@ -1,5 +1,5 @@
 import { api } from "../../modules/api";
-import type { Post as PostData, Profile } from "../../modules/api";
+import type { Post as PostData, PostAuthor } from "../../modules/api";
 import { escapeHtml, formatDate } from "../../modules/utils";
 import likeIcon from "./icons/like.svg";
 import commentIcon from "./icons/comment.svg";
@@ -24,12 +24,8 @@ function mediaKind(path: string): "image" | "video" | "file" {
   return "file";
 }
 
-function avatarTemplate({
-  profile_name: name,
-  nickname,
-  image_url: imageUrl,
-}: Profile): string {
-  const letter = [...(name || nickname || "?")][0].toUpperCase();
+function avatarTemplate({ name, avatar_urls: imageUrl }: PostAuthor): string {
+  const letter = [...(name.trim() || "?")][0].toUpperCase();
   const image = imageUrl
     ? `<img class="post__avatar-image" src="${escapeHtml(api.mediaUrl(imageUrl))}" alt="">`
     : "";
@@ -52,7 +48,7 @@ function mediaTemplate(path: string): string {
 
 function template(post: PostData): string {
   const { author, post_text: text, media_urls: media = [] } = post;
-  const authorName = `${author.profile_name} ${author.surname}`;
+  const authorName = author.name;
   const visual = media.filter((path) => mediaKind(path) !== "file");
   const files = media.filter((path) => mediaKind(path) === "file");
 

@@ -11,6 +11,7 @@ const distDir = path.resolve(__dirname, '..', 'dist');
 const assetsDir = path.join(distDir, 'assets') + path.sep;
 const indexFile = path.join(distDir, 'index.html');
 const backendUrl = new URL(process.env.BACKEND_URL || 'http://localhost:8080');
+const backPublicDir = path.resolve(process.env.BACK_PUBLIC_DIR || path.join(__dirname, '..', '..', 'back', 'pkg', 'public'));
 
 if (!fs.existsSync(indexFile)) {
     console.error('Нет сборки в dist/: сначала выполните npm run build');
@@ -42,6 +43,10 @@ app.use('/api', (req, res) => {
 
     req.pipe(proxyRequest);
 });
+
+if (fs.existsSync(backPublicDir)) {
+    app.use('/public', express.static(backPublicDir));
+}
 
 app.use(
     express.static(distDir, {

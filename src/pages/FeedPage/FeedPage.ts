@@ -144,7 +144,7 @@ export class FeedPage {
 
     this.#isLoading = true;
     this.#setStatus("loading");
-    const { status, data } = await api.posts(this.#cursor, PAGE_SIZE);
+    const { status, data } = await api.feed(this.#cursor, PAGE_SIZE);
     this.#isLoading = false;
 
     if (this.#isDestroyed) {
@@ -193,7 +193,7 @@ export class FeedPage {
   async #logout(): Promise<void> {
     this.#header.setError("");
     this.#header.setLoggingOut(true);
-    const { status } = await api.logout(user.csrfToken);
+    const { status } = await api.logout();
 
     if (status === 204 || status === 401) {
       this.#goToLogin();

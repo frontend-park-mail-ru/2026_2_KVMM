@@ -1,5 +1,4 @@
-import { api } from "../../modules/api";
-import type { Session } from "../../modules/api";
+import { api, isSession } from "../../modules/api";
 import type { Router } from "../../modules/router";
 import { user } from "../../modules/user";
 import { serverErrorMessage } from "../../modules/errors";
@@ -131,9 +130,9 @@ export class LoginPage {
     );
     this.#submit.disabled = false;
 
-    if (response.status === 200) {
+    if (response.status === 200 && isSession(response.data)) {
       signupDraft.clear();
-      user.set(response.data as Session);
+      user.set(response.data);
       this.#router.navigate("/feed");
       return;
     }

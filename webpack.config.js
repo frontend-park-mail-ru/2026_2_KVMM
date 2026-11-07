@@ -1,5 +1,6 @@
 'use strict';
 
+const fs = require('node:fs');
 const path = require('node:path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
@@ -7,6 +8,7 @@ const CssMinimizerPlugin = require('css-minimizer-webpack-plugin');
 
 const srcDir = path.resolve(__dirname, 'src');
 const distDir = path.resolve(__dirname, 'dist');
+const backPublicDir = path.resolve(process.env.BACK_PUBLIC_DIR || path.join(__dirname, '..', 'back', 'pkg', 'public'));
 
 module.exports = (env, argv) => {
     const isProduction = argv.mode === 'production';
@@ -71,6 +73,7 @@ module.exports = (env, argv) => {
         devServer: {
             port: Number(process.env.PORT) || 8001,
             historyApiFallback: true,
+            static: fs.existsSync(backPublicDir) ? [{ directory: backPublicDir, publicPath: '/public' }] : false,
             proxy: [
                 {
                     context: ['/api'],

@@ -1,6 +1,5 @@
 import "./index.scss";
-import { api } from "./modules/api";
-import type { Session } from "./modules/api";
+import { api, isSession } from "./modules/api";
 import { user } from "./modules/user";
 import { Router } from "./modules/router";
 import { LoginPage } from "./pages/LoginPage/LoginPage";
@@ -27,8 +26,8 @@ const router = new Router(
 );
 
 const { status, data } = await api.me();
-if (status === 200) {
-  user.set(data as Session);
+if (status === 200 && isSession(data)) {
+  user.set(data);
 }
 
 router.start();

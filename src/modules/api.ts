@@ -1,3 +1,5 @@
+import { user } from "./user";
+
 const API_URL = "/api";
 
 /**
@@ -8,15 +10,23 @@ export interface Profile {
   nickname: string;
   email?: string;
   phone_number?: string;
-  profile_name: string;
-  surname: string;
+  profile_name?: string;
+  surname?: string;
   patronymic?: string;
-  gender: string;
+  gender?: string;
   birthday?: string;
   bio?: string;
-  image_url?: string;
   avatar_urls?: string[];
   created_at: string;
+}
+
+/**
+ * Автор поста: имя для показа (фамилия и имя или логин) и текущая аватарка.
+ */
+export interface PostAuthor {
+  name: string;
+  avatar_urls?: string;
+  type?: string;
 }
 
 /**
@@ -26,7 +36,7 @@ export interface Post {
   id: number;
   post_text?: string;
   author_profile_id?: number;
-  author: Profile;
+  author: PostAuthor;
   created_at: string;
   comments_count: number;
   reposts_count: number;
@@ -71,36 +81,32 @@ export interface ApiResult<T> {
 }
 
 /**
- * Поля регистрации, которые принимает бэкенд.
+ * Поля регистрации: бэкенд принимает только логин, пароль с повтором и согласие на обработку данных.
  */
 export interface RegisterFields {
   nickname: string;
-  email?: string;
-  phone_number?: string;
   password: string;
   confirm_password: string;
-  profile_name: string;
-  surname: string;
-  patronymic?: string;
-  gender: string;
-  birthday: string;
-  bio?: string;
+  privacy_policy_allowed: true;
 }
 
 interface RequestOptions {
   body?: unknown;
-  headers?: Record<string, string>;
 }
 
 async function request<T>(
   method: string,
   path: string,
-  { body, headers = {} }: RequestOptions = {},
+  { body }: RequestOptions = {},
 ): Promise<ApiResult<T>> {
+  const headers: Record<string, string> = {};
+  if (method !== "GET" && user.csrfToken) {
+    headers["X-CSRF-Token"] = user.csrfToken;
+  }
   const options: RequestInit = { method, credentials: "include", headers };
 
   if (body) {
-    options.headers = { ...headers, "Content-Type": "application/json" };
+    headers["Content-Type"] = "application/json";
     options.body = JSON.stringify(body);
   }
 
@@ -118,7 +124,19 @@ async function request<T>(
 }
 
 /**
- * Запросы к API бэкенда. Каждый возвращает { status, data }, status 0 — сервер недоступен.
+ * Проверяет, что ответ — сессия: профиль и CSRF-токен.
+ * @param data Тело ответа.
+ * @returns true, если в ответе есть профиль и токен.
+ */
+export function isSession(data: unknown): data is Session {
+  const session = data as Session | null;
+  return Boolean(
+    session?.profile && typeof session.csrf_token === "string",
+  );
+}
+
+/**
+ * Запросы к API бэкенда. Каждый возвращает { status, data }, status 0 — сервер недоступен. Изменяющие запросы сами добавляют CSRF-токен текущей сессии.
  */
 export const api = {
   me: () => request<Session>("GET", "/auth/me"),
@@ -126,11 +144,8 @@ export const api = {
     request<Session>("POST", "/auth/login", { body: { login, password } }),
   register: (fields: RegisterFields) =>
     request<Session>("POST", "/auth/register", { body: fields }),
-  logout: (csrfToken: string) =>
-    request<null>("POST", "/auth/logout", {
-      headers: { "X-CSRF-Token": csrfToken },
-    }),
-  posts: (cursor: number, limit: number) =>
-    request<FeedResponse>("GET", `/posts?cursor=${cursor}&limit=${limit}`),
+  logout: () => request<null>("POST", "/auth/logout"),
+  feed: (cursor: number, limit: number) =>
+    request<FeedResponse>("GET", `/feed?cursor=${cursor}&limit=${limit}`),
   mediaUrl: (path: string) => `${path}`,
 };
