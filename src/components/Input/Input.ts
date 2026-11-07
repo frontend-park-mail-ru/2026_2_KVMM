@@ -14,12 +14,36 @@ const EYE_OFF_ICON = `
   </svg>
 `;
 
+/**
+ * Вариант выпадающего списка.
+ */
+export interface InputOption {
+  value: string;
+  label: string;
+}
+
+/**
+ * Настройки поля: options превращает его в выпадающий список, mask подключает маску к полю ввода.
+ */
+export interface InputConfig {
+  name: string;
+  type?: string;
+  placeholder: string;
+  autocomplete?: string;
+  attributes?: Record<string, string | number>;
+  options?: InputOption[];
+  validate: (value: string, validity: ValidityState) => string;
+  mask?: (control: HTMLInputElement) => void;
+}
+
+type Control = HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
+
 const TOGGLE_LABELS = {
   show: "Показать пароль",
   hide: "Скрыть пароль",
 };
 
-function optionsTemplate(options) {
+function optionsTemplate(options: InputOption[]): string {
   return options
     .map(
       ({ value, label }) =>
@@ -28,20 +52,22 @@ function optionsTemplate(options) {
     .join("");
 }
 
-function attributesTemplate(attributes = {}) {
+function attributesTemplate(
+  attributes: Record<string, string | number> = {},
+): string {
   return Object.entries(attributes)
     .map(([name, value]) => `${name}="${value}"`)
     .join(" ");
 }
 
-function kindOf({ type, options }) {
+function kindOf({ type = "", options }: InputConfig): string {
   if (options) {
     return "select";
   }
   return ["password", "date", "textarea"].includes(type) ? type : "";
 }
 
-function controlTemplate(config, kind) {
+function controlTemplate(config: InputConfig, kind: string): string {
   const { name, type, placeholder, autocomplete, options, attributes } = config;
   const modifier = kind ? ` input__control_${kind}` : "";
 
@@ -79,7 +105,7 @@ function controlTemplate(config, kind) {
   `;
 }
 
-function toggleTemplate() {
+function toggleTemplate(): string {
   return `
     <button class="input__toggle" type="button" aria-label="${TOGGLE_LABELS.show}" aria-pressed="false">
       ${EYE_OFF_ICON}
@@ -87,7 +113,7 @@ function toggleTemplate() {
   `;
 }
 
-function template(config) {
+function template(config: InputConfig): string {
   const kind = kindOf(config);
   const fieldModifier =
     kind === "select" || kind === "date" ? ` input__field_${kind}` : "";
@@ -108,50 +134,50 @@ function template(config) {
  * Поле формы с текстом ошибки под ним. Для пароля добавляет кнопку показа, для даты — подпись вместо пустой маски.
  */
 export class Input {
-  #parent;
-  #config;
-  #element;
-  #field;
-  #control;
-  #error;
+  #parent: HTMLElement;
+  #config: InputConfig;
+  #element!: HTMLElement;
+  #field!: HTMLElement;
+  #control!: Control;
+  #error!: HTMLElement;
 
   /**
-   * @param {HTMLElement} parent Контейнер, в конец которого добавляется поле.
-   * @param {object} config Настройки: name, type, placeholder, autocomplete, attributes, options, validate и mask — функция, которая подключает маску к полю.
+   * @param parent Контейнер, в конец которого добавляется поле.
+   * @param config Настройки: name, type, placeholder, autocomplete, attributes, options, validate и mask — функция, которая подключает маску к полю.
    */
-  constructor(parent, config) {
+  constructor(parent: HTMLElement, config: InputConfig) {
     this.#parent = parent;
     this.#config = config;
   }
 
-  get value() {
+  get value(): string {
     return this.#control.value;
   }
 
   /**
    * Подставляет значение, например при возврате на шаг формы.
-   * @param {string} value Значение поля.
+   * @param value Значение поля.
    */
-  set value(value) {
+  set value(value: string) {
     this.#control.value = value;
     this.#control.dispatchEvent(new Event("change"));
   }
 
-  get hasError() {
+  get hasError(): boolean {
     return Boolean(this.#error.textContent);
   }
 
   /**
    * Вставляет поле в контейнер и подписывается на ввод и уход из поля.
    */
-  render() {
+  render(): void {
     this.#parent.insertAdjacentHTML("beforeend", template(this.#config));
-    this.#element = this.#parent.lastElementChild;
-    this.#field = this.#element.querySelector(".input__field");
-    this.#control = this.#element.querySelector(".input__control");
-    this.#error = this.#element.querySelector(".input__error");
+    this.#element = this.#parent.lastElementChild as HTMLElement;
+    this.#field = this.#element.querySelector(".input__field") as HTMLElement;
+    this.#control = this.#element.querySelector(".input__control") as Control;
+    this.#error = this.#element.querySelector(".input__error") as HTMLElement;
 
-    this.#config.mask?.(this.#control);
+    this.#config.mask?.(this.#control as HTMLInputElement);
     this.#control.addEventListener("blur", () => this.validate());
     this.#control.addEventListener("input", () => {
       if (this.hasError) {
@@ -162,7 +188,8 @@ export class Input {
     if (this.#config.type === "date") {
       this.#bindDatePlaceholder();
     }
-    const toggle = this.#element.querySelector(".input__toggle");
+    const toggle =
+      this.#element.querySelector<HTMLButtonElement>(".input__toggle");
     if (toggle) {
       this.#bindToggle(toggle);
     }
@@ -170,9 +197,9 @@ export class Input {
 
   /**
    * Проверяет значение и показывает или убирает ошибку.
-   * @returns {boolean} true, если значение корректно.
+   * @returns true, если значение корректно.
    */
-  validate() {
+  validate(): boolean {
     const message = this.#config.validate(this.value, this.#control.validity);
     this.setError(message);
     return !message;
@@ -180,15 +207,15 @@ export class Input {
 
   /**
    * Показывает ошибку под полем, например ответ сервера, или убирает её.
-   * @param {string} message Текст ошибки или пустая строка.
+   * @param message Текст ошибки или пустая строка.
    */
-  setError(message) {
+  setError(message: string): void {
     this.#error.textContent = message;
     this.#control.classList.toggle("input__control_invalid", Boolean(message));
     this.#control.setAttribute("aria-invalid", String(Boolean(message)));
   }
 
-  #bindDatePlaceholder() {
+  #bindDatePlaceholder(): void {
     const update = () => {
       const isEmpty = !this.#control.value && !this.#control.validity.badInput;
       const isFocused = document.activeElement === this.#control;
@@ -203,11 +230,12 @@ export class Input {
     update();
   }
 
-  #bindToggle(toggle) {
+  #bindToggle(toggle: HTMLButtonElement): void {
+    const control = this.#control as HTMLInputElement;
     toggle.addEventListener("mousedown", (event) => event.preventDefault());
     toggle.addEventListener("click", () => {
-      const isHidden = this.#control.type === "password";
-      this.#control.type = isHidden ? "text" : "password";
+      const isHidden = control.type === "password";
+      control.type = isHidden ? "text" : "password";
       toggle.innerHTML = isHidden ? EYE_ICON : EYE_OFF_ICON;
       toggle.setAttribute(
         "aria-label",

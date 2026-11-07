@@ -1,4 +1,4 @@
-import { applyPhoneMask } from "./phoneMask.js";
+import { applyPhoneMask } from "./phoneMask";
 
 export const MAX_LENGTH = {
   login: 254,
@@ -35,7 +35,18 @@ const MESSAGES = {
   bio: "Рассказ о себе должен быть не длиннее 256 символов",
 };
 
-const NAME_LENGTH_MESSAGES = {
+/**
+ * Поле имени, фамилии или отчества.
+ */
+export type NameField = "profile_name" | "surname" | "patronymic";
+
+interface DateParts {
+  year: number;
+  month: number;
+  day: number;
+}
+
+const NAME_LENGTH_MESSAGES: Record<NameField, string> = {
   profile_name: "Имя должно содержать от 2 до 32 символов",
   surname: "Фамилия должна содержать от 2 до 32 символов",
   patronymic: "Отчество должно содержать от 2 до 32 символов",
@@ -57,19 +68,19 @@ const NAME_PATTERN = /^[\p{L}\p{M}]+([ '’-][\p{L}\p{M}]+)*$/u;
 const PASSWORD_CHARS_PATTERN = /^[\x21-\x7E]+$/;
 const DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
 
-function length(value) {
+function length(value: string): number {
   return [...value].length;
 }
 
-function isInRange(value, min, max) {
+function isInRange(value: string, min: number, max: number): boolean {
   return length(value) >= min && length(value) <= max;
 }
 
-function isEmail(value) {
+function isEmail(value: string): boolean {
   return EMAIL_PATTERN.test(value) && value.length <= MAX_LENGTH.email;
 }
 
-function passwordLengthOrCharsError(value) {
+function passwordLengthOrCharsError(value: string): string {
   if (!value) {
     return MESSAGES.required;
   }
@@ -85,12 +96,16 @@ function passwordLengthOrCharsError(value) {
   return "";
 }
 
-function parseDate(value) {
+function parseDate(value: string): DateParts | null {
   const match = DATE_PATTERN.exec(value);
   if (!match) {
     return null;
   }
-  const [year, month, day] = match.slice(1).map(Number);
+  const [year, month, day] = match.slice(1).map(Number) as [
+    number,
+    number,
+    number,
+  ];
   const date = new Date(Date.UTC(year, month - 1, day));
   const isReal =
     date.getUTCFullYear() === year &&
@@ -99,7 +114,7 @@ function parseDate(value) {
   return isReal ? { year, month, day } : null;
 }
 
-function ageOn(birth, today) {
+function ageOn(birth: DateParts, today: Date): number {
   const month = today.getUTCMonth() + 1;
   const day = today.getUTCDate();
   const hadBirthday =
@@ -107,11 +122,11 @@ function ageOn(birth, today) {
   return today.getUTCFullYear() - birth.year - (hadBirthday ? 0 : 1);
 }
 
-function isoDate(date) {
+function isoDate(date: Date): string {
   return date.toISOString().slice(0, 10);
 }
 
-function yearsAgo(today, years, extraDays = 0) {
+function yearsAgo(today: Date, years: number, extraDays: number = 0): Date {
   return new Date(
     Date.UTC(
       today.getUTCFullYear() - years,
@@ -123,19 +138,22 @@ function yearsAgo(today, years, extraDays = 0) {
 
 /**
  * Убирает из телефона пробелы, скобки и дефисы маски.
- * @param {string} value Телефон вида +7 (999) 123-45-67.
- * @returns {string} Телефон вида +79991234567.
+ * @param value Телефон вида +7 (999) 123-45-67.
+ * @returns Телефон вида +79991234567.
  */
-export function normalizePhone(value) {
+export function normalizePhone(value: string): string {
   return value.replace(/[\s()-]/g, "");
 }
 
 /**
  * Границы поля даты рождения для возраста от 14 до 120 лет.
- * @param {Date} [today] Текущий момент, сравнение идёт по UTC.
- * @returns {{min: string, max: string}} Даты в формате YYYY-MM-DD.
+ * @param today Текущий момент, сравнение идёт по UTC.
+ * @returns Даты в формате YYYY-MM-DD.
  */
-export function birthdayRange(today = new Date()) {
+export function birthdayRange(today: Date = new Date()): {
+  min: string;
+  max: string;
+} {
   return {
     min: isoDate(yearsAgo(today, AGE.max + 1, 1)),
     max: isoDate(yearsAgo(today, AGE.min)),
@@ -144,28 +162,28 @@ export function birthdayRange(today = new Date()) {
 
 /**
  * Проверяет логин на форме входа.
- * @param {string} value Логин, email или телефон.
- * @returns {string} Текст ошибки или пустая строка.
+ * @param value Логин, email или телефон.
+ * @returns Текст ошибки или пустая строка.
  */
-export function validateLogin(value) {
+export function validateLogin(value: string): string {
   return value.trim() ? "" : MESSAGES.required;
 }
 
 /**
  * Проверяет пароль на форме входа: длина 8–64 и печатные ASCII без пробела.
- * @param {string} value Пароль.
- * @returns {string} Текст ошибки или пустая строка.
+ * @param value Пароль.
+ * @returns Текст ошибки или пустая строка.
  */
-export function validateLoginPassword(value) {
+export function validateLoginPassword(value: string): string {
   return passwordLengthOrCharsError(value);
 }
 
 /**
  * Проверяет логин при регистрации: латиница, цифры, _ и ., начинается с буквы, 4–32 символа.
- * @param {string} value Логин.
- * @returns {string} Текст ошибки или пустая строка.
+ * @param value Логин.
+ * @returns Текст ошибки или пустая строка.
  */
-export function validateNickname(value) {
+export function validateNickname(value: string): string {
   const nickname = value.trim();
   if (!nickname) {
     return MESSAGES.required;
@@ -180,11 +198,11 @@ export function validateNickname(value) {
 
 /**
  * Проверяет email по правилу WHATWG для input type=email, длина до 254 символов. Пустой допустим, если указан телефон.
- * @param {string} value Email.
- * @param {string} phone Значение поля телефона.
- * @returns {string} Текст ошибки или пустая строка.
+ * @param value Email.
+ * @param phone Значение поля телефона.
+ * @returns Текст ошибки или пустая строка.
  */
-export function validateEmail(value, phone) {
+export function validateEmail(value: string, phone: string): string {
   const email = value.trim();
   if (!email) {
     return normalizePhone(phone) ? "" : MESSAGES.contact;
@@ -194,10 +212,10 @@ export function validateEmail(value, phone) {
 
 /**
  * Приводит логин, похожий на телефон (8 999 123-45-67, +7 (999)…), к виду +79991234567, остальное только обрезает.
- * @param {string} value Логин, email или телефон с формы входа.
- * @returns {string} Логин для отправки на бэк.
+ * @param value Логин, email или телефон с формы входа.
+ * @returns Логин для отправки на бэк.
  */
-export function normalizeLogin(value) {
+export function normalizeLogin(value: string): string {
   const login = value.trim();
   if (!PHONE_LIKE_PATTERN.test(login)) {
     return login;
@@ -208,11 +226,11 @@ export function normalizeLogin(value) {
 
 /**
  * Проверяет российский телефон: +7, код на 3, 4, 8 или 9 и ещё 9 цифр. Пустой допустим, если указан email.
- * @param {string} value Телефон из поля с маской.
- * @param {string} email Значение поля email.
- * @returns {string} Текст ошибки или пустая строка.
+ * @param value Телефон из поля с маской.
+ * @param email Значение поля email.
+ * @returns Текст ошибки или пустая строка.
  */
-export function validatePhone(value, email) {
+export function validatePhone(value: string, email: string): string {
   const phone = normalizePhone(value);
   if (!phone) {
     return email.trim() ? "" : MESSAGES.contact;
@@ -228,12 +246,16 @@ export function validatePhone(value, email) {
 
 /**
  * Проверяет имя, фамилию или отчество: буквы, между частями один пробел, дефис или апостроф, 2–32 символа.
- * @param {string} value Значение поля.
- * @param {"profile_name"|"surname"|"patronymic"} field Поле, для текста ошибки о длине.
- * @param {boolean} [isRequired] Обязательно ли поле.
- * @returns {string} Текст ошибки или пустая строка.
+ * @param value Значение поля.
+ * @param field Поле, для текста ошибки о длине.
+ * @param isRequired Обязательно ли поле.
+ * @returns Текст ошибки или пустая строка.
  */
-export function validateName(value, field, isRequired = true) {
+export function validateName(
+  value: string,
+  field: NameField,
+  isRequired: boolean = true,
+): string {
   const name = value.trim();
   if (!name) {
     return isRequired ? MESSAGES.required : "";
@@ -248,21 +270,25 @@ export function validateName(value, field, isRequired = true) {
 
 /**
  * Проверяет, что пол выбран.
- * @param {string} value male, female или пустая строка.
- * @returns {string} Текст ошибки или пустая строка.
+ * @param value male, female или пустая строка.
+ * @returns Текст ошибки или пустая строка.
  */
-export function validateGender(value) {
+export function validateGender(value: string): string {
   return value ? "" : MESSAGES.gender;
 }
 
 /**
  * Проверяет дату рождения: существующая дата, возраст от 14 до 120 лет по UTC.
- * @param {string} value Дата YYYY-MM-DD или пустая строка.
- * @param {ValidityState} [validity] Состояние поля, badInput — дата введена не полностью.
- * @param {Date} [today] Текущий момент.
- * @returns {string} Текст ошибки или пустая строка.
+ * @param value Дата YYYY-MM-DD или пустая строка.
+ * @param validity Состояние поля, badInput — дата введена не полностью.
+ * @param today Текущий момент.
+ * @returns Текст ошибки или пустая строка.
  */
-export function validateBirthday(value, validity, today = new Date()) {
+export function validateBirthday(
+  value: string,
+  validity?: ValidityState,
+  today: Date = new Date(),
+): string {
   if (validity?.badInput) {
     return MESSAGES.birthdayInvalid;
   }
@@ -282,10 +308,10 @@ export function validateBirthday(value, validity, today = new Date()) {
 
 /**
  * Проверяет пароль при регистрации: 8–64 печатных ASCII без пробела, минимум одна буква и одна цифра.
- * @param {string} value Пароль.
- * @returns {string} Текст ошибки или пустая строка.
+ * @param value Пароль.
+ * @returns Текст ошибки или пустая строка.
  */
-export function validatePassword(value) {
+export function validatePassword(value: string): string {
   const error = passwordLengthOrCharsError(value);
   if (error) {
     return error;
@@ -297,11 +323,14 @@ export function validatePassword(value) {
 
 /**
  * Проверяет, что повтор совпадает с паролем.
- * @param {string} value Повтор пароля.
- * @param {string} password Пароль.
- * @returns {string} Текст ошибки или пустая строка.
+ * @param value Повтор пароля.
+ * @param password Пароль.
+ * @returns Текст ошибки или пустая строка.
  */
-export function validatePasswordConfirm(value, password) {
+export function validatePasswordConfirm(
+  value: string,
+  password: string,
+): string {
   if (!value) {
     return MESSAGES.required;
   }
@@ -310,18 +339,18 @@ export function validatePasswordConfirm(value, password) {
 
 /**
  * Проверяет согласие на обработку персональных данных — без него регистрация невозможна.
- * @param {boolean} checked Отмечен ли чекбокс.
- * @returns {string} Текст ошибки или пустая строка.
+ * @param checked Отмечен ли чекбокс.
+ * @returns Текст ошибки или пустая строка.
  */
-export function validateConsent(checked) {
+export function validateConsent(checked: boolean): string {
   return checked ? "" : MESSAGES.consent;
 }
 
 /**
  * Проверяет рассказ о себе: не длиннее 256 символов.
- * @param {string} value Текст из поля «Расскажите о себе».
- * @returns {string} Текст ошибки или пустая строка.
+ * @param value Текст из поля «Расскажите о себе».
+ * @returns Текст ошибки или пустая строка.
  */
-export function validateBio(value) {
+export function validateBio(value: string): string {
   return length(value.trim()) <= MAX_LENGTH.bio ? "" : MESSAGES.bio;
 }

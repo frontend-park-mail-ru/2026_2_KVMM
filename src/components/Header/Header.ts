@@ -1,7 +1,7 @@
-import { logoTemplate } from "../Logo/Logo.js";
+import { logoTemplate } from "../Logo/Logo";
 import logoutIcon from "./icons/logout.svg";
 
-function template() {
+function template(): string {
   return `
     <header class="header">
       ${logoTemplate("header__logo", "header")}
@@ -17,17 +17,17 @@ function template() {
  * Шапка страниц после входа: логотип со ссылкой на ленту и кнопка выхода.
  */
 export class Header {
-  #parent;
-  #onLogout;
-  #logout;
-  #error;
+  #parent: HTMLElement;
+  #onLogout: () => void;
+  #logout!: HTMLButtonElement;
+  #error!: HTMLElement;
 
   /**
-   * @param {HTMLElement} parent Контейнер, в который вставляется шапка.
-   * @param {object} handlers Обработчики действий шапки.
-   * @param {function(): void} handlers.onLogout Вызывается по нажатию «Выйти».
+   * @param parent Контейнер, в который вставляется шапка.
+   * @param handlers Обработчики действий шапки.
+   * @param handlers.onLogout Вызывается по нажатию «Выйти».
    */
-  constructor(parent, { onLogout }) {
+  constructor(parent: HTMLElement, { onLogout }: { onLogout: () => void }) {
     this.#parent = parent;
     this.#onLogout = onLogout;
   }
@@ -35,28 +35,30 @@ export class Header {
   /**
    * Вставляет шапку и подписывается на нажатие «Выйти».
    */
-  render() {
+  render(): void {
     this.#parent.insertAdjacentHTML("beforeend", template());
-    const element = this.#parent.lastElementChild;
-    this.#logout = element.querySelector(".header__logout");
-    this.#error = element.querySelector(".header__error");
+    const element = this.#parent.lastElementChild as HTMLElement;
+    this.#logout = element.querySelector(
+      ".header__logout",
+    ) as HTMLButtonElement;
+    this.#error = element.querySelector(".header__error") as HTMLElement;
 
     this.#logout.addEventListener("click", () => this.#onLogout());
   }
 
   /**
    * Блокирует кнопку выхода на время запроса.
-   * @param {boolean} isLoggingOut Идёт ли запрос выхода.
+   * @param isLoggingOut Идёт ли запрос выхода.
    */
-  setLoggingOut(isLoggingOut) {
+  setLoggingOut(isLoggingOut: boolean): void {
     this.#logout.disabled = isLoggingOut;
   }
 
   /**
    * Показывает ошибку выхода рядом с кнопкой.
-   * @param {string} message Текст ошибки или пустая строка, чтобы скрыть.
+   * @param message Текст ошибки или пустая строка, чтобы скрыть.
    */
-  setError(message) {
+  setError(message: string): void {
     this.#error.textContent = message;
   }
 }

@@ -1,9 +1,8 @@
-import { api } from "../../modules/api.js";
-import { user } from "../../modules/user.js";
-import {
-  registerFieldError,
-  serverErrorMessage,
-} from "../../modules/errors.js";
+import { api } from "../../modules/api";
+import type { RegisterFields, Session } from "../../modules/api";
+import type { Router } from "../../modules/router";
+import { user } from "../../modules/user";
+import { registerFieldError, serverErrorMessage } from "../../modules/errors";
 import {
   MAX_LENGTH,
   birthdayRange,
@@ -18,26 +17,57 @@ import {
   validatePassword,
   validatePasswordConfirm,
   validatePhone,
-} from "../../modules/validation.js";
-import { attachPhoneMask } from "../../modules/phoneMask.js";
+} from "../../modules/validation";
+import { attachPhoneMask } from "../../modules/phoneMask";
 import {
   SIGNUP_STEPS,
   signupDraft,
   signupRedirect,
-} from "../../modules/signupDraft.js";
-import { Input } from "../../components/Input/Input.js";
-import { Checkbox } from "../../components/Checkbox/Checkbox.js";
-import { authLayoutTemplate } from "../../components/AuthLayout/AuthLayout.js";
-import { logoTemplate } from "../../components/Logo/Logo.js";
+} from "../../modules/signupDraft";
+import { Input } from "../../components/Input/Input";
+import type { InputConfig, InputOption } from "../../components/Input/Input";
+import { Checkbox } from "../../components/Checkbox/Checkbox";
+import { authLayoutTemplate } from "../../components/AuthLayout/AuthLayout";
+import { logoTemplate } from "../../components/Logo/Logo";
 import plusIcon from "../../components/FileField/plus.svg";
 import avatarPlaceholder from "./avatar-placeholder.svg";
 
-const GENDERS = [
+type ActionKind =
+  | "next"
+  | "login"
+  | "register"
+  | "register-without-bio"
+  | "step"
+  | "back"
+  | "forward";
+
+interface StepAction {
+  kind: ActionKind;
+  style: string;
+  label: string;
+}
+
+interface Step {
+  label: string;
+  title: string;
+  card: string;
+  fields: string[];
+  fieldsModifier?: string;
+  consent?: boolean;
+  hint?: string;
+  slogan?: boolean;
+  photo?: boolean;
+  actions: StepAction[];
+}
+
+type FieldConfig = Omit<InputConfig, "name">;
+
+const GENDERS: InputOption[] = [
   { value: "male", label: "Мужской" },
   { value: "female", label: "Женский" },
 ];
 
-const DEPENDENT_FIELDS = {
+const DEPENDENT_FIELDS: Record<string, string[]> = {
   email: ["phone_number"],
   phone_number: ["email"],
   password: ["confirm_password"],
@@ -53,7 +83,7 @@ const REQUIRED_FIELDS = [
   "birthday",
 ];
 
-const OPTIONAL_PLACEHOLDERS = {
+const OPTIONAL_PLACEHOLDERS: Record<string, string> = {
   patronymic: "Введите отчество (необязательно)",
   bio: "Расскажите о себе (необязательно)",
 };
@@ -72,7 +102,7 @@ const ARROW_ICONS = {
 
 const SLOGAN = "Nexly&nbsp;— Люди. Идеи. Ближе.";
 
-const STEPS = {
+const STEPS: Record<string, Step> = {
   "/signup": {
     label: "логин и пароль",
     title: "Добро пожаловать",
@@ -121,9 +151,11 @@ const STEPS = {
   },
 };
 
-const SUBMIT_KINDS = ["next", "register"];
+const SUBMIT_KINDS: string[] = ["next", "register"];
 
-function fieldConfigs(valueOf) {
+function fieldConfigs(
+  valueOf: (name: string) => string,
+): Record<string, FieldConfig> {
   return {
     nickname: {
       type: "text",
@@ -207,7 +239,7 @@ function fieldConfigs(valueOf) {
   };
 }
 
-function actionTemplate({ kind, style, label }) {
+function actionTemplate({ kind, style, label }: StepAction): string {
   const className = `button button_${style}`;
   if (kind === "login") {
     return `<a class="${className}" href="/login" data-link data-action="login">${label}</a>`;
@@ -216,7 +248,7 @@ function actionTemplate({ kind, style, label }) {
   return `<button class="${className}" type="${type}" data-action="${kind}">${label}</button>`;
 }
 
-function formTemplate(step, groupContent) {
+function formTemplate(step: Step, groupContent: string): string {
   return `
     <form class="auth-card__form" novalidate>
       <div class="auth-card__group">
@@ -229,12 +261,12 @@ function formTemplate(step, groupContent) {
   `;
 }
 
-function fieldsTemplate(step, content = "") {
+function fieldsTemplate(step: Step, content: string = ""): string {
   const modifier = step.fieldsModifier ? ` ${step.fieldsModifier}` : "";
   return `<div class="auth-card__fields${modifier}">${content}</div>`;
 }
 
-function stepsTemplate(current) {
+function stepsTemplate(current: string): string {
   const steps = SIGNUP_STEPS.map((path, index) => {
     const label = `Шаг ${index + 1} из ${SIGNUP_STEPS.length}: ${STEPS[path].label}`;
     const isCurrent = path === current;
@@ -245,7 +277,7 @@ function stepsTemplate(current) {
   return `<nav class="auth-card__steps" aria-label="Шаги регистрации">${steps.join("")}</nav>`;
 }
 
-function navTemplate(path) {
+function navTemplate(path: string): string {
   const index = SIGNUP_STEPS.indexOf(path);
   const back =
     index > 0
@@ -258,14 +290,14 @@ function navTemplate(path) {
   return back + stepsTemplate(path) + forward;
 }
 
-function placeholderFor(name, placeholder) {
+function placeholderFor(name: string, placeholder: string): string {
   if (REQUIRED_FIELDS.includes(name)) {
     return `${placeholder} *`;
   }
   return OPTIONAL_PLACEHOLDERS[name] ?? placeholder;
 }
 
-function stepTemplate(step, path) {
+function stepTemplate(step: Step, path: string): string {
   const hint = step.hint ? `<p class="auth-card__hint">${step.hint}</p>` : "";
   return authLayoutTemplate(`
     <section class="auth-card ${step.card} auth-card_stepped">
@@ -280,7 +312,7 @@ function stepTemplate(step, path) {
   `);
 }
 
-function photoStepTemplate(step, path) {
+function photoStepTemplate(step: Step, path: string): string {
   const fileField = `
     <label class="file-field file-field_disabled">
       <input class="file-field__control" type="file" accept="image/png, image/jpeg" disabled aria-disabled="true">
@@ -302,7 +334,7 @@ function photoStepTemplate(step, path) {
   `);
 }
 
-function stepOfField(field) {
+function stepOfField(field: string): string | undefined {
   return SIGNUP_STEPS.find((path) => STEPS[path].fields.includes(field));
 }
 
@@ -310,23 +342,23 @@ function stepOfField(field) {
  * Регистрация из четырёх шагов: логин и пароль, email или телефон, данные о себе, фото и рассказ о себе. Значения шагов хранит черновик в памяти, на бэк уходит один запрос в конце.
  */
 export class SignupPage {
-  #parent;
-  #router;
-  #path;
-  #step;
-  #fields = {};
-  #consent = null;
-  #buttons = [];
-  #steps = [];
-  #forward = null;
-  #serverError = null;
+  #parent: HTMLElement;
+  #router: Router;
+  #path = "";
+  #step!: Step;
+  #fields: Record<string, Input> = {};
+  #consent: Checkbox | null = null;
+  #buttons: HTMLButtonElement[] = [];
+  #steps: HTMLButtonElement[] = [];
+  #forward: HTMLButtonElement | null = null;
+  #serverError: HTMLElement | null = null;
   #isDestroyed = false;
 
   /**
-   * @param {HTMLElement} parent Контейнер страницы.
-   * @param {import("../../modules/router.js").Router} router Роутер для переходов между шагами и в ленту.
+   * @param parent Контейнер страницы.
+   * @param router Роутер для переходов между шагами и в ленту.
    */
-  constructor(parent, router) {
+  constructor(parent: HTMLElement, router: Router) {
     this.#parent = parent;
     this.#router = router;
   }
@@ -334,7 +366,7 @@ export class SignupPage {
   /**
    * Рисует текущий шаг, подставляет значения из черновика и подписывается на ввод и кнопки.
    */
-  render() {
+  render(): void {
     this.#path = window.location.pathname;
     this.#step = STEPS[this.#path];
     const template = this.#step.photo ? photoStepTemplate : stepTemplate;
@@ -343,30 +375,42 @@ export class SignupPage {
       template(this.#step, this.#path),
     );
 
-    const card = this.#parent.querySelector(".auth-card");
-    const form = card.querySelector(".auth-card__form");
+    const card = this.#parent.querySelector(".auth-card") as HTMLElement;
+    const form = card.querySelector(".auth-card__form") as HTMLFormElement;
     this.#buttons = [...card.querySelectorAll("button")];
-    this.#steps = [...card.querySelectorAll(".auth-card__step")];
-    this.#forward = card.querySelector('[data-action="forward"]');
-    this.#serverError = form.querySelector(".auth-card__server-error");
-    this.#renderFields(form.querySelector(".auth-card__fields"));
+    this.#steps = [
+      ...card.querySelectorAll<HTMLButtonElement>(".auth-card__step"),
+    ];
+    this.#forward = card.querySelector<HTMLButtonElement>(
+      '[data-action="forward"]',
+    );
+    this.#serverError = form.querySelector<HTMLElement>(
+      ".auth-card__server-error",
+    );
+    this.#renderFields(form.querySelector(".auth-card__fields") as HTMLElement);
     this.#showPendingError();
     this.#updateNav();
 
-    form.addEventListener("input", (event) => this.#onEdit(event.target));
-    form.addEventListener("change", (event) => this.#onEdit(event.target));
+    form.addEventListener("input", (event) =>
+      this.#onEdit(event.target as HTMLInputElement),
+    );
+    form.addEventListener("change", (event) =>
+      this.#onEdit(event.target as HTMLInputElement),
+    );
     form.addEventListener("submit", (event) => {
       event.preventDefault();
       const submit = this.#step.actions.find(({ kind }) =>
         SUBMIT_KINDS.includes(kind),
       );
-      this.#runAction(submit.kind);
+      this.#runAction((submit as StepAction).kind);
     });
     card.addEventListener("click", (event) => {
-      const target = event.target.closest("[data-action]");
+      const target = (event.target as Element).closest<HTMLElement>(
+        "[data-action]",
+      );
       const action = target?.dataset.action;
-      if (action && !SUBMIT_KINDS.includes(action)) {
-        this.#runAction(action, target.dataset.step);
+      if (target && action && !SUBMIT_KINDS.includes(action)) {
+        this.#runAction(action as ActionKind, target.dataset.step);
       }
     });
   }
@@ -374,13 +418,13 @@ export class SignupPage {
   /**
    * Отмечает страницу закрытой, чтобы ответ сервера после ухода со страницы не обрабатывался.
    */
-  destroy() {
+  destroy(): void {
     this.#isDestroyed = true;
   }
 
-  #renderFields(container) {
+  #renderFields(container: HTMLElement): void {
     const configs = fieldConfigs((name) =>
-      this.#fields[name] ? this.#fields[name].value : signupDraft.value(name),
+      this.#fields[name] ? this.#fields[name].value : signupDraft.text(name),
     );
     this.#step.fields.forEach((name) => {
       const placeholder = placeholderFor(name, configs[name].placeholder);
@@ -390,7 +434,7 @@ export class SignupPage {
         placeholder,
       });
       field.render();
-      field.value = signupDraft.value(name);
+      field.value = signupDraft.text(name);
       this.#fields[name] = field;
     });
 
@@ -405,14 +449,14 @@ export class SignupPage {
     }
   }
 
-  #showPendingError() {
+  #showPendingError(): void {
     const error = signupDraft.takeFieldError();
     if (error && this.#fields[error.field]) {
       this.#fields[error.field].setError(error.message);
     }
   }
 
-  #onEdit(target) {
+  #onEdit(target: HTMLInputElement): void {
     if (!target.name) {
       return;
     }
@@ -428,13 +472,13 @@ export class SignupPage {
       .forEach((field) => field.validate());
   }
 
-  #updateNav() {
+  #updateNav(): void {
     this.#forward?.classList.toggle(
       "auth-card__arrow_hidden",
       !signupDraft.isComplete(this.#path),
     );
     this.#steps.forEach((button) => {
-      const path = button.dataset.step;
+      const path = button.dataset.step ?? "";
       const isCurrent = path === this.#path;
       button.classList.toggle(
         "auth-card__step_done",
@@ -444,14 +488,14 @@ export class SignupPage {
     });
   }
 
-  #goTo(offset) {
+  #goTo(offset: number): void {
     const index = SIGNUP_STEPS.indexOf(this.#path) + offset;
     this.#router.navigate(SIGNUP_STEPS[index]);
   }
 
-  #runAction(kind, step) {
+  #runAction(kind: ActionKind, step?: string): void {
     if (kind === "step") {
-      this.#router.navigate(step);
+      this.#router.navigate(step ?? "");
     } else if (kind === "back") {
       this.#goTo(-1);
     } else if (kind === "forward") {
@@ -465,7 +509,7 @@ export class SignupPage {
     }
   }
 
-  #validateStep() {
+  #validateStep(): boolean {
     const results = Object.values(this.#fields).map((field) =>
       field.validate(),
     );
@@ -475,7 +519,7 @@ export class SignupPage {
     return !results.includes(false);
   }
 
-  #goNext() {
+  #goNext(): void {
     if (!this.#validateStep()) {
       return;
     }
@@ -483,8 +527,8 @@ export class SignupPage {
     this.#goTo(1);
   }
 
-  #payload(withBio) {
-    const value = (name) => signupDraft.value(name);
+  #payload(withBio: boolean): RegisterFields {
+    const value = (name: string): string => signupDraft.text(name);
     const bio = value("bio").trim();
     return {
       nickname: value("nickname").trim(),
@@ -501,7 +545,7 @@ export class SignupPage {
     };
   }
 
-  #setBusy(isBusy) {
+  #setBusy(isBusy: boolean): void {
     this.#buttons.forEach((button) => {
       button.disabled = isBusy;
     });
@@ -510,8 +554,8 @@ export class SignupPage {
     }
   }
 
-  async #register(withBio) {
-    this.#serverError.textContent = "";
+  async #register(withBio: boolean): Promise<void> {
+    (this.#serverError as HTMLElement).textContent = "";
     if (withBio && !this.#validateStep()) {
       return;
     }
@@ -525,7 +569,7 @@ export class SignupPage {
 
     if (response.status === 201) {
       signupDraft.clear();
-      user.set(response.data);
+      user.set(response.data as Session);
       this.#router.navigate("/feed", true);
       return;
     }
@@ -538,10 +582,11 @@ export class SignupPage {
       this.#router.navigate(target);
       return;
     }
-    if (target) {
+    if (target && fieldError) {
       this.#fields[fieldError.field].setError(fieldError.message);
       return;
     }
-    this.#serverError.textContent = serverErrorMessage(response);
+    (this.#serverError as HTMLElement).textContent =
+      serverErrorMessage(response);
   }
 }

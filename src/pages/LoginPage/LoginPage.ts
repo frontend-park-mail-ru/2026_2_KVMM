@@ -1,18 +1,21 @@
-import { api } from "../../modules/api.js";
-import { user } from "../../modules/user.js";
-import { serverErrorMessage } from "../../modules/errors.js";
+import { api } from "../../modules/api";
+import type { Session } from "../../modules/api";
+import type { Router } from "../../modules/router";
+import { user } from "../../modules/user";
+import { serverErrorMessage } from "../../modules/errors";
 import {
   MAX_LENGTH,
   normalizeLogin,
   validateLogin,
   validateLoginPassword,
-} from "../../modules/validation.js";
-import { signupDraft } from "../../modules/signupDraft.js";
-import { Input } from "../../components/Input/Input.js";
-import { authLayoutTemplate } from "../../components/AuthLayout/AuthLayout.js";
-import { logoTemplate } from "../../components/Logo/Logo.js";
+} from "../../modules/validation";
+import { signupDraft } from "../../modules/signupDraft";
+import { Input } from "../../components/Input/Input";
+import type { InputConfig } from "../../components/Input/Input";
+import { authLayoutTemplate } from "../../components/AuthLayout/AuthLayout";
+import { logoTemplate } from "../../components/Logo/Logo";
 
-const FIELDS = {
+const FIELDS: Record<"login" | "password", InputConfig> = {
   login: {
     name: "login",
     type: "text",
@@ -31,7 +34,7 @@ const FIELDS = {
   },
 };
 
-function template() {
+function template(): string {
   return authLayoutTemplate(`
     <section class="auth-card">
       ${logoTemplate("auth-card__logo")}
@@ -55,17 +58,17 @@ function template() {
  * Страница входа.
  */
 export class LoginPage {
-  #parent;
-  #router;
-  #fields;
-  #submit;
-  #serverError;
+  #parent: HTMLElement;
+  #router: Router;
+  #fields!: Record<"login" | "password", Input>;
+  #submit!: HTMLButtonElement;
+  #serverError!: HTMLElement;
 
   /**
-   * @param {HTMLElement} parent Контейнер страницы.
-   * @param {import("../../modules/router.js").Router} router Роутер для перехода в ленту после входа.
+   * @param parent Контейнер страницы.
+   * @param router Роутер для перехода в ленту после входа.
    */
-  constructor(parent, router) {
+  constructor(parent: HTMLElement, router: Router) {
     this.#parent = parent;
     this.#router = router;
   }
@@ -73,13 +76,21 @@ export class LoginPage {
   /**
    * Рисует форму входа и подписывается на отправку.
    */
-  render() {
+  render(): void {
     this.#parent.insertAdjacentHTML("beforeend", template());
 
-    const form = this.#parent.querySelector(".auth-card__form");
-    const fieldsContainer = form.querySelector(".auth-card__fields");
-    this.#submit = form.querySelector("button[type=submit]");
-    this.#serverError = form.querySelector(".auth-card__server-error");
+    const form = this.#parent.querySelector(
+      ".auth-card__form",
+    ) as HTMLFormElement;
+    const fieldsContainer = form.querySelector(
+      ".auth-card__fields",
+    ) as HTMLElement;
+    this.#submit = form.querySelector(
+      "button[type=submit]",
+    ) as HTMLButtonElement;
+    this.#serverError = form.querySelector(
+      ".auth-card__server-error",
+    ) as HTMLElement;
 
     this.#fields = {
       login: new Input(fieldsContainer, FIELDS.login),
@@ -103,7 +114,7 @@ export class LoginPage {
     });
   }
 
-  async #submitForm() {
+  async #submitForm(): Promise<void> {
     this.#serverError.textContent = "";
 
     const results = Object.values(this.#fields).map((field) =>
@@ -122,7 +133,7 @@ export class LoginPage {
 
     if (response.status === 200) {
       signupDraft.clear();
-      user.set(response.data);
+      user.set(response.data as Session);
       this.#router.navigate("/feed");
       return;
     }

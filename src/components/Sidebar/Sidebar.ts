@@ -5,7 +5,13 @@ import communitiesIcon from "./icons/communities.svg";
 import friendsIcon from "./icons/friends.svg";
 import settingsIcon from "./icons/settings.svg";
 
-const ITEMS = [
+interface SidebarItem {
+  label: string;
+  icon: string;
+  isActive?: boolean;
+}
+
+const ITEMS: SidebarItem[] = [
   { label: "Лента", icon: feedActiveIcon, isActive: true },
   { label: "Профиль", icon: profileIcon },
   { label: "Сообщения", icon: messagesIcon },
@@ -16,7 +22,7 @@ const ITEMS = [
 
 const SLOGAN = "Nexly&nbsp;— Люди. Идеи. Ближе.";
 
-function itemTemplate({ label, icon, isActive }) {
+function itemTemplate({ label, icon, isActive }: SidebarItem): string {
   const current = isActive ? ' aria-current="page"' : "";
   const labelModifier = isActive ? " sidebar__label_active" : "";
   return `
@@ -27,7 +33,7 @@ function itemTemplate({ label, icon, isActive }) {
   `;
 }
 
-function template() {
+function template(): string {
   return `
     <aside class="sidebar">
       <nav class="sidebar__menu" aria-label="Разделы">
@@ -44,19 +50,19 @@ function template() {
  * Боковое меню разделов: активна только лента, остальные пункты пока без перехода.
  */
 export class Sidebar {
-  #parent;
+  #parent: HTMLElement;
 
   /**
-   * @param {HTMLElement} parent Контейнер, в который вставляется меню.
+   * @param parent Контейнер, в который вставляется меню.
    */
-  constructor(parent) {
+  constructor(parent: HTMLElement) {
     this.#parent = parent;
   }
 
   /**
    * Вставляет меню в контейнер.
    */
-  render() {
+  render(): void {
     this.#parent.insertAdjacentHTML("beforeend", template());
   }
 }

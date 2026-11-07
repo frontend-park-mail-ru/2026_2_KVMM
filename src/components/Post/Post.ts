@@ -1,5 +1,6 @@
-import { api } from "../../modules/api.js";
-import { escapeHtml, formatDate } from "../../modules/utils.js";
+import { api } from "../../modules/api";
+import type { Post as PostData, Profile } from "../../modules/api";
+import { escapeHtml, formatDate } from "../../modules/utils";
 import likeIcon from "./icons/like.svg";
 import commentIcon from "./icons/comment.svg";
 import shareIcon from "./icons/share.svg";
@@ -8,12 +9,12 @@ const IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "gif", "webp", "avif"];
 const VIDEO_EXTENSIONS = ["mp4", "webm", "ogg", "mov"];
 const SHOW_MORE = "Читать еще";
 
-function fileName(path) {
-  return path.split("/").pop();
+function fileName(path: string): string {
+  return path.split("/").pop() ?? "";
 }
 
-function mediaKind(path) {
-  const extension = fileName(path).split(".").pop().toLowerCase();
+function mediaKind(path: string): "image" | "video" | "file" {
+  const extension = (fileName(path).split(".").pop() ?? "").toLowerCase();
   if (IMAGE_EXTENSIONS.includes(extension)) {
     return "image";
   }
@@ -23,7 +24,11 @@ function mediaKind(path) {
   return "file";
 }
 
-function avatarTemplate({ profile_name: name, nickname, image_url: imageUrl }) {
+function avatarTemplate({
+  profile_name: name,
+  nickname,
+  image_url: imageUrl,
+}: Profile): string {
   const letter = [...(name || nickname || "?")][0].toUpperCase();
   const image = imageUrl
     ? `<img class="post__avatar-image" src="${escapeHtml(api.mediaUrl(imageUrl))}" alt="">`
@@ -31,7 +36,7 @@ function avatarTemplate({ profile_name: name, nickname, image_url: imageUrl }) {
   return `<div class="post__avatar">${escapeHtml(letter)}${image}</div>`;
 }
 
-function mediaTemplate(path) {
+function mediaTemplate(path: string): string {
   const url = escapeHtml(api.mediaUrl(path));
   const kind = mediaKind(path);
 
@@ -45,7 +50,7 @@ function mediaTemplate(path) {
   return `<a class="post__file" href="${url}" title="${name}" target="_blank" rel="noopener noreferrer"><span class="post__file-name">${name}</span></a>`;
 }
 
-function template(post) {
+function template(post: PostData): string {
   const { author, post_text: text, media_urls: media = [] } = post;
   const authorName = `${author.profile_name} ${author.surname}`;
   const visual = media.filter((path) => mediaKind(path) !== "file");
@@ -85,14 +90,14 @@ function template(post) {
  * Карточка поста ленты. Все данные с бэкенда экранируются.
  */
 export class Post {
-  #parent;
-  #post;
+  #parent: HTMLElement;
+  #post: PostData;
 
   /**
-   * @param {HTMLElement} parent Список постов.
-   * @param {object} post Пост из ответа GET /api/posts.
+   * @param parent Список постов.
+   * @param post Пост из ответа GET /api/posts.
    */
-  constructor(parent, post) {
+  constructor(parent: HTMLElement, post: PostData) {
     this.#parent = parent;
     this.#post = post;
   }
@@ -100,24 +105,24 @@ export class Post {
   /**
    * Добавляет карточку в конец списка и сворачивает длинный текст.
    */
-  render() {
+  render(): void {
     this.#parent.insertAdjacentHTML("beforeend", template(this.#post));
-    const element = this.#parent.lastElementChild;
+    const element = this.#parent.lastElementChild as HTMLElement;
     const avatarImage = element.querySelector(".post__avatar-image");
     avatarImage?.addEventListener("error", () => avatarImage.remove());
 
-    const text = element.querySelector(".post__text");
+    const text = element.querySelector<HTMLElement>(".post__text");
     if (text && text.scrollHeight > text.clientHeight) {
       this.#addShowMore(text);
     }
   }
 
-  #addShowMore(text) {
+  #addShowMore(text: HTMLElement): void {
     text.insertAdjacentHTML(
       "afterend",
       `<button class="post__more" type="button">${SHOW_MORE}</button>`,
     );
-    const button = text.nextElementSibling;
+    const button = text.nextElementSibling as HTMLElement;
     button.addEventListener("click", () => {
       text.classList.remove("post__text_collapsed");
       button.remove();

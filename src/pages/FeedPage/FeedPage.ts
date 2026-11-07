@@ -1,15 +1,19 @@
-import { api } from "../../modules/api.js";
-import { user } from "../../modules/user.js";
-import { NETWORK_ERROR } from "../../modules/errors.js";
-import { Header } from "../../components/Header/Header.js";
-import { Sidebar } from "../../components/Sidebar/Sidebar.js";
-import { Post } from "../../components/Post/Post.js";
+import { api } from "../../modules/api";
+import type { FeedResponse } from "../../modules/api";
+import type { Router } from "../../modules/router";
+import { user } from "../../modules/user";
+import { NETWORK_ERROR } from "../../modules/errors";
+import { Header } from "../../components/Header/Header";
+import { Sidebar } from "../../components/Sidebar/Sidebar";
+import { Post } from "../../components/Post/Post";
 import spinnerIcon from "./spinner.svg";
 
 const PAGE_SIZE = 10;
 const LOAD_THRESHOLD = 600;
 
-const MESSAGES = {
+type FeedStatus = "idle" | "loading" | "empty" | "end" | "error";
+
+const MESSAGES: Record<Exclude<FeedStatus, "idle">, string> = {
   loading: "Загружаем ленту",
   empty: "Здесь пока нет постов",
   end: "Нет более старых постов",
@@ -19,7 +23,7 @@ const MESSAGES = {
 const SPINNER = `<img class="feed__spinner" draggable="false" src="${spinnerIcon}" width="20" height="20" alt="Загружаем ещё посты">`;
 const RETRY = `<button class="button button_outline feed__retry" type="button">Обновить</button>`;
 
-function statusTemplate(status, hasPosts) {
+function statusTemplate(status: FeedStatus, hasPosts: boolean): string {
   if (status === "idle") {
     return "";
   }
@@ -30,7 +34,7 @@ function statusTemplate(status, hasPosts) {
   return status === "error" ? message + RETRY : message;
 }
 
-function template() {
+function template(): string {
   return `
     <div class="feed-page">
       <div class="feed-page__header"></div>
@@ -49,11 +53,11 @@ function template() {
  * Страница ленты: шапка с выходом, меню разделов, посты с бэкенда и подгрузка при прокрутке.
  */
 export class FeedPage {
-  #parent;
-  #router;
-  #header;
-  #list;
-  #status;
+  #parent: HTMLElement;
+  #router: Router;
+  #header!: Header;
+  #list!: HTMLElement;
+  #status!: HTMLElement;
   #cursor = 0;
   #hasMore = true;
   #isLoading = false;
@@ -61,10 +65,10 @@ export class FeedPage {
   #isDestroyed = false;
 
   /**
-   * @param {HTMLElement} parent Контейнер страницы.
-   * @param {import("../../modules/router.js").Router} router Роутер для перехода на /login.
+   * @param parent Контейнер страницы.
+   * @param router Роутер для перехода на /login.
    */
-  constructor(parent, router) {
+  constructor(parent: HTMLElement, router: Router) {
     this.#parent = parent;
     this.#router = router;
   }
@@ -72,20 +76,25 @@ export class FeedPage {
   /**
    * Рисует страницу и загружает первую порцию постов.
    */
-  render() {
+  render(): void {
     this.#parent.insertAdjacentHTML("beforeend", template());
-    const page = this.#parent.querySelector(".feed-page");
-    this.#list = page.querySelector(".feed__list");
-    this.#status = page.querySelector(".feed__status");
+    const page = this.#parent.querySelector(".feed-page") as HTMLElement;
+    this.#list = page.querySelector(".feed__list") as HTMLElement;
+    this.#status = page.querySelector(".feed__status") as HTMLElement;
 
-    this.#header = new Header(page.querySelector(".feed-page__header"), {
-      onLogout: () => this.#logout(),
-    });
+    this.#header = new Header(
+      page.querySelector(".feed-page__header") as HTMLElement,
+      {
+        onLogout: () => this.#logout(),
+      },
+    );
     this.#header.render();
-    new Sidebar(page.querySelector(".feed-page__aside")).render();
+    new Sidebar(
+      page.querySelector(".feed-page__aside") as HTMLElement,
+    ).render();
 
     this.#status.addEventListener("click", (event) => {
-      if (event.target.closest(".feed__retry")) {
+      if ((event.target as Element).closest(".feed__retry")) {
         this.#hasError = false;
         this.#loadPage();
       }
@@ -98,7 +107,7 @@ export class FeedPage {
   /**
    * Снимает обработчик прокрутки и игнорирует ответы, пришедшие после ухода со страницы.
    */
-  destroy() {
+  destroy(): void {
     this.#isDestroyed = true;
     window.removeEventListener("scroll", this.#onScroll);
   }
@@ -109,12 +118,12 @@ export class FeedPage {
     }
   };
 
-  #isNearBottom() {
+  #isNearBottom(): boolean {
     const scrolled = window.innerHeight + window.scrollY;
     return scrolled >= document.documentElement.scrollHeight - LOAD_THRESHOLD;
   }
 
-  #setStatus(status) {
+  #setStatus(status: FeedStatus): void {
     const hasPosts = this.#list.children.length > 0;
     this.#status.classList.toggle(
       "feed__status_fill",
@@ -123,12 +132,12 @@ export class FeedPage {
     this.#status.innerHTML = statusTemplate(status, hasPosts);
   }
 
-  #goToLogin() {
+  #goToLogin(): void {
     user.clear();
     this.#router.navigate("/login");
   }
 
-  async #loadPage() {
+  async #loadPage(): Promise<void> {
     if (this.#isLoading || !this.#hasMore || this.#hasError) {
       return;
     }
@@ -165,19 +174,23 @@ export class FeedPage {
     }
   }
 
-  #moveCursor({ has_more: hasMore, next_cursor: nextCursor }) {
+  #moveCursor({
+    has_more: hasMore,
+    next_cursor: nextCursor,
+  }: FeedResponse): void {
     const isForward =
+      typeof nextCursor === "number" &&
       Number.isInteger(nextCursor) &&
       nextCursor > 0 &&
       (this.#cursor === 0 || nextCursor < this.#cursor);
 
     this.#hasMore = hasMore === true && isForward;
     if (this.#hasMore) {
-      this.#cursor = nextCursor;
+      this.#cursor = nextCursor as number;
     }
   }
 
-  async #logout() {
+  async #logout(): Promise<void> {
     this.#header.setError("");
     this.#header.setLoggingOut(true);
     const { status } = await api.logout(user.csrfToken);

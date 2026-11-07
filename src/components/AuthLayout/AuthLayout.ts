@@ -1,9 +1,9 @@
 /**
  * Обёртка экранов входа и регистрации: фон с декоративными пятнами и карточка по центру.
- * @param {string} content Разметка карточки.
- * @returns {string} HTML страницы.
+ * @param content Разметка карточки.
+ * @returns HTML страницы.
  */
-export function authLayoutTemplate(content) {
+export function authLayoutTemplate(content: string): string {
   return `
     <main class="auth-layout">
       <div class="auth-layout__backdrop" aria-hidden="true">

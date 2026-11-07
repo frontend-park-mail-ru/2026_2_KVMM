@@ -1,4 +1,13 @@
-function template({ name, label }) {
+/**
+ * Настройки чекбокса: label — статичная разметка подписи без данных пользователя.
+ */
+export interface CheckboxConfig {
+  name: string;
+  label: string;
+  validate: (checked: boolean) => string;
+}
+
+function template({ name, label }: CheckboxConfig): string {
   return `
     <div class="checkbox">
       <label class="checkbox__label">
@@ -15,48 +24,52 @@ function template({ name, label }) {
  * Круглый чекбокс с подписью и текстом ошибки под ним.
  */
 export class Checkbox {
-  #parent;
-  #config;
-  #element;
-  #control;
-  #box;
-  #error;
+  #parent: HTMLElement;
+  #config: CheckboxConfig;
+  #element!: HTMLElement;
+  #control!: HTMLInputElement;
+  #box!: HTMLElement;
+  #error!: HTMLElement;
 
   /**
-   * @param {HTMLElement} parent Контейнер, в конец которого добавляется чекбокс.
-   * @param {object} config Настройки: name, label — статичная разметка подписи без данных пользователя, validate.
+   * @param parent Контейнер, в конец которого добавляется чекбокс.
+   * @param config Настройки: name, label — статичная разметка подписи без данных пользователя, validate.
    */
-  constructor(parent, config) {
+  constructor(parent: HTMLElement, config: CheckboxConfig) {
     this.#parent = parent;
     this.#config = config;
   }
 
-  get checked() {
+  get checked(): boolean {
     return this.#control.checked;
   }
 
   /**
    * Отмечает или снимает отметку, например при возврате на шаг формы.
-   * @param {boolean} value Отмечен ли чекбокс.
+   * @param value Отмечен ли чекбокс.
    */
-  set checked(value) {
+  set checked(value: boolean) {
     this.#control.checked = value;
     this.#box.classList.toggle("checkbox__box_checked", value);
   }
 
-  get hasError() {
+  get hasError(): boolean {
     return Boolean(this.#error.textContent);
   }
 
   /**
    * Вставляет чекбокс и подписывается на переключение и фокус с клавиатуры.
    */
-  render() {
+  render(): void {
     this.#parent.insertAdjacentHTML("beforeend", template(this.#config));
-    this.#element = this.#parent.lastElementChild;
-    this.#control = this.#element.querySelector(".checkbox__control");
-    this.#box = this.#element.querySelector(".checkbox__box");
-    this.#error = this.#element.querySelector(".checkbox__error");
+    this.#element = this.#parent.lastElementChild as HTMLElement;
+    this.#control = this.#element.querySelector(
+      ".checkbox__control",
+    ) as HTMLInputElement;
+    this.#box = this.#element.querySelector(".checkbox__box") as HTMLElement;
+    this.#error = this.#element.querySelector(
+      ".checkbox__error",
+    ) as HTMLElement;
 
     this.#control.addEventListener("change", () => {
       this.#box.classList.toggle("checkbox__box_checked", this.checked);
@@ -77,9 +90,9 @@ export class Checkbox {
 
   /**
    * Проверяет отметку и показывает или убирает ошибку.
-   * @returns {boolean} true, если значение корректно.
+   * @returns true, если значение корректно.
    */
-  validate() {
+  validate(): boolean {
     const message = this.#config.validate(this.checked);
     this.#error.textContent = message;
     this.#box.classList.toggle("checkbox__box_invalid", Boolean(message));

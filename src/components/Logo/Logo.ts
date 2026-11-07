@@ -4,11 +4,14 @@ import wordmarkIcon from "./wordmark.svg";
 
 /**
  * Разметка логотипа Nexly: большой — знак и надпись под ним, маленький — только знак, для шапки — знак и надпись в строку, ссылкой на ленту.
- * @param {string} [mix] Классы элемента родительского блока, например auth-card__logo.
- * @param {"large"|"small"|"header"} [size] Вариант логотипа.
- * @returns {string} HTML логотипа.
+ * @param mix Классы элемента родительского блока, например auth-card__logo.
+ * @param size Вариант логотипа.
+ * @returns HTML логотипа.
  */
-export function logoTemplate(mix = "", size = "large") {
+export function logoTemplate(
+  mix: string = "",
+  size: "large" | "small" | "header" = "large",
+): string {
   if (size === "header") {
     return `
       <a class="logo logo_header ${mix}" draggable="false" href="/feed" data-link aria-label="Nexly, лента">

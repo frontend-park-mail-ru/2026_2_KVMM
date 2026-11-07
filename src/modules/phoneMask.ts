@@ -4,7 +4,18 @@ const FOREIGN_CODE_PATTERN = /^\+[0-689]/;
 const PREFIX_DIGIT_PATTERN = /^[78]/;
 const DIGIT_PATTERN = /\d/;
 
-function nationalDigits(compact) {
+/**
+ * Значение поля после маски и позиция курсора в нём.
+ */
+export interface MaskedValue {
+  value: string;
+  caret: number;
+}
+
+function nationalDigits(compact: string): {
+  national: string;
+  dropped: number;
+} {
   let digits = compact.replace(/\D/g, "");
   let dropped = 0;
 
@@ -23,7 +34,7 @@ function nationalDigits(compact) {
   return { national: digits.slice(0, NATIONAL_LENGTH), dropped };
 }
 
-function format(national) {
+function format(national: string): string {
   let result = PREFIX + national.slice(0, 3);
   if (national.length > 3) {
     result += `) ${national.slice(3, 6)}`;
@@ -37,7 +48,7 @@ function format(national) {
   return result;
 }
 
-function caretAfterDigits(formatted, count) {
+function caretAfterDigits(formatted: string, count: number): number {
   if (count === 0) {
     return PREFIX.length;
   }
@@ -56,11 +67,14 @@ function caretAfterDigits(formatted, count) {
 /**
  * Приводит ввод к виду +7 (999) 123-45-67 и пересчитывает позицию курсора.
  * Ведущие 8 и 7 считаются кодом выхода и кодом страны, номер другой страны (+1, +44…) не меняется.
- * @param {string} value Текущее значение поля.
- * @param {number} [caret] Позиция курсора в value.
- * @returns {{value: string, caret: number}} Отформатированное значение и новая позиция курсора.
+ * @param value Текущее значение поля.
+ * @param caret Позиция курсора в value.
+ * @returns Отформатированное значение и новая позиция курсора.
  */
-export function applyPhoneMask(value, caret = value.length) {
+export function applyPhoneMask(
+  value: string,
+  caret: number = value.length,
+): MaskedValue {
   const compact = value.replace(/\s/g, "");
   if (!compact || compact === "+" || FOREIGN_CODE_PATTERN.test(compact)) {
     return { value, caret };
@@ -73,7 +87,7 @@ export function applyPhoneMask(value, caret = value.length) {
   return { value: formatted, caret: caretAfterDigits(formatted, count) };
 }
 
-function digitIndex(value, from, step) {
+function digitIndex(value: string, from: number, step: number): number {
   for (
     let index = from;
     index >= PREFIX.length && index < value.length;
@@ -86,16 +100,20 @@ function digitIndex(value, from, step) {
   return -1;
 }
 
-function replaceValue(control, value, caret) {
+function replaceValue(
+  control: HTMLInputElement,
+  value: string,
+  caret: number,
+): void {
   control.value = value;
   control.setSelectionRange(caret, caret);
   control.dispatchEvent(new Event("input", { bubbles: true }));
 }
 
-function onBeforeInput(event) {
-  const control = event.target;
+function onBeforeInput(event: InputEvent): void {
+  const control = event.target as HTMLInputElement;
   const { value, selectionStart: start, selectionEnd: end } = control;
-  if (start !== end || !value.startsWith(PREFIX)) {
+  if (start === null || start !== end || !value.startsWith(PREFIX)) {
     return;
   }
 
@@ -121,9 +139,9 @@ function onBeforeInput(event) {
 /**
  * Подключает к полю маску российского телефона +7 (999) 123-45-67.
  * Backspace и Delete перед скобкой, пробелом или дефисом стирают ближайшую цифру.
- * @param {HTMLInputElement} control Поле type="tel".
+ * @param control Поле type="tel".
  */
-export function attachPhoneMask(control) {
+export function attachPhoneMask(control: HTMLInputElement): void {
   control.addEventListener("beforeinput", onBeforeInput);
   control.addEventListener("input", () => {
     const { value, caret } = applyPhoneMask(

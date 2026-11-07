@@ -13,7 +13,7 @@ module.exports = (env, argv) => {
     const hash = isProduction ? '.[contenthash:8]' : '';
 
     return {
-        entry: path.join(srcDir, 'index.js'),
+        entry: path.join(srcDir, 'index.ts'),
         output: {
             path: distDir,
             publicPath: '/',
@@ -22,10 +22,13 @@ module.exports = (env, argv) => {
             clean: true,
         },
         devtool: isProduction ? 'source-map' : 'eval-cheap-module-source-map',
+        resolve: {
+            extensions: ['.ts', '.js'],
+        },
         module: {
             rules: [
                 {
-                    test: /\.js$/,
+                    test: /\.ts$/,
                     include: srcDir,
                     type: 'javascript/auto',
                     use: 'babel-loader',

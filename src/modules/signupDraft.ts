@@ -1,5 +1,13 @@
-import { applyPhoneMask } from "./phoneMask.js";
-import { normalizeLogin } from "./validation.js";
+import { applyPhoneMask } from "./phoneMask";
+import { normalizeLogin } from "./validation";
+import type { FieldError } from "./errors";
+
+type DraftValue = string | boolean;
+
+interface LoginTarget {
+  field: string;
+  value: string;
+}
 
 export const SIGNUP_STEPS = [
   "/signup",
@@ -10,12 +18,12 @@ export const SIGNUP_STEPS = [
 
 const PHONE_PATTERN = /^\+7\d{10}$/;
 
-let values = {};
-let completed = new Set();
-let fieldError = null;
-let loginTarget = null;
+let values: Record<string, DraftValue> = {};
+let completed = new Set<string>();
+let fieldError: FieldError | null = null;
+let loginTarget: LoginTarget | null = null;
 
-function loginFieldOf(login) {
+function loginFieldOf(login: string): string {
   if (login.includes("@")) {
     return "email";
   }
@@ -28,22 +36,23 @@ function loginFieldOf(login) {
  * Черновик входа и регистрации в памяти: значения полей между шагами и страницами, пройденные шаги. В хранилище браузера не пишется, потому что в нём пароль.
  */
 export const signupDraft = {
-  value: (name) => values[name] ?? "",
-  set: (name, value) => {
+  value: (name: string): DraftValue => values[name] ?? "",
+  text: (name: string): string => String(values[name] ?? ""),
+  set: (name: string, value: DraftValue): void => {
     values[name] = value;
   },
-  complete: (path) => completed.add(path),
-  isComplete: (path) => completed.has(path),
-  reopen: (path) => completed.delete(path),
-  setFieldError: (error) => {
+  complete: (path: string) => completed.add(path),
+  isComplete: (path: string): boolean => completed.has(path),
+  reopen: (path: string) => completed.delete(path),
+  setFieldError: (error: FieldError | null): void => {
     fieldError = error;
   },
-  takeFieldError: () => {
+  takeFieldError: (): FieldError | null => {
     const error = fieldError;
     fieldError = null;
     return error;
   },
-  applyLogin: (login, password) => {
+  applyLogin: (login: string, password: string): void => {
     const value = login.trim();
     const field = loginFieldOf(value);
     const stored =
@@ -60,15 +69,15 @@ export const signupDraft = {
     loginTarget = { field, value: stored };
     completed = new Set();
   },
-  loginPrefill: () => {
+  loginPrefill: (): { login: string; password: string } => {
     const field =
       loginTarget?.field ??
       ["nickname", "email", "phone_number"].find((name) => values[name]);
-    const login = field ? (values[field] ?? "") : "";
+    const login = field ? String(values[field] ?? "") : "";
     loginTarget = field ? { field, value: login } : null;
-    return { login, password: values.password ?? "" };
+    return { login, password: String(values.password ?? "") };
   },
-  clear: () => {
+  clear: (): void => {
     values = {};
     completed = new Set();
     fieldError = null;
@@ -78,10 +87,10 @@ export const signupDraft = {
 
 /**
  * Первый непройденный шаг регистрации перед запрошенным.
- * @param {string} path Запрошенный шаг.
- * @returns {?string} Путь шага, на который нужно вернуть пользователя, или null.
+ * @param path Запрошенный шаг.
+ * @returns Путь шага, на который нужно вернуть пользователя, или null.
  */
-export function signupRedirect(path) {
+export function signupRedirect(path: string): string | null {
   const index = SIGNUP_STEPS.indexOf(path);
   const missing = SIGNUP_STEPS.slice(0, index).find(
     (step) => !completed.has(step),
