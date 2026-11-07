@@ -7,6 +7,7 @@ export const MAX_LENGTH = {
   name: 32,
   password: 64,
   bio: 256,
+  post: 256,
 };
 
 const MESSAGES = {
@@ -34,6 +35,8 @@ const MESSAGES = {
   consent: "Подтвердите согласие на обработку персональных данных",
   bio: "Рассказ о себе должен быть не длиннее 256 символов",
   code: "Введите 6 цифр из письма",
+  postEmpty: "Напишите текст поста",
+  postLength: "Пост должен быть не длиннее 256 символов",
   avatarType: "Можно загрузить только png или jpg",
   avatarSize: "Файл должен быть не больше 5 МБ",
 };
@@ -388,4 +391,17 @@ export function validateAvatarFile(file: File | null): string {
     return MESSAGES.avatarType;
   }
   return file.size <= AVATAR_MAX_BYTES ? "" : MESSAGES.avatarSize;
+}
+
+/**
+ * Проверяет текст поста: не пустой и не длиннее 256 символов, как на бэке.
+ * @param value Текст из поля.
+ * @returns Текст ошибки или пустая строка.
+ */
+export function validatePostText(value: string): string {
+  const text = value.trim();
+  if (!text) {
+    return MESSAGES.postEmpty;
+  }
+  return length(text) <= MAX_LENGTH.post ? "" : MESSAGES.postLength;
 }

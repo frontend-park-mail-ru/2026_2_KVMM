@@ -8,7 +8,11 @@
 @use "components/AuthLayout/AuthLayout";
 @use "components/AuthCard/AuthCard";
 @use "components/FileField/FileField";
+@use "components/AppLayout/AppLayout";
 @use "components/Header/Header";
 @use "components/Sidebar/Sidebar";
 @use "components/Post/Post";
-@use "pages/FeedPage/FeedPage";
+@use "components/PostList/PostList";
+@use "components/PostEditor/PostEditor";
+@use "components/Dialog/Dialog";
+@use "pages/ProfilePage/ProfilePage";

@@ -4,6 +4,15 @@ import { escapeHtml, formatDate } from "../../modules/utils";
 import likeIcon from "./icons/like.svg";
 import commentIcon from "./icons/comment.svg";
 import shareIcon from "./icons/share.svg";
+import editIcon from "./icons/edit.svg";
+import { user } from "../../modules/user";
+
+/**
+ * Настройки карточки: onEdit включает карандаш у постов текущего пользователя.
+ */
+export interface PostOptions {
+  onEdit?: (post: PostData) => void;
+}
 
 const IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "gif", "webp", "avif"];
 const VIDEO_EXTENSIONS = ["mp4", "webm", "ogg", "mov"];
@@ -46,7 +55,7 @@ function mediaTemplate(path: string): string {
   return `<a class="post__file" href="${url}" title="${name}" target="_blank" rel="noopener noreferrer"><span class="post__file-name">${name}</span></a>`;
 }
 
-function template(post: PostData): string {
+function template(post: PostData, canEdit: boolean): string {
   const { author, post_text: text, media_urls: media = [] } = post;
   const authorName = author.name;
   const visual = media.filter((path) => mediaKind(path) !== "file");
@@ -60,6 +69,7 @@ function template(post: PostData): string {
           <p class="post__name" title="${escapeHtml(authorName)}">${escapeHtml(authorName)}</p>
           <time class="post__date" datetime="${escapeHtml(post.created_at)}">${formatDate(post.created_at)}</time>
         </div>
+        ${canEdit ? `<button class="post__edit" type="button" aria-label="Редактировать пост"><img class="post__edit-icon" draggable="false" src="${editIcon}" width="20" height="48" alt=""></button>` : ""}
       </header>
       ${text ? `<p class="post__text post__text_collapsed">${escapeHtml(text)}</p>` : ""}
       ${visual.map(mediaTemplate).join("")}
@@ -83,29 +93,75 @@ function template(post: PostData): string {
 }
 
 /**
- * Карточка поста ленты. Все данные с бэкенда экранируются.
+ * Карточка поста. Все данные с бэкенда экранируются.
  */
 export class Post {
   #parent: HTMLElement;
   #post: PostData;
+  #options: PostOptions;
+  #element: HTMLElement | null = null;
 
   /**
    * @param parent Список постов.
-   * @param post Пост из ответа GET /api/posts.
+   * @param post Пост из ответа бэка.
+   * @param options Обработчик правки своих постов.
    */
-  constructor(parent: HTMLElement, post: PostData) {
+  constructor(parent: HTMLElement, post: PostData, options: PostOptions = {}) {
     this.#parent = parent;
     this.#post = post;
+    this.#options = options;
   }
 
   /**
-   * Добавляет карточку в конец списка и сворачивает длинный текст.
+   * Добавляет карточку в список и сворачивает длинный текст.
+   * @param position Куда вставить: в конец или в начало списка.
    */
-  render(): void {
-    this.#parent.insertAdjacentHTML("beforeend", template(this.#post));
-    const element = this.#parent.lastElementChild as HTMLElement;
+  render(position: "beforeend" | "afterbegin" = "beforeend"): void {
+    this.#parent.insertAdjacentHTML(position, this.#markup());
+    const element = (
+      position === "beforeend"
+        ? this.#parent.lastElementChild
+        : this.#parent.firstElementChild
+    ) as HTMLElement;
+    this.#bind(element);
+  }
+
+  /**
+   * Перерисовывает карточку на месте после изменения поста.
+   * @param post Пост из ответа бэка.
+   */
+  update(post: PostData): void {
+    this.#post = post;
+    if (!this.#element) {
+      return;
+    }
+    this.#element.insertAdjacentHTML("afterend", this.#markup());
+    const element = this.#element.nextElementSibling as HTMLElement;
+    this.#element.remove();
+    this.#bind(element);
+  }
+
+  /**
+   * Убирает карточку из списка.
+   */
+  remove(): void {
+    this.#element?.remove();
+    this.#element = null;
+  }
+
+  #markup(): string {
+    const isOwn =
+      user.profile !== null && this.#post.author_profile_id === user.profile.id;
+    return template(this.#post, Boolean(this.#options.onEdit) && isOwn);
+  }
+
+  #bind(element: HTMLElement): void {
+    this.#element = element;
     const avatarImage = element.querySelector(".post__avatar-image");
     avatarImage?.addEventListener("error", () => avatarImage.remove());
+    element
+      .querySelector(".post__edit")
+      ?.addEventListener("click", () => this.#options.onEdit?.(this.#post));
 
     const text = element.querySelector<HTMLElement>(".post__text");
     if (text && text.scrollHeight > text.clientHeight) {

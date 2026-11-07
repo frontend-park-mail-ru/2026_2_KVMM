@@ -20,6 +20,10 @@
     list-style: none;
   }
 
+  &__entry {
+    display: block;
+  }
+
   &__item {
     display: flex;
     align-items: center;
@@ -28,6 +32,17 @@
     padding: 0 12px;
     color: var(--color-text);
     font: var(--font-body);
+    text-decoration: none;
+
+    &_link {
+      cursor: pointer;
+    }
+
+    &_link:focus-visible {
+      border-radius: var(--radius-field);
+      outline: 2px solid var(--color-primary);
+      outline-offset: -2px;
+    }
   }
 
   &__icon {
@@ -35,6 +50,7 @@
     flex-shrink: 0;
     width: 24px;
     height: 24px;
+    object-fit: contain;
   }
 
   &__label {
@@ -68,8 +84,11 @@
       scrollbar-width: none;
     }
 
-    &__item {
+    &__entry {
       flex-shrink: 0;
+    }
+
+    &__item {
       gap: 8px;
       height: 40px;
       padding: 0 10px;

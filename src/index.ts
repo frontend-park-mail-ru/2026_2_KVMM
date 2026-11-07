@@ -5,6 +5,7 @@ import { Router } from "./modules/router";
 import { LoginPage } from "./pages/LoginPage/LoginPage";
 import { SignupPage } from "./pages/SignupPage/SignupPage";
 import { FeedPage } from "./pages/FeedPage/FeedPage";
+import { ProfilePage } from "./pages/ProfilePage/ProfilePage";
 import { EmailCodePage } from "./pages/EmailCodePage/EmailCodePage";
 import { SIGNUP_STEPS, signupDraft } from "./modules/signupDraft";
 import type { Route } from "./modules/router";
@@ -25,6 +26,7 @@ const routes: Record<string, Route> = {
     redirect: () => (signupDraft.pendingEmail() ? null : SIGNUP_STEPS[1]),
   },
   "/feed": { page: FeedPage, auth: true },
+  "/profile": { page: ProfilePage, auth: true },
 };
 
 const router = new Router(

@@ -1,44 +1,70 @@
+import feedIcon from "./icons/feed.svg";
 import feedActiveIcon from "./icons/feed-active.svg";
 import profileIcon from "./icons/profile.svg";
+import profileActiveIcon from "./icons/profile-active.svg";
 import messagesIcon from "./icons/messages.svg";
 import communitiesIcon from "./icons/communities.svg";
 import friendsIcon from "./icons/friends.svg";
 import settingsIcon from "./icons/settings.svg";
 
+/**
+ * Раздел меню.
+ */
+export type SidebarSection =
+  "feed" | "profile" | "messages" | "communities" | "friends" | "settings";
+
 interface SidebarItem {
+  section: SidebarSection;
   label: string;
   icon: string;
-  isActive?: boolean;
+  activeIcon?: string;
+  href?: string;
 }
 
 const ITEMS: SidebarItem[] = [
-  { label: "Лента", icon: feedActiveIcon, isActive: true },
-  { label: "Профиль", icon: profileIcon },
-  { label: "Сообщения", icon: messagesIcon },
-  { label: "Сообщества", icon: communitiesIcon },
-  { label: "Друзья", icon: friendsIcon },
-  { label: "Настройки", icon: settingsIcon },
+  {
+    section: "feed",
+    label: "Лента",
+    icon: feedIcon,
+    activeIcon: feedActiveIcon,
+    href: "/feed",
+  },
+  {
+    section: "profile",
+    label: "Профиль",
+    icon: profileIcon,
+    activeIcon: profileActiveIcon,
+    href: "/profile",
+  },
+  { section: "messages", label: "Сообщения", icon: messagesIcon },
+  { section: "communities", label: "Сообщества", icon: communitiesIcon },
+  { section: "friends", label: "Друзья", icon: friendsIcon },
+  { section: "settings", label: "Настройки", icon: settingsIcon },
 ];
 
 const SLOGAN = "Nexly&nbsp;— Люди. Идеи. Ближе.";
 
-function itemTemplate({ label, icon, isActive }: SidebarItem): string {
-  const current = isActive ? ' aria-current="page"' : "";
+function itemTemplate(item: SidebarItem, active: SidebarSection): string {
+  const isActive = item.section === active;
+  const icon = isActive && item.activeIcon ? item.activeIcon : item.icon;
   const labelModifier = isActive ? " sidebar__label_active" : "";
-  return `
-    <li class="sidebar__item"${current}>
-      <img class="sidebar__icon" draggable="false" src="${icon}" width="24" height="24" alt="">
-      <span class="sidebar__label${labelModifier}">${label}</span>
-    </li>
+  const content = `
+    <img class="sidebar__icon" draggable="false" src="${icon}" width="24" height="24" alt="">
+    <span class="sidebar__label${labelModifier}">${item.label}</span>
   `;
+  const current = isActive ? ' aria-current="page"' : "";
+  const entry = item.href
+    ? `<a class="sidebar__item sidebar__item_link" href="${item.href}" data-link draggable="false"${current}>${content}</a>`
+    : `<span class="sidebar__item"${current}>${content}</span>`;
+  return `<li class="sidebar__entry">${entry}</li>`;
 }
 
-function template(): string {
+function template(active: SidebarSection): string {
   return `
     <aside class="sidebar">
       <nav class="sidebar__menu" aria-label="Разделы">
         <ul class="sidebar__list">
-          ${ITEMS.map(itemTemplate).join("")}
+          ${ITEMS.map((item) => itemTemplate(item, active)).join("")}
         </ul>
       </nav>
       <p class="sidebar__slogan">${SLOGAN}</p>
@@ -47,22 +73,25 @@ function template(): string {
 }
 
 /**
- * Боковое меню разделов: активна только лента, остальные пункты пока без перехода.
+ * Боковое меню разделов: лента и профиль — ссылки, остальные разделы пока без перехода.
  */
 export class Sidebar {
   #parent: HTMLElement;
+  #section: SidebarSection;
 
   /**
    * @param parent Контейнер, в который вставляется меню.
+   * @param section Активный раздел.
    */
-  constructor(parent: HTMLElement) {
+  constructor(parent: HTMLElement, section: SidebarSection) {
     this.#parent = parent;
+    this.#section = section;
   }
 
   /**
    * Вставляет меню в контейнер.
    */
   render(): void {
-    this.#parent.insertAdjacentHTML("beforeend", template());
+    this.#parent.insertAdjacentHTML("beforeend", template(this.#section));
   }
 }

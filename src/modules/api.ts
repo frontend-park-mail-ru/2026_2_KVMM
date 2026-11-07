@@ -57,6 +57,13 @@ export interface FeedResponse {
 }
 
 /**
+ * Страница постов одного пользователя.
+ */
+export interface UserPostsResponse extends FeedResponse {
+  profile_id: number;
+}
+
+/**
  * Ответ на вход, регистрацию и запрос текущего пользователя.
  */
 export interface Session {
@@ -184,5 +191,19 @@ export const api = {
     request<Profile>("POST", "/auth/email/confirm", {
       body: { email, code },
     }),
+  userPosts: (profileId: number, cursor: number, limit: number) =>
+    request<UserPostsResponse>(
+      "GET",
+      `/posts/user?profile_id=${profileId}&cursor=${cursor}&limit=${limit}`,
+    ),
+  createPost: (text: string) =>
+    request<Post>("POST", "/posts/create", { body: { post_text: text } }),
+  updatePost: (postId: number, text: string) =>
+    request<Post>("PATCH", "/posts/update", {
+      body: { post_id: postId, post_text: text },
+    }),
+  deletePost: (postId: number) =>
+    request<null>("DELETE", `/posts/delete?post_id=${postId}`),
+  avatars: () => request<{ avatars: Avatar[] }>("GET", "/profile/avatars"),
   mediaUrl: (path: string) => `${path}`,
 };

@@ -1,0 +1,198 @@
+import type {
+  ApiResult,
+  FeedResponse,
+  Post as PostData,
+} from "../../modules/api";
+import { nextCursor } from "../../modules/cursor";
+import { Post } from "../Post/Post";
+import spinnerIcon from "./spinner.svg";
+
+const PAGE_SIZE = 10;
+const LOAD_THRESHOLD = 600;
+
+type ListStatus = "idle" | "loading" | "empty" | "end" | "error";
+
+/**
+ * Тексты состояний списка.
+ */
+export interface PostListMessages {
+  loading: string;
+  empty: string;
+  end: string;
+  error: string;
+}
+
+/**
+ * Настройки списка: откуда грузить страницы, тексты состояний и что делать со своими постами.
+ */
+export interface PostListConfig {
+  load: (cursor: number, limit: number) => Promise<ApiResult<FeedResponse>>;
+  messages: PostListMessages;
+  fill?: boolean;
+  onEdit?: (post: PostData) => void;
+  onUnauthorized: () => void;
+}
+
+const SPINNER = `<img class="post-list__spinner" draggable="false" src="${spinnerIcon}" width="20" height="20" alt="Загружаем ещё посты">`;
+const RETRY = `<button class="button button_outline post-list__retry" type="button">Обновить</button>`;
+
+/**
+ * Список постов с подгрузкой при прокрутке и состояниями «загрузка», «пусто», «конец», «ошибка».
+ */
+export class PostList {
+  #parent: HTMLElement;
+  #config: PostListConfig;
+  #list!: HTMLElement;
+  #status!: HTMLElement;
+  #posts = new Map<number, Post>();
+  #cursor = 0;
+  #hasMore = true;
+  #isLoading = false;
+  #hasError = false;
+  #isDestroyed = false;
+
+  /**
+   * @param parent Контейнер списка.
+   * @param config Загрузчик страниц, тексты состояний и обработчики.
+   */
+  constructor(parent: HTMLElement, config: PostListConfig) {
+    this.#parent = parent;
+    this.#config = config;
+  }
+
+  /**
+   * Рисует список и загружает первую страницу.
+   */
+  render(): void {
+    this.#parent.insertAdjacentHTML(
+      "beforeend",
+      `<div class="post-list"><div class="post-list__items"></div><div class="post-list__status" role="status"></div></div>`,
+    );
+    const element = this.#parent.lastElementChild as HTMLElement;
+    this.#list = element.querySelector(".post-list__items") as HTMLElement;
+    this.#status = element.querySelector(".post-list__status") as HTMLElement;
+    this.#status.addEventListener("click", (event) => {
+      if ((event.target as Element).closest(".post-list__retry")) {
+        this.#hasError = false;
+        this.#loadPage();
+      }
+    });
+    window.addEventListener("scroll", this.#onScroll, { passive: true });
+    this.#loadPage();
+  }
+
+  /**
+   * Снимает обработчик прокрутки и игнорирует ответы, пришедшие после ухода со страницы.
+   */
+  destroy(): void {
+    this.#isDestroyed = true;
+    window.removeEventListener("scroll", this.#onScroll);
+  }
+
+  /**
+   * Добавляет только что созданный пост в начало списка.
+   * @param post Пост из ответа бэка.
+   */
+  prepend(post: PostData): void {
+    const item = this.#createPost(post);
+    item.render("afterbegin");
+    this.#setStatus(this.#hasMore ? "idle" : "end");
+  }
+
+  /**
+   * Перерисовывает изменённый пост на его месте.
+   * @param post Пост из ответа бэка.
+   */
+  replace(post: PostData): void {
+    this.#posts.get(post.id)?.update(post);
+  }
+
+  /**
+   * Убирает удалённый пост из списка.
+   * @param postId Идентификатор поста.
+   */
+  remove(postId: number): void {
+    this.#posts.get(postId)?.remove();
+    this.#posts.delete(postId);
+    if (!this.#list.children.length && !this.#hasMore) {
+      this.#setStatus("empty");
+    }
+  }
+
+  #createPost(post: PostData): Post {
+    const item = new Post(this.#list, post, { onEdit: this.#config.onEdit });
+    this.#posts.set(post.id, item);
+    return item;
+  }
+
+  #onScroll = (): void => {
+    if (this.#isNearBottom()) {
+      this.#loadPage();
+    }
+  };
+
+  #isNearBottom(): boolean {
+    const scrolled = window.innerHeight + window.scrollY;
+    return scrolled >= document.documentElement.scrollHeight - LOAD_THRESHOLD;
+  }
+
+  #setStatus(status: ListStatus): void {
+    const hasPosts = this.#list.children.length > 0;
+    this.#status.classList.toggle(
+      "post-list__status_fill",
+      Boolean(this.#config.fill) && !hasPosts && status !== "idle",
+    );
+    if (status === "idle") {
+      this.#status.innerHTML = "";
+      return;
+    }
+    if (status === "loading" && hasPosts) {
+      this.#status.innerHTML = SPINNER;
+      return;
+    }
+    const message = `<p class="post-list__message">${this.#config.messages[status]}</p>`;
+    this.#status.innerHTML = status === "error" ? message + RETRY : message;
+  }
+
+  async #loadPage(): Promise<void> {
+    if (this.#isLoading || !this.#hasMore || this.#hasError) {
+      return;
+    }
+
+    this.#isLoading = true;
+    this.#setStatus("loading");
+    const { status, data } = await this.#config.load(this.#cursor, PAGE_SIZE);
+    this.#isLoading = false;
+
+    if (this.#isDestroyed) {
+      return;
+    }
+    if (status === 401) {
+      this.#config.onUnauthorized();
+      return;
+    }
+    if (status !== 200 || !data || !Array.isArray(data.posts)) {
+      this.#hasError = true;
+      this.#setStatus("error");
+      return;
+    }
+
+    data.posts
+      .filter((post) => !this.#posts.has(post.id))
+      .forEach((post) => this.#createPost(post).render("beforeend"));
+    ({ cursor: this.#cursor, hasMore: this.#hasMore } = nextCursor(
+      this.#cursor,
+      data,
+    ));
+
+    if (!this.#list.children.length) {
+      this.#setStatus("empty");
+      return;
+    }
+    this.#setStatus(this.#hasMore ? "idle" : "end");
+
+    if (this.#isNearBottom()) {
+      this.#loadPage();
+    }
+  }
+}
