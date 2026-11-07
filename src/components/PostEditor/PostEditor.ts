@@ -117,6 +117,14 @@ export class PostEditor {
   }
 
   /**
+   * Прячет или возвращает весь блок, например пока открыта правка профиля.
+   * @param isHidden Спрятать ли блок.
+   */
+  hide(isHidden: boolean): void {
+    this.#element.classList.toggle("post-editor_hidden", isHidden);
+  }
+
+  /**
    * Сворачивает форму и очищает поле.
    */
   close(): void {

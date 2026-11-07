@@ -163,6 +163,13 @@ export class Input {
     this.#control.dispatchEvent(new Event("change"));
   }
 
+  /**
+   * Ставит фокус в поле.
+   */
+  focus(): void {
+    this.#control.focus();
+  }
+
   get hasError(): boolean {
     return Boolean(this.#error.textContent);
   }

@@ -10,9 +10,18 @@ interface LoginTarget {
 }
 
 /**
- * Email, на который отправлен код подтверждения, и момент отправки.
+ * Откуда пришли подтверждать email: next — куда вести после кода, back — куда вернуть, если email заняли, skip — подпись кнопки ухода без подтверждения.
  */
-export interface PendingEmail {
+export interface EmailFlow {
+  next: string;
+  back: string;
+  skip: string;
+}
+
+/**
+ * Email, на который отправлен код подтверждения, момент отправки и сценарий, из которого пришли.
+ */
+export interface PendingEmail extends EmailFlow {
   email: string;
   sentAt: number;
 }
@@ -91,10 +100,14 @@ export const signupDraft = {
     delete values.confirm_password;
     loginTarget = null;
   },
-  setPendingEmail: (email: string, sentAt: number = Date.now()): void => {
-    pendingEmail = { email, sentAt };
+  setPendingEmail: (email: string, flow: EmailFlow): void => {
+    const { next, back, skip } = flow;
+    pendingEmail = { email, sentAt: Date.now(), next, back, skip };
   },
   pendingEmail: (): PendingEmail | null => pendingEmail,
+  clearPendingEmail: (): void => {
+    pendingEmail = null;
+  },
   clear: (): void => {
     values = {};
     completed = new Set();

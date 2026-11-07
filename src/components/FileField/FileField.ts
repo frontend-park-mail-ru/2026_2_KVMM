@@ -68,6 +68,15 @@ export class FileField {
   }
 
   /**
+   * Сбрасывает выбранный файл, подпись и ошибку.
+   */
+  clear(): void {
+    this.#control.value = "";
+    this.#text.textContent = this.#config.hint;
+    this.setError("");
+  }
+
+  /**
    * Проверяет выбранный файл и показывает или убирает ошибку.
    * @returns true, если файл не выбран или подходит.
    */

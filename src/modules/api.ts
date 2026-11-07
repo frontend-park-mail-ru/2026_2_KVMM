@@ -205,5 +205,7 @@ export const api = {
   deletePost: (postId: number) =>
     request<null>("DELETE", `/posts/delete?post_id=${postId}`),
   avatars: () => request<{ avatars: Avatar[] }>("GET", "/profile/avatars"),
+  deleteAvatar: (avatarId: number) =>
+    request<null>("DELETE", `/profile/avatars/${avatarId}`),
   mediaUrl: (path: string) => `${path}`,
 };

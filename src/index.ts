@@ -17,16 +17,21 @@ const signupRoutes = Object.fromEntries(
   ]),
 );
 
+function emailCodeRoute(back: string): Route {
+  return {
+    page: EmailCodePage,
+    auth: true,
+    redirect: () => (signupDraft.pendingEmail()?.back === back ? null : back),
+  };
+}
+
 const routes: Record<string, Route> = {
   "/login": { page: LoginPage, auth: false },
   ...signupRoutes,
-  "/signup/code": {
-    page: EmailCodePage,
-    auth: true,
-    redirect: () => (signupDraft.pendingEmail() ? null : SIGNUP_STEPS[1]),
-  },
+  "/signup/code": emailCodeRoute(SIGNUP_STEPS[1]),
   "/feed": { page: FeedPage, auth: true },
   "/profile": { page: ProfilePage, auth: true },
+  "/profile/code": emailCodeRoute("/profile"),
 };
 
 const router = new Router(

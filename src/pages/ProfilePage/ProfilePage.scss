@@ -49,6 +49,10 @@
     -webkit-line-clamp: 2;
   }
 
+  &__edit {
+    justify-self: center;
+  }
+
   &__bio {
     margin: 0;
     padding: 15px 24px 14px;

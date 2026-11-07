@@ -5,17 +5,16 @@ import { serverErrorMessage } from "../../modules/errors";
 import { validateEmailCode } from "../../modules/validation";
 import { escapeHtml } from "../../modules/utils";
 import { signupDraft } from "../../modules/signupDraft";
+import type { PendingEmail } from "../../modules/signupDraft";
 import { Input } from "../../components/Input/Input";
 import { authLayoutTemplate } from "../../components/AuthLayout/AuthLayout";
 import { logoTemplate } from "../../components/Logo/Logo";
 
 const RESEND_DELAY_MS = 2 * 60 * 1000;
-const EMAIL_STEP = "/signup/email";
-const NEXT_STEP = "/signup/about";
 const WRONG_CODE = "Неверный или устаревший код";
 const EMAIL_TAKEN = "Этот email уже занят";
 
-function template(email: string): string {
+function template({ email, skip }: PendingEmail): string {
   return authLayoutTemplate(`
     <section class="auth-card auth-card_gap_large">
       ${logoTemplate("auth-card__logo")}
@@ -28,7 +27,7 @@ function template(email: string): string {
         </div>
         <div class="auth-card__actions">
           <button class="button button_primary" type="submit">Продолжить</button>
-          <button class="button button_secondary" type="button" data-action="skip">Возможно потом</button>
+          <button class="button button_secondary" type="button" data-action="skip">${escapeHtml(skip)}</button>
         </div>
       </form>
     </section>
@@ -41,12 +40,12 @@ function countdown(ms: number): string {
 }
 
 /**
- * Подтверждение нового email кодом из письма: таймер повторной отправки на 2 минуты, «Возможно потом» оставляет email неподтверждённым.
+ * Подтверждение нового email кодом из письма — и при регистрации, и при смене email в профиле. Таймер повторной отправки на 2 минуты, кнопка ухода оставляет email неподтверждённым.
  */
 export class EmailCodePage {
   #parent: HTMLElement;
   #router: Router;
-  #email = "";
+  #pending!: PendingEmail;
   #code!: Input;
   #resend!: HTMLButtonElement;
   #submit!: HTMLButtonElement;
@@ -67,8 +66,8 @@ export class EmailCodePage {
    * Рисует форму кода и запускает таймер повторной отправки.
    */
   render(): void {
-    this.#email = signupDraft.pendingEmail()?.email ?? "";
-    this.#parent.insertAdjacentHTML("beforeend", template(this.#email));
+    this.#pending = signupDraft.pendingEmail() as PendingEmail;
+    this.#parent.insertAdjacentHTML("beforeend", template(this.#pending));
     const form = this.#parent.querySelector(
       ".auth-card__form",
     ) as HTMLFormElement;
@@ -101,7 +100,9 @@ export class EmailCodePage {
     });
     form
       .querySelector('[data-action="skip"]')
-      ?.addEventListener("click", () => this.#router.navigate(NEXT_STEP));
+      ?.addEventListener("click", () =>
+        this.#router.navigate(this.#pending.next),
+      );
     this.#resend.addEventListener("click", () => this.#sendAgain());
 
     this.#tick();
@@ -129,12 +130,14 @@ export class EmailCodePage {
   async #sendAgain(): Promise<void> {
     this.#serverError.textContent = "";
     this.#resend.disabled = true;
-    const response = await api.requestEmailChange(this.#email);
+    const { email } = this.#pending;
+    const response = await api.requestEmailChange(email);
     if (this.#isDestroyed) {
       return;
     }
     if (response.status === 200) {
-      signupDraft.setPendingEmail(this.#email);
+      signupDraft.setPendingEmail(email, this.#pending);
+      this.#pending = signupDraft.pendingEmail() as PendingEmail;
     } else {
       this.#serverError.textContent = serverErrorMessage(response);
     }
@@ -148,10 +151,8 @@ export class EmailCodePage {
     }
 
     this.#submit.disabled = true;
-    const response = await api.confirmEmail(
-      this.#email,
-      this.#code.value.trim(),
-    );
+    const { email, next, back } = this.#pending;
+    const response = await api.confirmEmail(email, this.#code.value.trim());
     if (this.#isDestroyed) {
       return;
     }
@@ -159,8 +160,9 @@ export class EmailCodePage {
 
     if (response.status === 200 && response.data?.id) {
       user.setProfile(response.data);
-      signupDraft.complete(EMAIL_STEP);
-      this.#router.navigate(NEXT_STEP, true);
+      signupDraft.complete(back);
+      signupDraft.clearPendingEmail();
+      this.#router.navigate(next, true);
       return;
     }
     if (response.status === 400) {
@@ -169,7 +171,7 @@ export class EmailCodePage {
     }
     if (response.status === 409) {
       signupDraft.setFieldError({ field: "email", message: EMAIL_TAKEN });
-      this.#router.navigate(EMAIL_STEP);
+      this.#router.navigate(back);
       return;
     }
     if (response.status === 401) {

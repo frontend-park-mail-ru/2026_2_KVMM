@@ -42,6 +42,23 @@
     border-color: var(--color-error);
   }
 
+  &_pill {
+    width: 153px;
+    height: 24px;
+    padding: 0 8px;
+    border: 1px solid var(--color-primary);
+    border-radius: var(--radius-button);
+    background: var(--color-surface);
+    color: var(--color-text);
+    font: var(--font-caption);
+    white-space: nowrap;
+  }
+
+  &_inactive {
+    background: var(--color-text-secondary);
+    cursor: default;
+  }
+
   &_small {
     height: 22px;
     padding: 0 12px;

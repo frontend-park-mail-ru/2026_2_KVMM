@@ -4,29 +4,17 @@ import type { Router } from "../../modules/router";
 import { user } from "../../modules/user";
 import { registerFieldError, serverErrorMessage } from "../../modules/errors";
 import {
-  MAX_LENGTH,
-  birthdayRange,
   normalizePhone,
   validateAvatarFile,
-  validateBio,
-  validateBirthday,
   validateConsent,
-  validateEmail,
-  validateGender,
-  validateName,
-  validateNickname,
-  validatePassword,
-  validatePasswordConfirm,
-  validatePhone,
 } from "../../modules/validation";
-import { attachPhoneMask } from "../../modules/phoneMask";
+import { fieldConfigs } from "../../modules/profileFields";
 import {
   SIGNUP_STEPS,
   isStepAvailable,
   signupDraft,
 } from "../../modules/signupDraft";
 import { Input } from "../../components/Input/Input";
-import type { InputConfig, InputOption } from "../../components/Input/Input";
 import { Checkbox } from "../../components/Checkbox/Checkbox";
 import { FileField } from "../../components/FileField/FileField";
 import { authLayoutTemplate } from "../../components/AuthLayout/AuthLayout";
@@ -54,13 +42,6 @@ interface Step {
   photo?: boolean;
   actions: StepAction[];
 }
-
-type FieldConfig = Omit<InputConfig, "name">;
-
-const GENDERS: InputOption[] = [
-  { value: "male", label: "Мужской" },
-  { value: "female", label: "Женский" },
-];
 
 const DEPENDENT_FIELDS: Record<string, string[]> = {
   email: ["phone_number"],
@@ -151,92 +132,6 @@ const STEPS: Record<string, Step> = {
 };
 
 const SUBMIT_KINDS: string[] = ["register", "save"];
-
-function fieldConfigs(
-  valueOf: (name: string) => string,
-): Record<string, FieldConfig> {
-  return {
-    nickname: {
-      type: "text",
-      placeholder: "Введите логин",
-      autocomplete: "username",
-      attributes: { maxlength: MAX_LENGTH.nickname },
-      validate: validateNickname,
-    },
-    password: {
-      type: "password",
-      placeholder: "Введите пароль",
-      autocomplete: "new-password",
-      attributes: { maxlength: MAX_LENGTH.password },
-      validate: validatePassword,
-    },
-    confirm_password: {
-      type: "password",
-      placeholder: "Повторите пароль",
-      autocomplete: "new-password",
-      attributes: { maxlength: MAX_LENGTH.password },
-      validate: (value) => validatePasswordConfirm(value, valueOf("password")),
-    },
-    email: {
-      type: "email",
-      placeholder: "Введите email",
-      autocomplete: "email",
-      attributes: { maxlength: MAX_LENGTH.email },
-      validate: (value) => validateEmail(value, valueOf("phone_number")),
-    },
-    phone_number: {
-      type: "tel",
-      placeholder: "Введите номер телефона",
-      autocomplete: "tel",
-      mask: attachPhoneMask,
-      validate: (value) => validatePhone(value, valueOf("email")),
-    },
-    profile_name: {
-      type: "text",
-      placeholder: "Введите имя",
-      autocomplete: "given-name",
-      attributes: { maxlength: MAX_LENGTH.name },
-      validate: (value) => validateName(value, "profile_name"),
-    },
-    surname: {
-      type: "text",
-      placeholder: "Введите фамилию",
-      autocomplete: "family-name",
-      attributes: { maxlength: MAX_LENGTH.name },
-      validate: (value) => validateName(value, "surname"),
-    },
-    patronymic: {
-      type: "text",
-      placeholder: "Введите отчество",
-      autocomplete: "additional-name",
-      attributes: { maxlength: MAX_LENGTH.name },
-      validate: (value) => validateName(value, "patronymic", false),
-    },
-    gender: {
-      placeholder: "Выберите пол",
-      autocomplete: "sex",
-      options: GENDERS,
-      validate: validateGender,
-    },
-    birthday: {
-      type: "date",
-      placeholder: "Дата рождения",
-      autocomplete: "bday",
-      attributes: {
-        ...birthdayRange(),
-        required: "required",
-        "aria-label": "Дата рождения",
-      },
-      validate: validateBirthday,
-    },
-    bio: {
-      type: "textarea",
-      placeholder: "Расскажите о себе",
-      attributes: { maxlength: MAX_LENGTH.bio },
-      validate: validateBio,
-    },
-  };
-}
 
 function actionTemplate({ kind, style, label }: StepAction): string {
   const className = `button button_${style}`;
@@ -671,7 +566,11 @@ export class SignupPage {
         return;
       }
       if (response.status === 200) {
-        signupDraft.setPendingEmail(email);
+        signupDraft.setPendingEmail(email, {
+          next: "/signup/about",
+          back: "/signup/email",
+          skip: "Возможно потом",
+        });
         this.#router.navigate("/signup/code");
         return;
       }

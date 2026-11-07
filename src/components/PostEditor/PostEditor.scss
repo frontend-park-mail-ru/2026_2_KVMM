@@ -2,6 +2,10 @@
   display: flex;
   flex-direction: column;
 
+  &_hidden {
+    display: none;
+  }
+
   &__open {
     align-self: center;
     width: 200px;
