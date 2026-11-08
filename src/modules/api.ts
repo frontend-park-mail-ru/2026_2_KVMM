@@ -1,4 +1,5 @@
 import { user } from "./user";
+import { network } from "./network";
 
 const API_URL = "/api";
 
@@ -246,8 +247,10 @@ async function request<T>(
   try {
     response = await fetch(`${API_URL}${path}`, options);
   } catch {
+    network.report(null);
     return { status: 0, data: null };
   }
+  network.report(response);
 
   const data = (await response
     .json()

@@ -50,4 +50,10 @@ export default tseslint.config(
       ],
     },
   },
+  {
+    files: ["src/sw/**/*.ts"],
+    languageOptions: {
+      globals: globals.serviceworker,
+    },
+  },
 );

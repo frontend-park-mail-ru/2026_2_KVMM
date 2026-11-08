@@ -2,6 +2,8 @@ import "./index.scss";
 import { api, isSession } from "./modules/api";
 import { user } from "./modules/user";
 import { chatSocket } from "./modules/chatSocket";
+import { network } from "./modules/network";
+import { renderOfflineBanner } from "./components/OfflineBanner/OfflineBanner";
 import { Router } from "./modules/router";
 import { LoginPage } from "./pages/LoginPage/LoginPage";
 import { SignupPage } from "./pages/SignupPage/SignupPage";
@@ -58,8 +60,14 @@ user.onChange(() => {
     chatSocket.start();
   } else {
     chatSocket.stop();
+    network.clearSaved();
   }
 });
+
+renderOfflineBanner(document.body);
+if (SERVICE_WORKER) {
+  network.registerWorker();
+}
 
 const { status, data } = await api.me();
 if (status === 200 && isSession(data)) {
