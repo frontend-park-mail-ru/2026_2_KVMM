@@ -28,7 +28,6 @@
     background: var(--color-avatar);
     color: var(--color-text);
     font: var(--font-display);
-    cursor: default;
     user-select: none;
   }
 
@@ -71,7 +70,6 @@
     color: var(--color-error);
     font: var(--font-caption);
     text-align: center;
-    cursor: default;
 
     &:empty {
       display: none;

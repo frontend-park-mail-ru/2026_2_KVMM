@@ -180,7 +180,6 @@
     color: var(--color-text);
     font: var(--font-body);
     text-align: center;
-    cursor: default;
 
     &:empty {
       display: none;
@@ -255,7 +254,6 @@
     padding: 0 12px;
     color: var(--color-error);
     font: var(--font-caption);
-    cursor: default;
 
     &:empty {
       display: none;

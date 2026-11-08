@@ -45,7 +45,6 @@
     padding-bottom: 21px;
     font: var(--font-title);
     text-align: center;
-    cursor: default;
     user-select: none;
 
     &_compact {
@@ -106,7 +105,6 @@
     color: var(--color-error);
     font: var(--font-caption);
     text-align: center;
-    cursor: default;
 
     &:empty {
       display: none;
@@ -123,7 +121,6 @@
     margin: 0;
     font: var(--font-caption);
     text-align: center;
-    cursor: default;
     user-select: none;
   }
 

@@ -17,7 +17,6 @@
     margin: 0;
     color: var(--color-text);
     font: var(--font-title);
-    cursor: default;
   }
 
   &__list {
@@ -135,7 +134,6 @@
     margin: 0;
     color: var(--color-error);
     font: var(--font-caption);
-    cursor: default;
 
     &:empty {
       display: none;

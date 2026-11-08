@@ -6,6 +6,7 @@
 
 body {
   margin: 0;
+  cursor: default;
   background: var(--color-page);
   color: var(--color-text);
   font: var(--font-body);
@@ -31,4 +32,14 @@ input,
 select,
 textarea {
   font: inherit;
+}
+
+input,
+textarea {
+  cursor: text;
+}
+
+input[type="checkbox"],
+input[type="file"] {
+  cursor: inherit;
 }
