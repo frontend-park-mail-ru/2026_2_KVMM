@@ -288,6 +288,14 @@ export const api = {
     request<{ message: string }>("POST", "/auth/email/change", {
       body: { email },
     }),
+  requestRegisterCode: (email: string) =>
+    request<{ message: string }>("POST", "/auth/register/email/send/code", {
+      body: { email, privacy_policy_allowed: true },
+    }),
+  registerByEmail: (email: string, code: string) =>
+    request<Session>("POST", "/auth/register/email/code", {
+      body: { email, code },
+    }),
   requestLoginCode: (email: string) =>
     request<{ message: string }>("POST", "/auth/login/email/send/code", {
       body: { email },

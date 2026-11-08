@@ -43,7 +43,7 @@ const routes: Record<string, Route> = {
   "/login": { page: LoginPage, auth: false },
   "/login/code": emailCodeRoute("/login", false),
   ...signupRoutes,
-  "/signup/code": emailCodeRoute(SIGNUP_STEPS[1]),
+  "/signup/code": emailCodeRoute(SIGNUP_STEPS[0], false),
   "/feed": { page: FeedPage, auth: true },
   "/profile": { page: ProfilePage, auth: true },
   "/profile/code": emailCodeRoute("/profile"),

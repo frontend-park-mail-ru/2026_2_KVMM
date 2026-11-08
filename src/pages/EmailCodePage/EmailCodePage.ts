@@ -13,6 +13,8 @@ import { logoTemplate } from "../../components/Logo/Logo";
 const RESEND_DELAY_MS = 2 * 60 * 1000;
 const WRONG_CODE = "Неверный или устаревший код";
 const EMAIL_TAKEN = "Этот email уже занят";
+const REGISTER_FAILED =
+  "Не получилось создать аккаунт с этой почтой, зарегистрируйтесь по логину";
 
 /**
  * Разметка экрана кода: куда отправлен код, поле кода, кнопка повторной отправки с таймером, «Продолжить» и кнопка ухода.
@@ -52,7 +54,7 @@ function countdown(ms: number): string {
 }
 
 /**
- * Экран кода из письма. Подтверждает новый email (в регистрации и профиле) или впускает по email без пароля. Таймер повторной отправки на 2 минуты; кнопка ухода оставляет email неподтверждённым или возвращает ко входу по паролю.
+ * Экран кода из письма для трёх сценариев: смена email в профиле, вход по email без пароля и регистрация по email. Таймер повторной отправки на 2 минуты; кнопка ухода оставляет email неподтверждённым или возвращает на предыдущий экран.
  */
 export class EmailCodePage {
   #parent: HTMLElement;
@@ -147,10 +149,12 @@ export class EmailCodePage {
     this.#serverError.textContent = "";
     this.#resend.disabled = true;
     const { email, purpose } = this.#pending;
-    const response =
-      purpose === "login"
-        ? await api.requestLoginCode(email)
-        : await api.requestEmailChange(email);
+    const send = {
+      login: api.requestLoginCode,
+      register: api.requestRegisterCode,
+      change: api.requestEmailChange,
+    }[purpose];
+    const response = await send(email);
     if (this.#isDestroyed) {
       return;
     }
@@ -164,10 +168,10 @@ export class EmailCodePage {
   }
 
   /**
-   * Кнопка ухода. При смене email — дальше без подтверждения, при входе по коду — назад ко входу по паролю.
+   * Кнопка ухода. При смене email — дальше без подтверждения, при входе и регистрации — назад, где можно ввести другой email или войти по паролю.
    */
   #leave(): void {
-    if (this.#pending.purpose === "login") {
+    if (this.#pending.purpose !== "change") {
       signupDraft.clearPendingEmail();
       this.#router.navigate(this.#pending.back);
       return;
@@ -187,6 +191,8 @@ export class EmailCodePage {
     const code = this.#code.value.trim();
     if (this.#pending.purpose === "login") {
       await this.#confirmLogin(code);
+    } else if (this.#pending.purpose === "register") {
+      await this.#confirmRegister(code);
     } else {
       await this.#confirmChange(code);
     }
@@ -216,6 +222,37 @@ export class EmailCodePage {
       return;
     }
     this.#serverError.textContent = serverErrorMessage(response);
+  }
+
+  /**
+   * Регистрация по email: бэк создаёт аккаунт с придуманным логином, дальше — шаг «О себе». 409 — email заняли, пока шёл код; 500 — бэк не смог придумать логин по этой почте.
+   * @param code Код из письма.
+   */
+  async #confirmRegister(code: string): Promise<void> {
+    const { email, next, back } = this.#pending;
+    const response = await api.registerByEmail(email, code);
+    if (this.#isDestroyed) {
+      return;
+    }
+    if (response.status === 201 && isSession(response.data)) {
+      user.set(response.data);
+      signupDraft.complete(back);
+      signupDraft.clearPendingEmail();
+      this.#router.navigate(next, true);
+      return;
+    }
+    if (response.status === 400) {
+      this.#code.setError(WRONG_CODE);
+      return;
+    }
+    if (response.status === 409) {
+      signupDraft.setFieldError({ field: "email", message: EMAIL_TAKEN });
+      signupDraft.clearPendingEmail();
+      this.#router.navigate(back);
+      return;
+    }
+    this.#serverError.textContent =
+      response.status >= 500 ? REGISTER_FAILED : serverErrorMessage(response);
   }
 
   /**

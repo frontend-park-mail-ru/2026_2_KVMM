@@ -10,9 +10,9 @@ interface LoginTarget {
 }
 
 /**
- * Зачем отправлен код: подтвердить новый email вошедшего пользователя или войти по email без пароля.
+ * Зачем отправлен код: подтвердить новый email вошедшего пользователя, войти по email без пароля или зарегистрироваться по email.
  */
-export type EmailPurpose = "change" | "login";
+export type EmailPurpose = "change" | "login" | "register";
 
 /**
  * Откуда пришли подтверждать email: next — куда вести после кода, back — куда вернуть, если email заняли, skip — подпись кнопки ухода без подтверждения.
@@ -32,12 +32,7 @@ export interface PendingEmail extends EmailFlow {
   sentAt: number;
 }
 
-export const SIGNUP_STEPS = [
-  "/signup",
-  "/signup/email",
-  "/signup/about",
-  "/signup/photo",
-];
+export const SIGNUP_STEPS = ["/signup", "/signup/about", "/signup/photo"];
 
 const PHONE_PATTERN = /^\+7\d{10}$/;
 

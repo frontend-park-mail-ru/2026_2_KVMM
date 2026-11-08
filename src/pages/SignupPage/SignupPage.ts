@@ -7,6 +7,7 @@ import {
   normalizePhone,
   validateAvatarFile,
   validateConsent,
+  validateRequiredEmail,
 } from "../../modules/validation";
 import { fieldConfigs } from "../../modules/profileFields";
 import {
@@ -19,7 +20,10 @@ import { Checkbox } from "../../components/Checkbox/Checkbox";
 import { FileField } from "../../components/FileField/FileField";
 import { authLayoutTemplate } from "../../components/AuthLayout/AuthLayout";
 import { logoTemplate } from "../../components/Logo/Logo";
+import { modeSwitchTemplate } from "../../components/ModeSwitch/ModeSwitch";
 import avatarPlaceholder from "./avatar-placeholder.svg";
+
+type SignupMode = "login" | "email";
 
 type ActionKind =
   "login" | "register" | "save" | "skip" | "step" | "back" | "forward";
@@ -37,6 +41,7 @@ interface Step {
   fields: string[];
   fieldsModifier?: string;
   consent?: boolean;
+  modes?: boolean;
   slogan?: boolean;
   photo?: boolean;
   actions: StepAction[];
@@ -46,9 +51,24 @@ const DEPENDENT_FIELDS: Record<string, string[]> = {
   password: ["confirm_password"],
 };
 
-const REQUIRED_FIELDS = ["nickname", "password", "confirm_password"];
+const REQUIRED_FIELDS = ["nickname", "password", "confirm_password", "email"];
+
+const REQUIRED_VALIDATORS: Record<string, (value: string) => string> = {
+  email: validateRequiredEmail,
+};
+
+const MODES = [
+  { value: "login", label: "логину" },
+  { value: "email", label: "email" },
+];
+
+const MODE_FIELDS: Record<SignupMode, string[]> = {
+  login: ["nickname", "password", "confirm_password"],
+  email: ["email"],
+};
 
 const ABOUT_FIELDS = [
+  "phone_number",
   "profile_name",
   "surname",
   "patronymic",
@@ -87,18 +107,12 @@ const STEPS: Record<string, Step> = {
     fields: ["nickname", "password", "confirm_password"],
     fieldsModifier: "auth-card__fields_compact",
     consent: true,
+    modes: true,
     slogan: true,
     actions: [
       { kind: "register", style: "secondary", label: "Зарегистрироваться" },
       { kind: "login", style: "primary", label: "Войти" },
     ],
-  },
-  "/signup/email": {
-    label: "email или телефон",
-    title: "Добавьте email или телефон — это поможет защитить ваш аккаунт",
-    card: "auth-card_gap_large auth-card_padding_large",
-    fields: ["email", "phone_number"],
-    actions: [{ kind: "save", style: "primary", label: "Подтвердить" }, SKIP],
   },
   "/signup/about": {
     label: "о себе",
@@ -119,6 +133,20 @@ const STEPS: Record<string, Step> = {
 };
 
 const SUBMIT_KINDS: string[] = ["register", "save"];
+
+/**
+ * Способ регистрации на шаге 1: выбранный раньше, иначе по email, если на странице входа человек вводил email, иначе по логину.
+ * @returns login или email.
+ */
+function signupMode(): SignupMode {
+  const saved = signupDraft.text("signupMode");
+  if (saved === "login" || saved === "email") {
+    return saved;
+  }
+  return signupDraft.text("email") && !signupDraft.text("nickname")
+    ? "email"
+    : "login";
+}
 
 /**
  * Кнопка шага. «Войти» — ссылка на /login, отправляющие действия — submit, остальные — обычные кнопки.
@@ -202,7 +230,7 @@ function navTemplate(path: string): string {
 }
 
 /**
- * Подсказка поля: у обязательных — логина и паролей — со звёздочкой, остальные необязательны, как на бэке.
+ * Подсказка поля: у обязательных — логина, паролей и email при регистрации по email — со звёздочкой, остальные необязательны, как на бэке.
  * @param name Имя поля.
  * @param placeholder Подсказка из настроек поля.
  * @returns Подсказка для шага.
@@ -212,18 +240,27 @@ function placeholderFor(name: string, placeholder: string): string {
 }
 
 /**
- * Карточка обычного шага: логотип, форма с заголовком и полями, слоган на первом шаге и навигация.
+ * Карточка обычного шага: логотип, форма с заголовком, переключателем «логину | email» на первом шаге и полями, слоган на первом шаге и навигация.
  * @param step Шаг регистрации.
  * @param path Путь шага.
+ * @param mode Способ регистрации для переключателя.
  * @returns Разметка страницы.
  */
-function stepTemplate(step: Step, path: string): string {
+function stepTemplate(step: Step, path: string, mode: SignupMode): string {
+  const modes = step.modes
+    ? modeSwitchTemplate(
+        "Зарегистрироваться по",
+        MODES,
+        mode,
+        "auth-card__mode",
+      )
+    : "";
   return authLayoutTemplate(`
     <section class="auth-card ${step.card} auth-card_stepped">
       ${logoTemplate("auth-card__logo")}
       ${formTemplate(
         step,
-        `<p class="auth-card__title">${step.title}</p>${fieldsTemplate(step)}<p class="auth-card__server-error" role="alert"></p>`,
+        `<p class="auth-card__title">${step.title}</p>${modes}${fieldsTemplate(step)}<p class="auth-card__server-error" role="alert"></p>`,
       )}
       ${step.slogan ? `<p class="auth-card__slogan">${SLOGAN}</p>` : ""}
       ${navTemplate(path)}
@@ -253,12 +290,13 @@ function photoStepTemplate(step: Step, path: string): string {
 }
 
 /**
- * Регистрация в четыре шага: шаг 1 создаёт аккаунт, шаги 2–4 дозаполняют профиль уже вошедшего пользователя — контакты, данные о себе, фото и рассказ о себе. Любой из шагов 2–4 можно пропустить.
+ * Регистрация в три шага. Шаг 1 создаёт аккаунт по логину и паролю или по email с кодом из письма — тогда логин придумывает бэк. Шаги «О себе» (телефон, имя, пол, дата рождения) и «Фото» дозаполняют профиль и их можно пропустить.
  */
 export class SignupPage {
   #parent: HTMLElement;
   #router: Router;
   #path = "";
+  #mode: SignupMode = "login";
   #step!: Step;
   #fields: Record<string, Input> = {};
   #consent: Checkbox | null = null;
@@ -285,11 +323,16 @@ export class SignupPage {
    */
   render(): void {
     this.#path = window.location.pathname;
-    this.#step = STEPS[this.#path];
-    const template = this.#step.photo ? photoStepTemplate : stepTemplate;
+    this.#mode = signupMode();
+    const step = STEPS[this.#path];
+    this.#step = step.modes
+      ? { ...step, fields: MODE_FIELDS[this.#mode] }
+      : step;
     this.#parent.insertAdjacentHTML(
       "beforeend",
-      template(this.#step, this.#path),
+      this.#step.photo
+        ? photoStepTemplate(this.#step, this.#path)
+        : stepTemplate(this.#step, this.#path, this.#mode),
     );
 
     const card = this.#parent.querySelector(".auth-card") as HTMLElement;
@@ -323,6 +366,14 @@ export class SignupPage {
       this.#runAction((submit as StepAction).kind);
     });
     card.addEventListener("click", (event) => {
+      const option = (event.target as Element).closest<HTMLElement>(
+        "[data-mode]",
+      );
+      if (option?.dataset.mode && option.dataset.mode !== this.#mode) {
+        signupDraft.set("signupMode", option.dataset.mode);
+        this.#router.navigate(this.#path, true);
+        return;
+      }
       const target = (event.target as Element).closest<HTMLElement>(
         "[data-action]",
       );
@@ -368,6 +419,7 @@ export class SignupPage {
         ...configs[name],
         name,
         placeholder,
+        validate: REQUIRED_VALIDATORS[name] ?? configs[name].validate,
       });
       field.render();
       field.value = signupDraft.text(name);
@@ -561,11 +613,15 @@ export class SignupPage {
   }
 
   /**
-   * Шаг 1: создаёт аккаунт. После успеха пароли стираются из черновика и открывается шаг 2; ошибки бэка показываются под полями.
+   * Шаг 1 по логину: создаёт аккаунт. После успеха пароли стираются из черновика и открывается шаг «О себе»; ошибки бэка показываются под полями.
    */
   async #register(): Promise<void> {
     this.#serverError.textContent = "";
     if (!this.#validateStep()) {
+      return;
+    }
+    if (this.#mode === "email") {
+      await this.#registerByEmail();
       return;
     }
 
@@ -599,7 +655,40 @@ export class SignupPage {
   }
 
   /**
-   * Шаги 2–4: проверяет поля и сохраняет данные текущего шага.
+   * Шаг 1 по email: просит бэк прислать код и открывает экран кода. Аккаунт создаётся после ввода кода. 409 — email уже занят.
+   */
+  async #registerByEmail(): Promise<void> {
+    const field = this.#fields.email;
+    const email = field.value.trim();
+    this.#setBusy(true);
+    const response = await api.requestRegisterCode(email);
+    if (this.#isDestroyed) {
+      return;
+    }
+    this.#setBusy(false);
+    if (response.status === 200) {
+      signupDraft.setPendingEmail(email, {
+        purpose: "register",
+        next: SIGNUP_STEPS[1],
+        back: SIGNUP_STEPS[0],
+        skip: "Изменить email",
+      });
+      this.#router.navigate("/signup/code");
+      return;
+    }
+    if (response.status === 409) {
+      field.setError(EMAIL_TAKEN);
+      return;
+    }
+    if (response.status === 400) {
+      field.setError(serverErrorMessage(response));
+      return;
+    }
+    this.#serverError.textContent = serverErrorMessage(response);
+  }
+
+  /**
+   * Шаги «О себе» и «Фото»: проверяет поля и сохраняет данные текущего шага.
    */
   async #save(): Promise<void> {
     this.#serverError.textContent = "";
@@ -607,9 +696,7 @@ export class SignupPage {
       return;
     }
     this.#setBusy(true);
-    if (this.#path === "/signup/email") {
-      await this.#saveContacts();
-    } else if (this.#path === "/signup/about") {
+    if (this.#path === "/signup/about") {
       await this.#saveAbout();
     } else {
       await this.#savePhoto();
@@ -633,62 +720,17 @@ export class SignupPage {
   }
 
   /**
-   * Шаг 2: сохраняет телефон, затем отправляет код на email и открывает экран кода. Без email шаг завершается сразу. 409 — номер или email уже заняты.
-   */
-  async #saveContacts(): Promise<void> {
-    const email = this.#value("email").trim();
-    const phone = normalizePhone(this.#value("phone_number"));
-    const profile = user.profile;
-
-    if (phone && phone !== profile?.phone_number) {
-      const response = await api.updateProfile({ phone_number: phone });
-      if (this.#isDestroyed) {
-        return;
-      }
-      if (!this.#applyProfile(response)) {
-        if (response.status === 409) {
-          this.#fields.phone_number.setError(PHONE_TAKEN);
-        } else {
-          this.#showError(response, "phone_number");
-        }
-        return;
-      }
-    }
-
-    if (email && email.toLowerCase() !== profile?.email?.toLowerCase()) {
-      const response = await api.requestEmailChange(email);
-      if (this.#isDestroyed) {
-        return;
-      }
-      if (response.status === 200) {
-        signupDraft.setPendingEmail(email, {
-          purpose: "change",
-          next: "/signup/about",
-          back: "/signup/email",
-          skip: "Возможно потом",
-        });
-        this.#router.navigate("/signup/code");
-        return;
-      }
-      if (response.status === 409) {
-        this.#fields.email.setError(EMAIL_TAKEN);
-      } else {
-        this.#showError(response, "email");
-      }
-      return;
-    }
-
-    this.#completeStep();
-  }
-
-  /**
-   * Шаг 3: сохраняет только заполненные поля — имя, фамилию, отчество, пол и дату рождения. Пустые не отправляются: бэк их не примет. Если не заполнено ничего, шаг завершается без запроса, как «Возможно потом».
+   * Шаг «О себе»: сохраняет только заполненные поля — телефон, имя, фамилию, отчество, пол и дату рождения. Пустые не отправляются: бэк их не примет. Если не заполнено ничего, шаг завершается без запроса, как «Возможно потом». 409 — телефон уже у другого аккаунта.
    */
   async #saveAbout(): Promise<void> {
     const fields = Object.fromEntries(
-      ABOUT_FIELDS.map((name) => [name, this.#value(name).trim()]).filter(
-        ([, value]) => value,
-      ),
+      ABOUT_FIELDS.map((name) => {
+        const value = this.#value(name);
+        return [
+          name,
+          name === "phone_number" ? normalizePhone(value) : value.trim(),
+        ];
+      }).filter(([, value]) => value),
     );
     if (Object.keys(fields).length === 0) {
       this.#completeStep();
@@ -700,6 +742,10 @@ export class SignupPage {
     }
     if (this.#applyProfile(response)) {
       this.#completeStep();
+      return;
+    }
+    if (response.status === 409) {
+      this.#fields.phone_number?.setError(PHONE_TAKEN);
       return;
     }
     this.#showError(response);
