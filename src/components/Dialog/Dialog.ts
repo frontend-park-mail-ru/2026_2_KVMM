@@ -9,6 +9,11 @@ export interface ConfirmOptions {
   cancel: string;
 }
 
+/**
+ * Разметка окна подтверждения поверх затемнения. Все тексты экранируются.
+ * @param options Вопрос и подписи кнопок.
+ * @returns Разметка окна.
+ */
 function template(options: ConfirmOptions): string {
   const message = escapeHtml(options.message);
   const confirm = escapeHtml(options.confirm);

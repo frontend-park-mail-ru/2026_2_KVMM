@@ -7,6 +7,13 @@ export interface CheckboxConfig {
   validate: (checked: boolean) => string;
 }
 
+/**
+ * Разметка чекбокса: скрытый input, нарисованный кружок, подпись и место под ошибку.
+ * @param config Настройки чекбокса.
+ * @param config.name Имя поля формы.
+ * @param config.label Статичная разметка подписи.
+ * @returns Разметка чекбокса.
+ */
 function template({ name, label }: CheckboxConfig): string {
   return `
     <div class="checkbox">
@@ -40,6 +47,10 @@ export class Checkbox {
     this.#config = config;
   }
 
+  /**
+   * Отмечен ли чекбокс.
+   * @returns true, если отмечен.
+   */
   get checked(): boolean {
     return this.#control.checked;
   }
@@ -53,6 +64,10 @@ export class Checkbox {
     this.#box.classList.toggle("checkbox__box_checked", value);
   }
 
+  /**
+   * Показана ли сейчас ошибка: тогда чекбокс перепроверяется при каждом переключении.
+   * @returns true, если под чекбоксом есть текст ошибки.
+   */
   get hasError(): boolean {
     return Boolean(this.#error.textContent);
   }

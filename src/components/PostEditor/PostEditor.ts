@@ -12,6 +12,10 @@ export interface PostEditorHandlers {
 
 const LABELS = { create: "Опубликовать", edit: "Изменить" };
 
+/**
+ * Разметка редактора: кнопка «Создать пост» и скрытая форма с полем, ошибкой и кнопками.
+ * @returns Разметка редактора.
+ */
 function template(): string {
   return `
     <section class="post-editor">
@@ -163,6 +167,10 @@ export class PostEditor {
     this.#text.setError(message);
   }
 
+  /**
+   * Раскрывает форму: для нового поста — пустую с «Опубликовать», для правки — с текстом поста, «Изменить» и «Удалить».
+   * @param post Пост для правки или null для нового.
+   */
   #show(post: PostData | null): void {
     this.#post = post;
     this.#text.value = post?.post_text ?? "";

@@ -11,6 +11,10 @@ let isBound = false;
 let generation = 0;
 const listeners = new Set<(count: number) => void>();
 
+/**
+ * Сохраняет новое число заявок и сообщает подписчикам, если оно изменилось.
+ * @param value Число входящих заявок.
+ */
 function set(value: number): void {
   if (value !== count) {
     count = value;
@@ -18,6 +22,10 @@ function set(value: number): void {
   }
 }
 
+/**
+ * Считает входящие заявки, проходя страницы списка (до 10, по 10 на странице).
+ * @returns Число заявок или null при ошибке запроса.
+ */
 async function load(): Promise<number | null> {
   let total = 0;
   let cursor = 0;
@@ -41,6 +49,10 @@ async function load(): Promise<number | null> {
  * обновляется раз в минуту, при переходах по страницам, при возвращении на вкладку и после ответа на заявку.
  */
 export const friendRequests = {
+  /**
+   * Последнее известное число входящих заявок.
+   * @returns Число заявок.
+   */
   get count(): number {
     return count;
   },

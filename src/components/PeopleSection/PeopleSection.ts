@@ -1,8 +1,7 @@
-import { api } from "../../modules/api";
 import type { ApiResult, ShortProfile } from "../../modules/api";
-import { nextOffset } from "@nexly/utils";
+import { escapeHtml, nextOffset } from "@nexly/utils";
 import { displayName } from "../../modules/profileName";
-import { escapeHtml } from "@nexly/utils";
+import { avatarTemplate } from "../../modules/avatar";
 import { people } from "../../modules/people";
 
 /**
@@ -35,6 +34,11 @@ export interface PeopleSectionConfig {
 
 const MORE_ERROR = "Не удалось загрузить, попробуйте ещё раз";
 
+/**
+ * Разметка пустой секции: заголовок, список, место под ошибку и кнопка «Смотреть еще». Секция скрыта, пока не загружена.
+ * @param title Заголовок секции.
+ * @returns Разметка секции.
+ */
 function template(title: string): string {
   return `
     <section class="people people_hidden">
@@ -46,14 +50,12 @@ function template(title: string): string {
   `;
 }
 
-function avatarTemplate(person: ShortProfile, name: string): string {
-  const letter = [...name][0]?.toUpperCase() ?? "?";
-  const image = person.avatar_urls
-    ? `<img class="people__avatar-image" src="${escapeHtml(api.mediaUrl(person.avatar_urls))}" alt="">`
-    : "";
-  return `<span class="people__avatar">${escapeHtml(letter)}${image}</span>`;
-}
-
+/**
+ * Строка человека: ссылка на его страницу с аватаркой и именем и кнопки действий справа.
+ * @param person Короткий профиль.
+ * @param actions Кнопки строки.
+ * @returns Разметка строки.
+ */
 function itemTemplate(person: ShortProfile, actions: PersonAction[]): string {
   const name = displayName(person);
   const buttons = actions
@@ -65,7 +67,7 @@ function itemTemplate(person: ShortProfile, actions: PersonAction[]): string {
   return `
     <li class="people__item" data-id="${person.id}">
       <a class="people__person" href="/profile/${person.id}" data-link draggable="false">
-        ${avatarTemplate(person, name)}
+        ${avatarTemplate("people", name, person.avatar_urls ?? "")}
         <span class="people__name" title="${escapeHtml(name)}">${escapeHtml(name)}</span>
       </a>
       <span class="people__actions">${buttons}</span>
@@ -96,6 +98,10 @@ export class PeopleSection {
     this.#config = config;
   }
 
+  /**
+   * Сколько людей сейчас в секции.
+   * @returns Число строк.
+   */
   get count(): number {
     return this.#people.size;
   }
@@ -216,6 +222,11 @@ export class PeopleSection {
     this.#error.textContent = message;
   }
 
+  /**
+   * Добавляет строку человека и запоминает его в кеше людей, чтобы его страница сразу знала имя. Сломанная аватарка заменяется буквой.
+   * @param person Короткий профиль.
+   * @param position В начало или в конец списка.
+   */
   #append(person: ShortProfile, position: InsertPosition): void {
     this.#people.set(person.id, person);
     people.remember(person.id, {
@@ -234,6 +245,9 @@ export class PeopleSection {
     image?.addEventListener("error", () => image.remove());
   }
 
+  /**
+   * Прячет пустую секцию, которой нечего подгружать, и кнопку «Смотреть еще», когда страниц больше нет.
+   */
   #update(): void {
     this.#element.classList.toggle(
       "people_hidden",

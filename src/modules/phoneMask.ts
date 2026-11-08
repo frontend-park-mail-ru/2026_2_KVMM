@@ -12,6 +12,11 @@ export interface MaskedValue {
   caret: number;
 }
 
+/**
+ * Выделяет 10 цифр номера без кода страны. Ведущую 7 при «+» и ведущие 7 или 8 перед лишней цифрой считает кодом и отбрасывает.
+ * @param compact Ввод без пробелов.
+ * @returns Цифры номера и сколько цифр отброшено в начале — для пересчёта курсора.
+ */
 function nationalDigits(compact: string): {
   national: string;
   dropped: number;
@@ -34,6 +39,11 @@ function nationalDigits(compact: string): {
   return { national: digits.slice(0, NATIONAL_LENGTH), dropped };
 }
 
+/**
+ * Расставляет цифры номера по маске +7 (999) 123-45-67 по мере ввода.
+ * @param national До 10 цифр номера.
+ * @returns Номер в маске, частичный, если цифр меньше.
+ */
 function format(national: string): string {
   let result = PREFIX + national.slice(0, 3);
   if (national.length > 3) {
@@ -48,6 +58,12 @@ function format(national: string): string {
   return result;
 }
 
+/**
+ * Позиция курсора сразу после count-й цифры номера в маске, чтобы курсор не прыгал в конец при правке в середине.
+ * @param formatted Номер в маске.
+ * @param count Сколько цифр номера должно быть перед курсором.
+ * @returns Индекс курсора.
+ */
 function caretAfterDigits(formatted: string, count: number): number {
   if (count === 0) {
     return PREFIX.length;
@@ -87,6 +103,13 @@ export function applyPhoneMask(
   return { value: formatted, caret: caretAfterDigits(formatted, count) };
 }
 
+/**
+ * Ищет ближайшую цифру номера от позиции в заданную сторону, не заходя в префикс «+7 (».
+ * @param value Значение поля.
+ * @param from С какой позиции искать.
+ * @param step -1 — влево, 1 — вправо.
+ * @returns Индекс цифры или -1.
+ */
 function digitIndex(value: string, from: number, step: number): number {
   for (
     let index = from;
@@ -100,6 +123,12 @@ function digitIndex(value: string, from: number, step: number): number {
   return -1;
 }
 
+/**
+ * Ставит новое значение и курсор и запускает input, чтобы маска и проверка поля отработали как при обычном вводе.
+ * @param control Поле телефона.
+ * @param value Новое значение.
+ * @param caret Позиция курсора.
+ */
 function replaceValue(
   control: HTMLInputElement,
   value: string,
@@ -110,6 +139,10 @@ function replaceValue(
   control.dispatchEvent(new Event("input", { bubbles: true }));
 }
 
+/**
+ * Backspace и Delete рядом со скобкой, пробелом или дефисом стирают ближайшую цифру, а не символ маски, который маска тут же вернула бы. Стирание до пустого префикса очищает поле.
+ * @param event Событие beforeinput поля.
+ */
 function onBeforeInput(event: InputEvent): void {
   const control = event.target as HTMLInputElement;
   const { value, selectionStart: start, selectionEnd: end } = control;

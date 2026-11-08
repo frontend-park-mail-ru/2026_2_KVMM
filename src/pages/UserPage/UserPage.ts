@@ -28,6 +28,13 @@ const MESSAGES = {
 const UNKNOWN_NAME = "Пользователь";
 const RELATION_ERROR = "Не удалось узнать, друзья ли вы";
 
+/**
+ * Кнопка-пилюля действия на карточке человека.
+ * @param action Значение data-action.
+ * @param label Подпись.
+ * @param modifier Дополнительный модификатор кнопки с пробелом впереди.
+ * @returns Разметка кнопки.
+ */
 function button(action: string, label: string, modifier: string = ""): string {
   return `<button class="button button_pill${modifier}" type="button" data-action="${action}">${label}</button>`;
 }
@@ -128,11 +135,17 @@ export class UserPage {
     this.#list?.destroy();
   }
 
+  /**
+   * Забывает пользователя и ведёт на вход: сессия кончилась.
+   */
   #goToLogin(): void {
     user.clear();
     this.#router.navigate("/login");
   }
 
+  /**
+   * Перерисовывает карточку человека: имя, аватар, кнопки по связи, «Написать» и ошибку.
+   */
   #renderCard(): void {
     const actions =
       (this.#relation ? ACTIONS[this.#relation] : "") + WRITE_BUTTON;
@@ -151,6 +164,12 @@ export class UserPage {
     bindAvatarFallback(card);
   }
 
+  /**
+   * Учитывает имя из очередного источника. Точный источник (связи, чаты) заменяет имя из постов, где бэк пишет «Фамилия Имя». «Пользователь» ставится, только когда проверены все источники.
+   * @param name Имя или пустая строка.
+   * @param avatarPath Путь к аватарке или пустая строка.
+   * @param isExact Источник с именем в правильном порядке.
+   */
   #learn(name: string, avatarPath: string, isExact: boolean = false): void {
     if (this.#isDestroyed) {
       return;
@@ -174,6 +193,9 @@ export class UserPage {
     this.#renderCard();
   }
 
+  /**
+   * Ищет человека среди участников своих чатов: так находится имя того, кто написал первым и не встречался в ленте и друзьях.
+   */
   async #loadFromChats(): Promise<void> {
     const person = await findChatPerson(this.#profileId);
     if (this.#isDestroyed) {
@@ -187,6 +209,9 @@ export class UserPage {
     );
   }
 
+  /**
+   * Узнаёт, кто вы друг другу, и берёт имя из списка связей.
+   */
   async #loadRelation(): Promise<void> {
     const me = user.profile?.id ?? 0;
     const result = await findRelation(this.#profileId, me);
@@ -208,6 +233,11 @@ export class UserPage {
     );
   }
 
+  /**
+   * Запрос к бэку для кнопки дружбы. Отклонение, отмена и удаление — один и тот же запрос.
+   * @param action Действие кнопки.
+   * @returns Ответ бэка.
+   */
   #send(action: string): Promise<ApiResult<unknown>> {
     if (action === "add") {
       return api.addFriend(this.#profileId);
@@ -218,6 +248,9 @@ export class UserPage {
     return api.removeFriend(this.#profileId);
   }
 
+  /**
+   * Открывает чат с человеком и переходит в диалог.
+   */
   async #write(): Promise<void> {
     this.#setButtonsDisabled(true);
     const response = await openChat(this.#profileId);
@@ -236,12 +269,20 @@ export class UserPage {
     this.#renderCard();
   }
 
+  /**
+   * Блокирует кнопки карточки, пока идёт запрос.
+   * @param isDisabled Заблокировать ли.
+   */
   #setButtonsDisabled(isDisabled: boolean): void {
     this.#card
       .querySelectorAll("button")
       .forEach((element) => (element.disabled = isDisabled));
   }
 
+  /**
+   * Нажатие кнопки на карточке. Удаление из друзей — после подтверждения. 409 и 404 значат, что связь уже поменялась, — тогда она загружается заново.
+   * @param action Действие кнопки.
+   */
   async #act(action: string): Promise<void> {
     if (action === "write") {
       this.#write();

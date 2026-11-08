@@ -19,7 +19,7 @@ import type { InputConfig, InputOption } from "../components/Input/Input";
  */
 export type FieldConfig = Omit<InputConfig, "name">;
 
-export const GENDERS: InputOption[] = [
+const GENDERS: InputOption[] = [
   { value: "male", label: "Мужской" },
   { value: "female", label: "Женский" },
 ];

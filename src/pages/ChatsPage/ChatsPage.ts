@@ -5,13 +5,13 @@ import { user } from "../../modules/user";
 import { chatSocket } from "../../modules/chatSocket";
 import type { ChatEvent } from "../../modules/chatSocket";
 import {
-  avatarTemplate,
   chatActivity,
   chatPartner,
   loadAllChats,
   openChat,
   partnerView,
 } from "../../modules/chats";
+import { avatarTemplate } from "../../modules/avatar";
 import { serverErrorMessage } from "../../modules/errors";
 import { escapeHtml, formatDate } from "@nexly/utils";
 import { AppLayout } from "../../components/AppLayout/AppLayout";
@@ -33,13 +33,19 @@ const DELETED = "Сообщение удалено";
  * @param chat Чат.
  * @returns Текст сообщения, «удалено» или «сообщений пока нет».
  */
-export function previewText(chat: Chat): string {
+function previewText(chat: Chat): string {
   if (!chat.last_message) {
     return NO_MESSAGES;
   }
   return chat.last_message.message_text ?? DELETED;
 }
 
+/**
+ * Строка чата: аватар и имя собеседника, последнее сообщение и его дата. Вся строка — ссылка в диалог.
+ * @param chat Чат.
+ * @param myId id текущего пользователя.
+ * @returns Разметка строки.
+ */
 function rowTemplate(chat: Chat, myId: number): string {
   const { name, avatarPath } = partnerView(chatPartner(chat, myId));
   const date = chat.last_message?.created_at ?? chat.created_at;
@@ -140,11 +146,17 @@ export class ChatsPage {
     this.#unsubscribe?.();
   }
 
+  /**
+   * Забывает пользователя и ведёт на вход: сессия кончилась.
+   */
   #goToLogin(): void {
     user.clear();
     this.#router.navigate("/login");
   }
 
+  /**
+   * Загружает все чаты и просит сокет подписаться на них. Если чатов нет — подсказка и возможные знакомые.
+   */
   async #load(): Promise<void> {
     const { status, data } = await loadAllChats();
     if (this.#isDestroyed) {
@@ -179,6 +191,9 @@ export class ChatsPage {
     }
   }
 
+  /**
+   * Перерисовывает список, свежие чаты сверху.
+   */
   #renderList(): void {
     const myId = user.profile?.id ?? 0;
     const chats = [...this.#chats.values()].sort(
@@ -189,6 +204,10 @@ export class ChatsPage {
       .join("");
   }
 
+  /**
+   * Новое сообщение поднимает чат наверх с новым превью. Сообщение в неизвестный чат — значит, чат новый, список загружается заново.
+   * @param event Событие сокета.
+   */
   #onEvent(event: ChatEvent): void {
     if (event.type !== "message") {
       return;
@@ -202,6 +221,10 @@ export class ChatsPage {
     this.#renderList();
   }
 
+  /**
+   * Открывает чат с человеком из возможных знакомых и переходит в диалог.
+   * @param person Короткий профиль.
+   */
   async #write(person: ShortProfile): Promise<void> {
     this.#suggestions.setError("");
     this.#suggestions.setBusy(person.id, true);

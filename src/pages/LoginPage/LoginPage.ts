@@ -33,6 +33,10 @@ const FIELDS: Record<"login" | "password", InputConfig> = {
   },
 };
 
+/**
+ * Разметка карточки входа: заголовок, поля, место под ошибку сервера, «Войти» и ссылка на регистрацию.
+ * @returns Разметка страницы.
+ */
 function template(): string {
   return authLayoutTemplate(`
     <section class="auth-card">
@@ -113,6 +117,9 @@ export class LoginPage {
     });
   }
 
+  /**
+   * Проверяет поля и входит. Логин нормализуется (телефон — в +7…), черновик регистрации очищается, после входа — лента.
+   */
   async #submitForm(): Promise<void> {
     this.#serverError.textContent = "";
 

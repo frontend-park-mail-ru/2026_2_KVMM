@@ -59,6 +59,12 @@ const ITEMS: SidebarItem[] = [
 
 const SLOGAN = "Nexly&nbsp;— Люди. Идеи. Ближе.";
 
+/**
+ * Пункт меню: ссылка, если у раздела есть страница, иначе просто подпись. Активный пункт — с цветной иконкой, градиентной подписью и aria-current. У «Друзей» есть место под значок заявок.
+ * @param item Раздел меню.
+ * @param active Активный раздел или null.
+ * @returns Разметка пункта.
+ */
 function itemTemplate(
   item: SidebarItem,
   active: SidebarSection | null,
@@ -82,6 +88,11 @@ function itemTemplate(
   return `<li class="sidebar__entry">${entry}</li>`;
 }
 
+/**
+ * Разметка меню: список разделов и слоган под ним.
+ * @param active Активный раздел или null.
+ * @returns Разметка меню.
+ */
 function template(active: SidebarSection | null): string {
   return `
     <aside class="sidebar">

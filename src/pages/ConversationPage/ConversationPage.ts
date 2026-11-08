@@ -6,14 +6,13 @@ import { user } from "../../modules/user";
 import { chatSocket } from "../../modules/chatSocket";
 import type { ChatEvent, SendResult } from "../../modules/chatSocket";
 import {
-  avatarTemplate,
   chatActivity,
   chatPartner,
   loadAllChats,
   partnerView,
 } from "../../modules/chats";
-import { nextCursor } from "@nexly/utils";
-import { escapeHtml, formatDate } from "@nexly/utils";
+import { avatarTemplate } from "../../modules/avatar";
+import { escapeHtml, formatDate, nextCursor } from "@nexly/utils";
 import { AppLayout } from "../../components/AppLayout/AppLayout";
 
 const MESSAGES = {
@@ -34,6 +33,12 @@ const MAX_LENGTH = 256;
 const LOAD_OLDER_OFFSET = 80;
 const STICK_TO_BOTTOM = 120;
 
+/**
+ * Пузырь сообщения: свои справа, чужие слева, удалённые — серым курсивом. Текст экранируется.
+ * @param message Сообщение.
+ * @param myId id текущего пользователя.
+ * @returns Разметка сообщения.
+ */
 function messageTemplate(message: ChatMessage, myId: number): string {
   const mine = message.author_id === myId ? " conversation__message_mine" : "";
   const text =
@@ -48,6 +53,13 @@ function messageTemplate(message: ChatMessage, myId: number): string {
   `;
 }
 
+/**
+ * Аватарка чата в левой колонке. Текущий чат обведён и помечен aria-current.
+ * @param chat Чат.
+ * @param myId id текущего пользователя.
+ * @param currentId Открытый чат.
+ * @returns Разметка пункта.
+ */
 function railTemplate(chat: Chat, myId: number, currentId: number): string {
   const { name, avatarPath } = partnerView(chatPartner(chat, myId));
   const isCurrent = chat.id === currentId;
@@ -186,15 +198,25 @@ export class ConversationPage {
     this.#unsubscribe?.();
   }
 
+  /**
+   * Забывает пользователя и ведёт на вход: сессия кончилась.
+   */
   #goToLogin(): void {
     user.clear();
     this.#router.navigate("/login");
   }
 
+  /**
+   * id текущего пользователя.
+   * @returns id или 0, если сессии уже нет.
+   */
   get #myId(): number {
     return user.profile?.id ?? 0;
   }
 
+  /**
+   * Загружает все чаты для левой колонки и шапки собеседника.
+   */
   async #loadChats(): Promise<void> {
     const { status, data } = await loadAllChats();
     if (this.#isDestroyed) {
@@ -209,6 +231,9 @@ export class ConversationPage {
     this.#renderHeader();
   }
 
+  /**
+   * Перерисовывает левую колонку, свежие чаты сверху.
+   */
   #renderRail(): void {
     this.#chats.sort((a, b) => chatActivity(b) - chatActivity(a));
     this.#rail.innerHTML = this.#chats
@@ -216,6 +241,9 @@ export class ConversationPage {
       .join("");
   }
 
+  /**
+   * Показывает в шапке собеседника со ссылкой на его страницу. В чате с собой ссылка ведёт в свой профиль.
+   */
   #renderHeader(): void {
     const chat = this.#chats.find((item) => item.id === this.#chatId);
     if (!chat) {
@@ -236,6 +264,9 @@ export class ConversationPage {
     this.#header.classList.remove("conversation__header_hidden");
   }
 
+  /**
+   * Загружает очередную страницу истории. Первая страница прокручивает в самый низ, следующие сохраняют позицию, чтобы текст не прыгал. Если окно ещё не заполнено, подгружает дальше.
+   */
   async #loadOlder(): Promise<void> {
     const isFirst = !this.#isStarted;
     if (this.#isLoading || this.#isFailed || (!isFirst && !this.#hasMore)) {
@@ -278,6 +309,9 @@ export class ConversationPage {
     }
   }
 
+  /**
+   * Перерисовывает переписку по порядку id и показывает «Ваша история общения начинается сейчас!», если сообщений нет.
+   */
   #renderMessages(): void {
     const messages = [...this.#messages.values()].sort((a, b) => a.id - b.id);
     this.#list.innerHTML = messages
@@ -286,15 +320,26 @@ export class ConversationPage {
     this.#showNotice(messages.length ? "" : MESSAGES.empty);
   }
 
+  /**
+   * Показывает или прячет сообщение посреди переписки: загрузка, пусто, ошибка.
+   * @param text Текст или пустая строка.
+   */
   #showNotice(text: string): void {
     this.#notice.textContent = text;
     this.#root.classList.toggle("conversation_noticed", Boolean(text));
   }
 
+  /**
+   * Прокручивает переписку к последнему сообщению.
+   */
   #scrollToBottom(): void {
     this.#scroller.scrollTop = this.#scroller.scrollHeight;
   }
 
+  /**
+   * Добавляет сообщение без дублей. Прокручивает вниз, если это своё сообщение или пользователь и так был внизу, — иначе не мешает читать историю.
+   * @param message Сообщение.
+   */
   #addMessage(message: ChatMessage): void {
     if (this.#messages.has(message.id) || this.#isFailed) {
       return;
@@ -310,6 +355,10 @@ export class ConversationPage {
     }
   }
 
+  /**
+   * Новое сообщение: в открытый чат — добавляется в переписку, в любой — поднимает чат в левой колонке. Неизвестный чат перезагружает колонку.
+   * @param event Событие сокета.
+   */
   #onEvent(event: ChatEvent): void {
     if (event.type !== "message") {
       return;
@@ -326,6 +375,9 @@ export class ConversationPage {
     }
   }
 
+  /**
+   * Отправляет сообщение через сокет. Пустое не отправляется, пока идёт отправка, поле и кнопка заблокированы.
+   */
   async #submit(): Promise<void> {
     const text = this.#input.value.trim();
     if (!text) {
@@ -343,6 +395,10 @@ export class ConversationPage {
     this.#onSent(result);
   }
 
+  /**
+   * Итог отправки: успех очищает поле и показывает сообщение, ошибка остаётся под полем, текст не теряется.
+   * @param result Сохранённое сообщение или код ошибки.
+   */
   #onSent(result: SendResult): void {
     if (result.ok) {
       this.#input.value = "";
@@ -356,16 +412,27 @@ export class ConversationPage {
     );
   }
 
+  /**
+   * Показывает ошибку под полем ввода и красную рамку или убирает их.
+   * @param message Текст ошибки или пустая строка.
+   */
   #setError(message: string): void {
     this.#error.textContent = message;
     this.#form.classList.toggle("conversation__form_error", Boolean(message));
   }
 
+  /**
+   * Блокирует поле и кнопку на время отправки или насовсем, если переписку не загрузить.
+   * @param isDisabled Заблокировать ли.
+   */
   #setFormDisabled(isDisabled: boolean): void {
     this.#input.readOnly = isDisabled;
     this.#send.disabled = isDisabled;
   }
 
+  /**
+   * Растягивает поле под текст, до max-height из стилей.
+   */
   #fitInput(): void {
     this.#input.style.height = "auto";
     this.#input.style.height = `${this.#input.scrollHeight}px`;

@@ -1,5 +1,5 @@
 import { api } from "../../modules/api";
-import type { Post as PostData, PostAuthor } from "../../modules/api";
+import type { Post as PostData } from "../../modules/api";
 import { escapeHtml, formatDate } from "@nexly/utils";
 import likeIcon from "./icons/like.svg";
 import commentIcon from "./icons/comment.svg";
@@ -7,6 +7,7 @@ import shareIcon from "./icons/share.svg";
 import editIcon from "./icons/edit.svg";
 import { user } from "../../modules/user";
 import { people } from "../../modules/people";
+import { avatarTemplate } from "../../modules/avatar";
 
 /**
  * Настройки карточки: onEdit включает карандаш у постов текущего пользователя.
@@ -19,10 +20,20 @@ const IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "gif", "webp", "avif"];
 const VIDEO_EXTENSIONS = ["mp4", "webm", "ogg", "mov"];
 const SHOW_MORE = "Читать еще";
 
+/**
+ * Имя файла из пути вложения.
+ * @param path Путь к файлу на бэке.
+ * @returns Последняя часть пути.
+ */
 function fileName(path: string): string {
   return path.split("/").pop() ?? "";
 }
 
+/**
+ * Вид вложения по расширению: картинка и видео показываются в посте, остальное — ссылкой на файл.
+ * @param path Путь к файлу.
+ * @returns image, video или file.
+ */
 function mediaKind(path: string): "image" | "video" | "file" {
   const extension = (fileName(path).split(".").pop() ?? "").toLowerCase();
   if (IMAGE_EXTENSIONS.includes(extension)) {
@@ -34,14 +45,11 @@ function mediaKind(path: string): "image" | "video" | "file" {
   return "file";
 }
 
-function avatarTemplate({ name, avatar_urls: imageUrl }: PostAuthor): string {
-  const letter = [...(name.trim() || "?")][0].toUpperCase();
-  const image = imageUrl
-    ? `<img class="post__avatar-image" src="${escapeHtml(api.mediaUrl(imageUrl))}" alt="">`
-    : "";
-  return `<div class="post__avatar">${escapeHtml(letter)}${image}</div>`;
-}
-
+/**
+ * Вложение поста: картинка, видео с управлением или ссылка на файл, которая открывается в новой вкладке.
+ * @param path Путь к файлу на бэке.
+ * @returns Разметка вложения.
+ */
 function mediaTemplate(path: string): string {
   const url = escapeHtml(api.mediaUrl(path));
   const kind = mediaKind(path);
@@ -69,6 +77,12 @@ function authorPath(post: PostData): string {
   return id === user.profile?.id ? "/profile" : `/profile/${id}`;
 }
 
+/**
+ * Разметка поста: автор со ссылкой на его страницу, дата, карандаш для своих постов, текст, вложения и кнопки реакций. Данные бэка экранируются.
+ * @param post Пост.
+ * @param canEdit Показывать ли карандаш правки.
+ * @returns Разметка поста.
+ */
 function template(post: PostData, canEdit: boolean): string {
   const { author, post_text: text, media_urls: media = [] } = post;
   const authorName = author.name;
@@ -76,7 +90,7 @@ function template(post: PostData, canEdit: boolean): string {
   const files = media.filter((path) => mediaKind(path) === "file");
   const path = authorPath(post);
   const authorBlock = `
-    ${avatarTemplate(author)}
+    ${avatarTemplate("post", author.name, author.avatar_urls ?? "")}
     <div class="post__author">
       <p class="post__name" title="${escapeHtml(authorName)}">${escapeHtml(authorName)}</p>
       <time class="post__date" datetime="${escapeHtml(post.created_at)}">${formatDate(post.created_at)}</time>
@@ -176,12 +190,20 @@ export class Post {
     this.#element = null;
   }
 
+  /**
+   * Разметка этого поста. Карандаш есть только у своих постов и только там, где правка разрешена.
+   * @returns Разметка поста.
+   */
   #markup(): string {
     const isOwn =
       user.profile !== null && this.#post.author_profile_id === user.profile.id;
     return template(this.#post, Boolean(this.#options.onEdit) && isOwn);
   }
 
+  /**
+   * Подключает отрисованный пост: замена сломанной аватарки буквой, карандаш и «Читать еще», если текст не поместился.
+   * @param element Элемент поста.
+   */
   #bind(element: HTMLElement): void {
     this.#element = element;
     const avatarImage = element.querySelector(".post__avatar-image");
@@ -196,6 +218,10 @@ export class Post {
     }
   }
 
+  /**
+   * Добавляет под обрезанный текст кнопку «Читать еще», которая раскрывает его целиком.
+   * @param text Элемент текста поста.
+   */
   #addShowMore(text: HTMLElement): void {
     text.insertAdjacentHTML(
       "afterend",

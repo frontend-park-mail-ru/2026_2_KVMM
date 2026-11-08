@@ -7,6 +7,10 @@ import { Header } from "../Header/Header";
 import { Sidebar } from "../Sidebar/Sidebar";
 import type { SidebarSection } from "../Sidebar/Sidebar";
 
+/**
+ * Разметка каркаса: место под шапку, меню и основную колонку.
+ * @returns Разметка каркаса.
+ */
 function template(): string {
   return `
     <div class="app-layout">
@@ -63,6 +67,9 @@ export class AppLayout {
     return layout.querySelector(".app-layout__main") as HTMLElement;
   }
 
+  /**
+   * Выходит из аккаунта. 204 и 401 одинаково ведут на /login (во втором случае сессия уже кончилась), при ошибке сети кнопка снова доступна и в шапке видна ошибка.
+   */
   async #logout(): Promise<void> {
     this.#header.setError("");
     this.#header.setLoggingOut(true);

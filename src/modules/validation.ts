@@ -78,18 +78,40 @@ const NAME_PATTERN = /^[\p{L}\p{M}]+([ '’-][\p{L}\p{M}]+)*$/u;
 const PASSWORD_CHARS_PATTERN = /^[\x21-\x7E]+$/;
 const DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
 
+/**
+ * Длина в символах, а не в UTF-16: эмодзи и составные буквы считаются за один.
+ * @param value Строка.
+ * @returns Число символов.
+ */
 function length(value: string): number {
   return [...value].length;
 }
 
+/**
+ * Укладывается ли длина в границы, включительно.
+ * @param value Строка.
+ * @param min Наименьшая длина.
+ * @param max Наибольшая длина.
+ * @returns true, если длина допустима.
+ */
 function isInRange(value: string, min: number, max: number): boolean {
   return length(value) >= min && length(value) <= max;
 }
 
+/**
+ * Похоже ли на email и не длиннее ли, чем пропустит бэк.
+ * @param value Строка.
+ * @returns true, если это допустимый email.
+ */
 function isEmail(value: string): boolean {
   return EMAIL_PATTERN.test(value) && value.length <= MAX_LENGTH.email;
 }
 
+/**
+ * Ошибка пароля по длине и символам: допустимы только печатные ASCII, как на бэке.
+ * @param value Пароль.
+ * @returns Текст ошибки или пустая строка.
+ */
 function passwordLengthOrCharsError(value: string): string {
   if (!value) {
     return MESSAGES.required;
@@ -106,6 +128,11 @@ function passwordLengthOrCharsError(value: string): string {
   return "";
 }
 
+/**
+ * Разбирает дату ГГГГ-ММ-ДД и отбрасывает несуществующие, например 31 февраля.
+ * @param value Значение поля даты.
+ * @returns Год, месяц и день или null.
+ */
 function parseDate(value: string): DateParts | null {
   const match = DATE_PATTERN.exec(value);
   if (!match) {
@@ -124,6 +151,12 @@ function parseDate(value: string): DateParts | null {
   return isReal ? { year, month, day } : null;
 }
 
+/**
+ * Полных лет на указанный день.
+ * @param birth Дата рождения.
+ * @param today День, на который считать.
+ * @returns Возраст в годах.
+ */
 function ageOn(birth: DateParts, today: Date): number {
   const month = today.getUTCMonth() + 1;
   const day = today.getUTCDate();
@@ -132,10 +165,22 @@ function ageOn(birth: DateParts, today: Date): number {
   return today.getUTCFullYear() - birth.year - (hadBirthday ? 0 : 1);
 }
 
+/**
+ * Дата в виде ГГГГ-ММ-ДД для атрибутов min и max поля даты.
+ * @param date Дата.
+ * @returns Строка ГГГГ-ММ-ДД.
+ */
 function isoDate(date: Date): string {
   return date.toISOString().slice(0, 10);
 }
 
+/**
+ * Дата на заданное число лет раньше, со сдвигом в днях — для границ допустимого возраста.
+ * @param today От какой даты считать.
+ * @param years Сколько лет назад.
+ * @param extraDays Сдвиг в днях.
+ * @returns Дата в UTC.
+ */
 function yearsAgo(today: Date, years: number, extraDays: number = 0): Date {
   return new Date(
     Date.UTC(

@@ -119,23 +119,39 @@ export class PostList {
     }
   }
 
+  /**
+   * Создаёт компонент поста и запоминает его по id, чтобы потом обновлять, удалять и не показывать дважды.
+   * @param post Пост.
+   * @returns Компонент поста, ещё не отрисованный.
+   */
   #createPost(post: PostData): Post {
     const item = new Post(this.#list, post, { onEdit: this.#config.onEdit });
     this.#posts.set(post.id, item);
     return item;
   }
 
+  /**
+   * Подгружает следующую страницу, когда до конца ленты остаётся немного. Стрелочная функция — чтобы снять её в destroy.
+   */
   #onScroll = (): void => {
     if (this.#isNearBottom()) {
       this.#loadPage();
     }
   };
 
+  /**
+   * Близко ли нижний край страницы.
+   * @returns true, если до конца меньше LOAD_THRESHOLD пикселей.
+   */
   #isNearBottom(): boolean {
     const scrolled = window.innerHeight + window.scrollY;
     return scrolled >= document.documentElement.scrollHeight - LOAD_THRESHOLD;
   }
 
+  /**
+   * Показывает под списком состояние: спиннер при подгрузке, текст загрузки, пустого списка, конца или ошибки с кнопкой повтора.
+   * @param status Состояние списка.
+   */
   #setStatus(status: ListStatus): void {
     const hasPosts = this.#list.children.length > 0;
     this.#status.classList.toggle(
@@ -154,6 +170,9 @@ export class PostList {
     this.#status.innerHTML = status === "error" ? message + RETRY : message;
   }
 
+  /**
+   * Загружает следующую страницу постов. Не запускается повторно, пока идёт загрузка, после ошибки и в конце списка. Дубли по id отбрасываются, курсор двигается только вперёд.
+   */
   async #loadPage(): Promise<void> {
     if (this.#isLoading || !this.#hasMore || this.#hasError) {
       return;

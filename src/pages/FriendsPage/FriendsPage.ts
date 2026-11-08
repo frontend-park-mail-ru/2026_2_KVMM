@@ -23,6 +23,12 @@ const MESSAGES = {
 
 const REQUEST_EXISTS = "Заявка этому человеку уже есть";
 
+/**
+ * Превращает страницу связей в страницу людей для секции: берёт вторую сторону связи и, если нужно, только связи, где master подходит под условие.
+ * @param response Ответ бэка со связями.
+ * @param keep Условие на отправителя заявки, по умолчанию — любые.
+ * @returns Ответ со списком людей и курсором.
+ */
 function relationshipsPage(
   response: ApiResult<RelationshipsResponse>,
   keep: (master: number) => boolean = () => true,
@@ -138,11 +144,17 @@ export class FriendsPage {
     this.#isDestroyed = true;
   }
 
+  /**
+   * Забывает пользователя и ведёт на вход: сессия кончилась.
+   */
   #goToLogin(): void {
     user.clear();
     this.#router.navigate("/login");
   }
 
+  /**
+   * Загружает все четыре секции параллельно. Отправленные заявки — целиком: бэк отдаёт их вперемешку с входящими.
+   */
   async #loadAll(): Promise<void> {
     const statuses = await Promise.all([
       this.#incoming.load(),
@@ -165,6 +177,9 @@ export class FriendsPage {
     this.#updateStatus();
   }
 
+  /**
+   * Текст под секциями, если друзей нет: с подсказкой про возможных знакомых или без, если и их нет.
+   */
   #updateStatus(): void {
     if (!this.#isLoaded) {
       return;
@@ -177,6 +192,11 @@ export class FriendsPage {
     this.#status.textContent = message;
   }
 
+  /**
+   * Выполняет действие из строки человека и переносит его в нужную секцию.
+   * @param action Действие: accept, decline, cancel, add или remove.
+   * @param person Короткий профиль.
+   */
   #act(action: string, person: ShortProfile): void {
     if (action === "accept") {
       this.#run(
@@ -201,6 +221,10 @@ export class FriendsPage {
     }
   }
 
+  /**
+   * Спрашивает подтверждение и удаляет из друзей.
+   * @param person Друг.
+   */
   async #removeFriend(person: ShortProfile): Promise<void> {
     const isConfirmed = await confirmDialog({
       message: `Удалить ${displayName(person)} из друзей?`,
@@ -212,6 +236,13 @@ export class FriendsPage {
     }
   }
 
+  /**
+   * Общий ход действия: блокирует строку, отправляет запрос, при успехе убирает человека из секции и обновляет значок заявок. 409 — заявка уже есть.
+   * @param section Секция, где нажали кнопку.
+   * @param person Короткий профиль.
+   * @param send Запрос к бэку.
+   * @param onDone Что сделать после успеха, например добавить человека в другую секцию.
+   */
   async #run(
     section: PeopleSection,
     person: ShortProfile,

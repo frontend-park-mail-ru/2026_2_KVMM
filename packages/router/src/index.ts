@@ -136,6 +136,11 @@ export class Router {
     this.#render(target);
   }
 
+  /**
+   * Ищет маршрут: сначала точный путь, затем шаблоны с параметрами — так /profile/code не примется за /profile/:id.
+   * @param path Путь.
+   * @returns Маршрут и параметры или null.
+   */
   #match(path: string): Match | null {
     const exact = this.#routes[path];
     if (exact) {
@@ -150,6 +155,11 @@ export class Router {
     return null;
   }
 
+  /**
+   * Куда на самом деле перейти: на сам путь, на путь из redirect маршрута или на домашнюю страницу, если путь неизвестен или недоступен гостю либо вошедшему.
+   * @param path Запрошенный путь.
+   * @returns Итоговый путь.
+   */
   #resolve(path: string): string {
     const match = this.#match(path);
     const isAuthorized = this.#options.isAuthorized();
@@ -160,6 +170,10 @@ export class Router {
     return isAuthorized ? this.#options.userHome : this.#options.guestHome;
   }
 
+  /**
+   * Закрывает текущую страницу и рисует страницу маршрута с параметрами пути.
+   * @param path Итоговый путь.
+   */
   #render(path: string): void {
     const { route, params } = this.#match(path) as Match;
     this.#page?.destroy?.();

@@ -1,7 +1,7 @@
 import { api } from "./api";
 import { chatSocket } from "./chatSocket";
 import type { ApiResult, Chat, ShortProfile } from "./api";
-import { escapeHtml, nextCursor } from "@nexly/utils";
+import { nextCursor } from "@nexly/utils";
 import { people } from "./people";
 import { displayName } from "./profileName";
 
@@ -50,25 +50,6 @@ export function partnerView(person: ShortProfile | null): {
     name: displayName(person),
     avatarPath: person.avatar_urls || known?.avatarUrl || "",
   };
-}
-
-/**
- * Круглая аватарка: буква имени и картинка поверх, если она есть.
- * @param block БЭМ-блок, в котором рисуется аватарка (элементы __avatar и __avatar-image).
- * @param name Имя для буквы.
- * @param avatarPath Путь к картинке или пустая строка.
- * @returns Разметка аватарки.
- */
-export function avatarTemplate(
-  block: string,
-  name: string,
-  avatarPath: string,
-): string {
-  const letter = [...name][0]?.toUpperCase() ?? "?";
-  const image = avatarPath
-    ? `<img class="${block}__avatar-image" src="${escapeHtml(api.mediaUrl(avatarPath))}" alt="">`
-    : "";
-  return `<span class="${block}__avatar">${escapeHtml(letter)}${image}</span>`;
 }
 
 /**

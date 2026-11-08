@@ -25,6 +25,11 @@ const signupRoutes = Object.fromEntries(
   ]),
 );
 
+/**
+ * Маршрут экрана кода подтверждения email. Экран доступен, только если код уже отправлен с той страницы, куда с него возвращаются, иначе — переход туда.
+ * @param back Страница, с которой отправили код: шаг регистрации или профиль.
+ * @returns Маршрут для роутера.
+ */
 function emailCodeRoute(back: string): Route {
   return {
     page: EmailCodePage,

@@ -43,6 +43,11 @@ const TOGGLE_LABELS = {
   hide: "Скрыть пароль",
 };
 
+/**
+ * Пункты выпадающего списка. Значения и подписи — константы приложения, не данные пользователя.
+ * @param options Варианты списка.
+ * @returns Разметка option.
+ */
 function optionsTemplate(options: InputOption[]): string {
   return options
     .map(
@@ -52,6 +57,11 @@ function optionsTemplate(options: InputOption[]): string {
     .join("");
 }
 
+/**
+ * Дополнительные атрибуты поля (maxlength, min и т. п.) в виде строки для шаблона.
+ * @param attributes Имена и значения атрибутов из настроек поля.
+ * @returns Атрибуты через пробел.
+ */
 function attributesTemplate(
   attributes: Record<string, string | number> = {},
 ): string {
@@ -60,6 +70,13 @@ function attributesTemplate(
     .join(" ");
 }
 
+/**
+ * Вид поля, от которого зависят разметка и модификаторы: список, пароль, дата, многострочное или обычное.
+ * @param config Настройки поля.
+ * @param config.type Тип input.
+ * @param config.options Варианты списка, если поле — выпадающий список.
+ * @returns select, password, date, textarea или пустая строка.
+ */
 function kindOf({ type = "", options }: InputConfig): string {
   if (options) {
     return "select";
@@ -67,6 +84,12 @@ function kindOf({ type = "", options }: InputConfig): string {
   return ["password", "date", "textarea"].includes(type) ? type : "";
 }
 
+/**
+ * Сам элемент ввода: select с вариантами, textarea или input нужного типа.
+ * @param config Настройки поля.
+ * @param kind Вид поля из kindOf.
+ * @returns Разметка элемента ввода.
+ */
 function controlTemplate(config: InputConfig, kind: string): string {
   const { name, type, placeholder, autocomplete, options, attributes } = config;
   const modifier = kind ? ` input__control_${kind}` : "";
@@ -105,6 +128,10 @@ function controlTemplate(config: InputConfig, kind: string): string {
   `;
 }
 
+/**
+ * Кнопка «показать пароль». Изначально пароль скрыт, поэтому иконка — перечёркнутый глаз.
+ * @returns Разметка кнопки.
+ */
 function toggleTemplate(): string {
   return `
     <button class="input__toggle" type="button" aria-label="${TOGGLE_LABELS.show}" aria-pressed="false">
@@ -113,6 +140,11 @@ function toggleTemplate(): string {
   `;
 }
 
+/**
+ * Разметка поля целиком: обёртка с модификатором вида, элемент ввода, кнопка пароля и место под ошибку. У даты подсказка хранится в data-placeholder: у input type=date своего placeholder нет.
+ * @param config Настройки поля.
+ * @returns Разметка поля.
+ */
 function template(config: InputConfig): string {
   const kind = kindOf(config);
   const fieldModifier =
@@ -150,6 +182,10 @@ export class Input {
     this.#config = config;
   }
 
+  /**
+   * Текущее значение поля.
+   * @returns Значение как строка.
+   */
   get value(): string {
     return this.#control.value;
   }
@@ -170,6 +206,10 @@ export class Input {
     this.#control.focus();
   }
 
+  /**
+   * Показана ли сейчас ошибка: тогда поле перепроверяется при каждом вводе.
+   * @returns true, если под полем есть текст ошибки.
+   */
   get hasError(): boolean {
     return Boolean(this.#error.textContent);
   }
@@ -222,6 +262,9 @@ export class Input {
     this.#control.setAttribute("aria-invalid", String(Boolean(message)));
   }
 
+  /**
+   * Показывает подсказку вместо пустой даты, пока поле не в фокусе: браузер сам рисует «дд.мм.гггг», а по макету нужен текст подсказки.
+   */
   #bindDatePlaceholder(): void {
     const update = () => {
       const isEmpty = !this.#control.value && !this.#control.validity.badInput;
@@ -237,6 +280,10 @@ export class Input {
     update();
   }
 
+  /**
+   * Переключает пароль между скрытым и видимым. mousedown не забирает фокус у поля, чтобы курсор оставался на месте.
+   * @param toggle Кнопка «показать пароль».
+   */
   #bindToggle(toggle: HTMLButtonElement): void {
     const control = this.#control as HTMLInputElement;
     toggle.addEventListener("mousedown", (event) => event.preventDefault());

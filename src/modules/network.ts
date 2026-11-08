@@ -4,6 +4,10 @@ const CACHE_HEADER = "X-Nexly-Cache";
 let isOffline = !navigator.onLine;
 const listeners = new Set<(isOffline: boolean) => void>();
 
+/**
+ * Сохраняет состояние связи и сообщает подписчикам, если оно изменилось.
+ * @param value true, если связи нет.
+ */
 function set(value: boolean): void {
   if (value !== isOffline) {
     isOffline = value;
@@ -18,6 +22,10 @@ window.addEventListener("online", () => set(false));
  * Есть ли связь с сервером. Без сети service worker отдаёт сохранённые ответы с пометкой, по ней и по ошибкам запросов определяется офлайн.
  */
 export const network = {
+  /**
+   * Нет ли сейчас связи с сервером.
+   * @returns true без связи.
+   */
   get isOffline(): boolean {
     return isOffline;
   },

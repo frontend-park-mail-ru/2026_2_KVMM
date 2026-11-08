@@ -5,7 +5,10 @@
 
   &__main {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: minmax(100px, 1fr) minmax(0, 1.6fr) minmax(
+        max-content,
+        1fr
+      );
     column-gap: 32px;
     align-items: center;
     min-height: 132px;
@@ -82,6 +85,13 @@
     font: var(--font-body);
     white-space: pre-line;
     overflow-wrap: anywhere;
+  }
+}
+
+@media (max-width: 1199px) {
+  .profile-card__main {
+    column-gap: 16px;
+    padding-inline: 16px;
   }
 }
 

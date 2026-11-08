@@ -96,6 +96,11 @@ interface Outgoing {
   finish: (result: SendResult) => void;
 }
 
+/**
+ * Разбирает кадр сокета. Нетекстовые кадры и неверный JSON пропускаются.
+ * @param data Данные кадра.
+ * @returns Событие или null.
+ */
 function parseEvent(data: unknown): ChatEvent | null {
   if (typeof data !== "string") {
     return null;
@@ -108,6 +113,13 @@ function parseEvent(data: unknown): ChatEvent | null {
   }
 }
 
+/**
+ * Чаты из события subscribed: бэк присылает chat_id, если чат один, chat_ids — если их несколько, и ничего — если чатов нет.
+ * @param event Событие subscribed.
+ * @param event.chat_id Единственный чат.
+ * @param event.chat_ids Несколько чатов.
+ * @returns Список id чатов.
+ */
 function subscribedIds(event: { chat_id?: number; chat_ids?: number[] }) {
   return event.chat_ids ?? (event.chat_id ? [event.chat_id] : []);
 }
@@ -260,6 +272,9 @@ export class ChatSocket {
     return () => this.#stateListeners.delete(listener);
   }
 
+  /**
+   * Один раз создаёт канал между вкладками и подписывается на возврат сети и показ вкладки — чтобы сразу переподключиться.
+   */
   #bind(): void {
     if (this.#isBound) {
       return;
@@ -279,10 +294,18 @@ export class ChatSocket {
     });
   }
 
+  /**
+   * Отправляет сообщение другим вкладкам.
+   * @param message Сообщение канала.
+   */
   #post(message: ChannelMessage): void {
     this.#channel?.postMessage(message);
   }
 
+  /**
+   * Обрабатывает сообщения других вкладок. Ведомая вкладка принимает события и состояние лидера, лидер — просьбы отправить, переподключиться, проснуться и узнать состояние.
+   * @param message Сообщение канала.
+   */
   #onChannel(message: ChannelMessage): void {
     if (message.kind === "sent") {
       this.#requests.get(message.id)?.(message.result);
@@ -319,6 +342,9 @@ export class ChatSocket {
     }
   }
 
+  /**
+   * Встаёт в очередь за замком Web Locks. Получивший замок становится лидером и держит его, пока не остановится или не закроется вкладка. Без Web Locks вкладка сразу лидер.
+   */
   #joinLock(): void {
     if (!("locks" in navigator)) {
       this.#lead();
@@ -335,6 +361,9 @@ export class ChatSocket {
       .catch(() => {});
   }
 
+  /**
+   * Становится лидером: сбрасывает счётчики переподключений и открывает соединение.
+   */
   #lead(): void {
     this.#isLeader = true;
     this.#attempt = 0;
@@ -342,6 +371,9 @@ export class ChatSocket {
     this.#connect();
   }
 
+  /**
+   * Полная остановка: выходит из очереди за замком, закрывает соединение, отпускает замок и отвечает «stopped» на всё, что ждало отправки.
+   */
   #halt(): void {
     this.#isRunning = false;
     this.#lockAbort?.abort();
@@ -358,6 +390,9 @@ export class ChatSocket {
     this.#applyState({ status: "idle", chatIds: [] });
   }
 
+  /**
+   * Открывает новое соединение вместо старого и сразу отправляет auth с CSRF-токеном: бэк ждёт его не дольше 10 секунд. События старого сокета игнорируются.
+   */
   #connect(): void {
     clearTimeout(this.#retryTimer);
     this.#closeSocket("connection_lost");
@@ -383,6 +418,10 @@ export class ChatSocket {
     });
   }
 
+  /**
+   * Закрывает соединение. Отправленные, но не подтверждённые сообщения получают ошибку: неизвестно, дошли ли они, а повтор мог бы создать дубль.
+   * @param code Код ошибки для неподтверждённых отправок.
+   */
   #closeSocket(code: string): void {
     const socket = this.#socket;
     this.#socket = null;
@@ -394,6 +433,10 @@ export class ChatSocket {
     this.#inflight.clear();
   }
 
+  /**
+   * Обрабатывает событие бэка: subscribed — соединение готово, можно отправлять очередь; своё message — подтверждение отправки; error авторизации — сессия не принята. Затем событие получают подписчики этой и других вкладок.
+   * @param event Событие бэка.
+   */
   #receive(event: ChatEvent): void {
     if (event.type === "subscribed") {
       this.#onlineAt = Date.now();
@@ -422,6 +465,11 @@ export class ChatSocket {
     this.#post({ kind: "event", event });
   }
 
+  /**
+   * Ошибка в ответ на отправку. Если чат не в подписках, переподключается и отправляет ещё раз, один раз.
+   * @param chatId Чат из ошибки.
+   * @param error Код и текст ошибки.
+   */
   #onSendError(chatId: number, error: ChatSocketError): void {
     const item = this.#inflight.get(chatId)?.shift();
     if (!item) {
@@ -436,6 +484,9 @@ export class ChatSocket {
     item.finish({ ok: false, code: error.code });
   }
 
+  /**
+   * Соединение закрылось не по нашей воле. Переподключается с растущей паузой. Если соединение три раза подряд вытеснили быстрее чем за 5 секунд, значит, его забирает другое устройство, — клиент сдаётся до следующего действия пользователя.
+   */
   #onClose(): void {
     const lived = this.#onlineAt ? Date.now() - this.#onlineAt : -1;
     this.#closeSocket("connection_lost");
@@ -456,6 +507,9 @@ export class ChatSocket {
     this.#retryTimer = window.setTimeout(() => this.#connect(), delay);
   }
 
+  /**
+   * Переподключается сразу, если лидер ждёт паузы или сдался. Ведомая вкладка будит лидера.
+   */
   #wakeUp(): void {
     if (!this.#isRunning) {
       return;
@@ -472,6 +526,10 @@ export class ChatSocket {
     }
   }
 
+  /**
+   * Переподключается, если какой-то из чатов не в подписках; без списка — всегда.
+   * @param chatIds Чаты, которые должны приходить.
+   */
   #refresh(chatIds: number[]): void {
     const known = new Set(this.#state.chatIds);
     if (!chatIds.length || chatIds.some((id) => !known.has(id))) {
@@ -481,6 +539,12 @@ export class ChatSocket {
     }
   }
 
+  /**
+   * Ставит сообщение в очередь лидера. Онлайн — отправляет сразу, иначе будит соединение. В очереди сообщение ждёт не дольше 10 секунд.
+   * @param chatId Чат.
+   * @param text Текст.
+   * @param finish Куда сообщить итог.
+   */
   #enqueue(
     chatId: number,
     text: string,
@@ -500,6 +564,9 @@ export class ChatSocket {
     }
   }
 
+  /**
+   * Отправляет очередь, пока соединение подписано. Просроченные сообщения получают timeout, отправленные ждут подтверждения по своему чату.
+   */
   #flush(): void {
     const socket = this.#socket;
     while (
@@ -525,16 +592,29 @@ export class ChatSocket {
     }
   }
 
+  /**
+   * Меняет состояние лидера и сообщает его ведомым вкладкам.
+   * @param status Новый статус.
+   * @param chatIds Подписанные чаты.
+   */
   #setState(status: ChatSocketStatus, chatIds: number[]): void {
     this.#applyState({ status, chatIds });
     this.#post({ kind: "state", state: this.#state });
   }
 
+  /**
+   * Сохраняет состояние и сообщает подписчикам этой вкладки.
+   * @param state Новое состояние.
+   */
   #applyState(state: ChatSocketState): void {
     this.#state = state;
     this.#stateListeners.forEach((listener) => listener(this.state));
   }
 
+  /**
+   * Передаёт событие бэка подписчикам этой вкладки.
+   * @param event Событие.
+   */
   #emit(event: ChatEvent): void {
     this.#eventListeners.forEach((listener) => listener(event));
   }

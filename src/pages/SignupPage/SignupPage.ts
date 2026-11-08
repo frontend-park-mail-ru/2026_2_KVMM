@@ -127,6 +127,14 @@ const STEPS: Record<string, Step> = {
 
 const SUBMIT_KINDS: string[] = ["register", "save"];
 
+/**
+ * Кнопка шага. «Войти» — ссылка на /login, отправляющие действия — submit, остальные — обычные кнопки.
+ * @param action Действие шага.
+ * @param action.kind Вид действия.
+ * @param action.style Модификатор кнопки.
+ * @param action.label Подпись.
+ * @returns Разметка кнопки или ссылки.
+ */
 function actionTemplate({ kind, style, label }: StepAction): string {
   const className = `button button_${style}`;
   if (kind === "login") {
@@ -136,6 +144,12 @@ function actionTemplate({ kind, style, label }: StepAction): string {
   return `<button class="${className}" type="${type}" data-action="${kind}">${label}</button>`;
 }
 
+/**
+ * Форма шага: содержимое сверху и кнопки шага снизу.
+ * @param step Шаг регистрации.
+ * @param groupContent Разметка заголовка, полей и места под ошибку.
+ * @returns Разметка формы.
+ */
 function formTemplate(step: Step, groupContent: string): string {
   return `
     <form class="auth-card__form" novalidate>
@@ -149,11 +163,21 @@ function formTemplate(step: Step, groupContent: string): string {
   `;
 }
 
+/**
+ * Пустой контейнер полей шага: сами поля добавляются компонентами.
+ * @param step Шаг регистрации.
+ * @returns Разметка контейнера.
+ */
 function fieldsTemplate(step: Step): string {
   const modifier = step.fieldsModifier ? ` ${step.fieldsModifier}` : "";
   return `<div class="auth-card__fields${modifier}"></div>`;
 }
 
+/**
+ * Полоски шагов сверху карточки. Текущий шаг отмечен aria-current, у каждой полоски есть подпись для читалок.
+ * @param current Путь текущего шага.
+ * @returns Разметка навигации по шагам.
+ */
 function stepsTemplate(current: string): string {
   const steps = SIGNUP_STEPS.map((path, index) => {
     const label = `Шаг ${index + 1} из ${SIGNUP_STEPS.length}: ${STEPS[path].label}`;
@@ -165,6 +189,11 @@ function stepsTemplate(current: string): string {
   return `<nav class="auth-card__steps" aria-label="Шаги регистрации">${steps.join("")}</nav>`;
 }
 
+/**
+ * Навигация шага: стрелка назад, если предыдущий шаг доступен, полоски шагов и стрелка вперёд, которая появляется после прохождения шага.
+ * @param path Путь текущего шага.
+ * @returns Разметка навигации.
+ */
 function navTemplate(path: string): string {
   const index = SIGNUP_STEPS.indexOf(path);
   const previous = SIGNUP_STEPS[index - 1];
@@ -179,6 +208,12 @@ function navTemplate(path: string): string {
   return back + stepsTemplate(path) + forward;
 }
 
+/**
+ * Подсказка поля: у обязательных — со звёздочкой, у необязательных — с пометкой «(необязательно)».
+ * @param name Имя поля.
+ * @param placeholder Подсказка из настроек поля.
+ * @returns Подсказка для шага.
+ */
 function placeholderFor(name: string, placeholder: string): string {
   if (REQUIRED_FIELDS.includes(name)) {
     return `${placeholder} *`;
@@ -186,6 +221,12 @@ function placeholderFor(name: string, placeholder: string): string {
   return OPTIONAL_PLACEHOLDERS[name] ?? placeholder;
 }
 
+/**
+ * Карточка обычного шага: логотип, форма с заголовком и полями, слоган на первом шаге и навигация.
+ * @param step Шаг регистрации.
+ * @param path Путь шага.
+ * @returns Разметка страницы.
+ */
 function stepTemplate(step: Step, path: string): string {
   return authLayoutTemplate(`
     <section class="auth-card ${step.card} auth-card_stepped">
@@ -200,6 +241,12 @@ function stepTemplate(step: Step, path: string): string {
   `);
 }
 
+/**
+ * Карточка шага фото: маленький логотип, заголовок, круг под превью аватарки, форма и навигация.
+ * @param step Шаг регистрации.
+ * @param path Путь шага.
+ * @returns Разметка страницы.
+ */
 function photoStepTemplate(step: Step, path: string): string {
   return authLayoutTemplate(`
     <section class="auth-card ${step.card} auth-card_stepped">
@@ -306,6 +353,10 @@ export class SignupPage {
     }
   }
 
+  /**
+   * Создаёт поля шага со значениями из черновика: выбор фото, поля ввода и согласие на обработку данных.
+   * @param container Контейнер полей.
+   */
   #renderFields(container: HTMLElement): void {
     if (this.#step.photo) {
       this.#photo = new FileField(container, {
@@ -344,6 +395,10 @@ export class SignupPage {
     }
   }
 
+  /**
+   * Показывает выбранное фото в круге и освобождает адрес предыдущего превью.
+   * @param file Файл или null, чтобы вернуть заглушку.
+   */
   #showPreview(file: File | null): void {
     if (!this.#avatar) {
       return;
@@ -356,6 +411,9 @@ export class SignupPage {
     this.#avatar.classList.toggle("auth-card__avatar_photo", Boolean(file));
   }
 
+  /**
+   * Показывает ошибку, оставленную для поля другим экраном, например «Этот email уже занят» с экрана кода.
+   */
   #showPendingError(): void {
     const error = signupDraft.takeFieldError();
     if (error && this.#fields[error.field]) {
@@ -363,6 +421,10 @@ export class SignupPage {
     }
   }
 
+  /**
+   * Сохраняет ввод в черновик и снова открывает шаг: изменённый шаг нужно пройти заново. Перепроверяет связанные поля с ошибкой: email и телефон, пароль и повтор.
+   * @param target Изменённое поле.
+   */
   #onEdit(target: HTMLInputElement): void {
     if (!target.name || target.type === "file") {
       return;
@@ -379,6 +441,9 @@ export class SignupPage {
       .forEach((field) => field.validate());
   }
 
+  /**
+   * Обновляет навигацию: стрелку вперёд для пройденного шага, отметки пройденных шагов и доступность полосок.
+   */
   #updateNav(): void {
     this.#forward?.classList.toggle(
       "auth-card__arrow_hidden",
@@ -398,6 +463,10 @@ export class SignupPage {
     });
   }
 
+  /**
+   * Переходит на соседний шаг, после последнего — в ленту.
+   * @param offset -1 — назад, 1 — вперёд.
+   */
   #goTo(offset: number): void {
     const index = SIGNUP_STEPS.indexOf(this.#path) + offset;
     if (index >= SIGNUP_STEPS.length) {
@@ -407,6 +476,11 @@ export class SignupPage {
     this.#router.navigate(SIGNUP_STEPS[index]);
   }
 
+  /**
+   * Выполняет действие кнопки или полоски шага.
+   * @param kind Вид действия.
+   * @param step Путь шага для перехода по полоске.
+   */
   #runAction(kind: ActionKind, step?: string): void {
     if (kind === "step" && step) {
       this.#router.navigate(step);
@@ -421,6 +495,10 @@ export class SignupPage {
     }
   }
 
+  /**
+   * Проверяет все поля шага, согласие и фото, показывая ошибки сразу у всех.
+   * @returns true, если всё заполнено верно.
+   */
   #validateStep(): boolean {
     const results = Object.values(this.#fields).map((field) =>
       field.validate(),
@@ -434,10 +512,19 @@ export class SignupPage {
     return !results.includes(false);
   }
 
+  /**
+   * Значение поля шага, а если поля на этом шаге нет — из черновика.
+   * @param name Имя поля.
+   * @returns Значение.
+   */
   #value(name: string): string {
     return this.#fields[name]?.value ?? signupDraft.text(name);
   }
 
+  /**
+   * Блокирует кнопки на время запроса и возвращает навигацию после него.
+   * @param isBusy Идёт ли запрос.
+   */
   #setBusy(isBusy: boolean): void {
     this.#buttons.forEach((button) => {
       button.disabled = isBusy;
@@ -447,6 +534,11 @@ export class SignupPage {
     }
   }
 
+  /**
+   * Показывает ошибку сохранения: под полем, если бэк назвал поле или ошибка относится к известному полю, иначе — общей строкой. 401 ведёт на вход.
+   * @param response Ответ бэка.
+   * @param field Поле, к которому относится 400 без указания поля.
+   */
   #showError(response: ApiResult<unknown>, field?: string): void {
     const fieldError = registerFieldError(response);
     const target = fieldError?.field ?? field;
@@ -462,16 +554,25 @@ export class SignupPage {
     this.#serverError.textContent = serverErrorMessage(response);
   }
 
+  /**
+   * Отмечает шаг пройденным и переходит дальше.
+   */
   #completeStep(): void {
     signupDraft.complete(this.#path);
     this.#goTo(1);
   }
 
+  /**
+   * Завершает регистрацию: чистит черновик и открывает ленту.
+   */
   #finish(): void {
     signupDraft.clear();
     this.#router.navigate("/feed", true);
   }
 
+  /**
+   * Шаг 1: создаёт аккаунт. После успеха пароли стираются из черновика и открывается шаг 2; ошибки бэка показываются под полями.
+   */
   async #register(): Promise<void> {
     this.#serverError.textContent = "";
     if (!this.#validateStep()) {
@@ -507,6 +608,9 @@ export class SignupPage {
     this.#serverError.textContent = serverErrorMessage(response);
   }
 
+  /**
+   * Шаги 2–4: проверяет поля и сохраняет данные текущего шага.
+   */
   async #save(): Promise<void> {
     this.#serverError.textContent = "";
     if (!this.#validateStep()) {
@@ -525,6 +629,11 @@ export class SignupPage {
     }
   }
 
+  /**
+   * Запоминает профиль из удачного ответа.
+   * @param response Ответ бэка на PATCH профиля.
+   * @returns true, если профиль сохранён.
+   */
   #applyProfile(response: ApiResult<Profile>): boolean {
     if (response.status === 200 && response.data?.id) {
       user.setProfile(response.data);
@@ -533,6 +642,9 @@ export class SignupPage {
     return false;
   }
 
+  /**
+   * Шаг 2: сохраняет телефон, затем отправляет код на email и открывает экран кода. Без email шаг завершается сразу. 409 — номер или email уже заняты.
+   */
   async #saveContacts(): Promise<void> {
     const email = this.#value("email").trim();
     const phone = normalizePhone(this.#value("phone_number"));
@@ -578,6 +690,9 @@ export class SignupPage {
     this.#completeStep();
   }
 
+  /**
+   * Шаг 3: сохраняет имя, фамилию, отчество, пол и дату рождения. Пустое отчество не отправляется — бэк его не примет.
+   */
   async #saveAbout(): Promise<void> {
     const patronymic = this.#value("patronymic").trim();
     const response = await api.updateProfile({
@@ -597,6 +712,9 @@ export class SignupPage {
     this.#showError(response);
   }
 
+  /**
+   * Шаг 4: загружает фото и рассказ о себе, если они есть, и завершает регистрацию.
+   */
   async #savePhoto(): Promise<void> {
     const file = this.#photo?.file ?? null;
     if (file) {

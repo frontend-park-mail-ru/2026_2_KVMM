@@ -41,6 +41,11 @@ let fieldError: FieldError | null = null;
 let loginTarget: LoginTarget | null = null;
 let pendingEmail: PendingEmail | null = null;
 
+/**
+ * Определяет, что ввёл человек при входе: email, телефон или логин. По этому полю ошибка входа показывается в шаге регистрации.
+ * @param login Значение поля входа.
+ * @returns email, phone_number или nickname.
+ */
 function loginFieldOf(login: string): string {
   if (login.includes("@")) {
     return "email";

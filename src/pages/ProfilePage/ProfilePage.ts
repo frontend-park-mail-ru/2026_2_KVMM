@@ -36,6 +36,12 @@ const EMAIL_TAKEN = "Этот email уже занят";
 const EDIT_BUTTON =
   '<button class="button button_pill" type="button" data-action="edit-profile">Редактировать профиль</button>';
 
+/**
+ * Карточка своего профиля с кнопкой «Редактировать профиль».
+ * @param profile Профиль.
+ * @param avatarUrl Адрес аватарки или пустая строка.
+ * @returns Разметка карточки.
+ */
 function cardTemplate(profile: Profile, avatarUrl: string): string {
   return profileCardTemplate({
     name: displayName(profile),
@@ -115,11 +121,18 @@ export class ProfilePage {
     this.#profileEditor?.destroy();
   }
 
+  /**
+   * Забывает пользователя и ведёт на вход: сессия кончилась.
+   */
   #goToLogin(): void {
     user.clear();
     this.#router.navigate("/login");
   }
 
+  /**
+   * Перерисовывает карточку профиля на месте старой.
+   * @param profile Профиль.
+   */
   #renderCard(profile: Profile): void {
     this.#card.insertAdjacentHTML(
       "afterend",
@@ -131,11 +144,18 @@ export class ProfilePage {
     bindAvatarFallback(card);
   }
 
+  /**
+   * Запоминает новый профиль в сессии и показывает его в карточке.
+   * @param profile Профиль от бэка.
+   */
   #applyProfile(profile: Profile): void {
     user.setProfile(profile);
     this.#renderCard(profile);
   }
 
+  /**
+   * Перезапрашивает профиль: страница сначала рисуется из сессии, а данные могли поменяться в другой вкладке. Открытая форма получает свежие значения.
+   */
   async #refreshProfile(): Promise<void> {
     const { status, data } = await api.me();
     if (this.#isDestroyed) {
@@ -153,6 +173,9 @@ export class ProfilePage {
     }
   }
 
+  /**
+   * Загружает текущую аватарку: /auth/me её не отдаёт, берём первую из списка аватарок.
+   */
   async #loadAvatar(): Promise<void> {
     const { status, data } = await api.avatars();
     const url = status === 200 ? data?.avatars?.[0]?.url : undefined;
@@ -163,6 +186,9 @@ export class ProfilePage {
     this.#renderCard(user.profile as Profile);
   }
 
+  /**
+   * Открывает форму профиля и прячет редактор постов, чтобы не было двух форм сразу.
+   */
   #openProfileEditor(): void {
     if (this.#profileEditor.isOpen) {
       return;
@@ -172,11 +198,17 @@ export class ProfilePage {
     this.#profileEditor.open(user.profile as Profile, this.#avatarUrl);
   }
 
+  /**
+   * Закрывает форму профиля и возвращает кнопку «Создать пост».
+   */
   #closeProfileEditor(): void {
     this.#profileEditor.close();
     this.#editor.hide(false);
   }
 
+  /**
+   * Если вернулись с экрана кода из-за занятого email, открывает форму с этим email и ошибкой под полем.
+   */
   #showEmailError(): void {
     const email = signupDraft.pendingEmail();
     if (email?.back !== PROFILE_PATH) {
@@ -192,6 +224,10 @@ export class ProfilePage {
     this.#profileEditor.setFieldError(error.field, error.message);
   }
 
+  /**
+   * Открывает правку поста, закрыв форму профиля.
+   * @param post Пост.
+   */
   #editPost(post: PostData): void {
     if (this.#profileEditor.isOpen) {
       this.#closeProfileEditor();
@@ -199,6 +235,11 @@ export class ProfilePage {
     this.#editor.edit(post);
   }
 
+  /**
+   * Показывает ошибку сохранения профиля: под полем, если бэк назвал поле или ответил 409 о занятом значении, иначе — общей строкой. 401 ведёт на вход.
+   * @param response Ответ бэка.
+   * @param field Поле, к которому относится 409: email или phone_number.
+   */
   #showProfileError(response: ApiResult<unknown>, field?: string): void {
     if (response.status === 401) {
       this.#goToLogin();
@@ -219,6 +260,10 @@ export class ProfilePage {
     this.#profileEditor.setError(serverErrorMessage(response));
   }
 
+  /**
+   * Сохраняет форму по шагам: поля, аватарка, затем код на новый email. Следующий шаг идёт, только если удался предыдущий. Без смены email форма закрывается сразу.
+   * @param changes Изменения из формы.
+   */
   async #saveProfile(changes: ProfileChanges): Promise<void> {
     this.#profileEditor.setBusy(true);
     const isSaved =
@@ -234,6 +279,12 @@ export class ProfilePage {
     }
   }
 
+  /**
+   * Отправляет изменённые поля одним PATCH.
+   * @param changes Изменения из формы.
+   * @param changes.fields Поля для PATCH.
+   * @returns true, если сохранено или отправлять нечего.
+   */
   async #saveFields({ fields }: ProfileChanges): Promise<boolean> {
     if (Object.keys(fields).length === 0) {
       return true;
@@ -251,6 +302,11 @@ export class ProfilePage {
     return false;
   }
 
+  /**
+   * Загружает аватарку. При лимите в 10 аватарок удаляет самую старую и пробует ещё раз.
+   * @param file Файл картинки.
+   * @returns Ответ бэка на загрузку.
+   */
   async #uploadAvatar(file: File): Promise<ApiResult<Avatar>> {
     const response = await api.uploadAvatar(file);
     if (response.status !== 409 || response.data?.code !== "avatar_limit") {
@@ -264,6 +320,12 @@ export class ProfilePage {
     return api.uploadAvatar(file);
   }
 
+  /**
+   * Загружает новую аватарку и показывает её в карточке и форме.
+   * @param changes Изменения из формы.
+   * @param changes.avatar Новая аватарка или null.
+   * @returns true, если загружена или загружать нечего.
+   */
   async #saveAvatar({ avatar }: ProfileChanges): Promise<boolean> {
     if (!avatar) {
       return true;
@@ -286,6 +348,12 @@ export class ProfilePage {
     return false;
   }
 
+  /**
+   * Отправляет код на новый email и открывает экран кода, с которого вернутся в профиль.
+   * @param changes Изменения из формы.
+   * @param changes.email Новый email или null.
+   * @returns true, если код отправлен или email не менялся.
+   */
   async #sendEmailCode({ email }: ProfileChanges): Promise<boolean> {
     if (email === null) {
       return true;
@@ -307,6 +375,10 @@ export class ProfilePage {
     return false;
   }
 
+  /**
+   * Показывает ошибку сохранения или удаления поста. 401 ведёт на вход.
+   * @param response Ответ бэка.
+   */
   #showError(response: ApiResult<unknown>): void {
     if (response.status === 401) {
       this.#goToLogin();
@@ -319,6 +391,11 @@ export class ProfilePage {
     this.#editor.setError(serverErrorMessage(response));
   }
 
+  /**
+   * Создаёт пост или сохраняет правку и сразу показывает результат в списке.
+   * @param text Текст поста.
+   * @param post Изменяемый пост или null для нового.
+   */
   async #save(text: string, post: PostData | null): Promise<void> {
     this.#editor.setBusy(true);
     const response = post
@@ -343,6 +420,10 @@ export class ProfilePage {
     this.#editor.close();
   }
 
+  /**
+   * Спрашивает подтверждение и удаляет пост.
+   * @param post Пост.
+   */
   async #delete(post: PostData): Promise<void> {
     const isConfirmed = await confirmDialog({
       message: "Вы действительно хотите удалить пост?",

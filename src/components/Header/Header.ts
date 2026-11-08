@@ -1,6 +1,10 @@
 import { logoTemplate } from "../Logo/Logo";
 import logoutIcon from "./icons/logout.svg";
 
+/**
+ * Разметка шапки: логотип-ссылка, место под ошибку выхода и кнопка выхода.
+ * @returns Разметка шапки.
+ */
 function template(): string {
   return `
     <header class="header">

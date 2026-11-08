@@ -213,6 +213,15 @@ interface RequestOptions {
   csrf?: boolean;
 }
 
+/**
+ * Запрос к бэку с cookie сессии. Тело-объект уходит как JSON, FormData — как есть. CSRF-токен добавляется к изменяющим запросам и к тем GET, где его требует бэк. Сетевую ошибку превращает в status 0 и сообщает модулю сети, есть ли связь.
+ * @param method HTTP-метод.
+ * @param path Путь после /api.
+ * @param options Тело запроса и нужен ли CSRF-токен.
+ * @param options.body Тело: объект или FormData.
+ * @param options.csrf Добавить ли X-CSRF-Token; по умолчанию — для всех, кроме GET.
+ * @returns Статус и разобранный JSON или null.
+ */
 async function request<T>(
   method: string,
   path: string,

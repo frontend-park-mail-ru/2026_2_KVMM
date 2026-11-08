@@ -18,6 +18,12 @@ export interface RelationResult {
 
 const MAX_PAGES = 10;
 
+/**
+ * Ищет человека в списке связей, проходя страницы по смещению (до 10).
+ * @param load Загрузка страницы списка по смещению.
+ * @param profileId Кого искать.
+ * @returns Статус последнего запроса и найденная связь, если есть.
+ */
 async function scan(
   load: (cursor: number) => Promise<ApiResult<RelationshipsResponse>>,
   profileId: number,

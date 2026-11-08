@@ -11,6 +11,14 @@ export interface FileFieldConfig {
   onChange?: (file: File | null) => void;
 }
 
+/**
+ * Разметка поля файла: скрытый input внутри подписи, текст подсказки, значок «плюс» и место под ошибку.
+ * @param config Настройки поля.
+ * @param config.name Имя поля формы.
+ * @param config.hint Подсказка о форматах, пока файл не выбран.
+ * @param config.accept Допустимые типы файлов для окна выбора.
+ * @returns Разметка поля.
+ */
 function template({ name, hint, accept }: FileFieldConfig): string {
   return `
     <div class="file-field">
@@ -43,6 +51,10 @@ export class FileField {
     this.#config = config;
   }
 
+  /**
+   * Выбранный файл.
+   * @returns Файл или null, если ничего не выбрано.
+   */
   get file(): File | null {
     return this.#control.files?.[0] ?? null;
   }

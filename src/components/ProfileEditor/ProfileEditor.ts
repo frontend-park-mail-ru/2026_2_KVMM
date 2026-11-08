@@ -40,6 +40,10 @@ export interface ProfileEditorConfig {
   onCancel: () => void;
 }
 
+/**
+ * Разметка скрытой формы: колонка полей с кнопками, колонка аватарки и место под общую ошибку.
+ * @returns Разметка формы.
+ */
 function template(): string {
   return `
     <form class="profile-editor profile-editor_hidden" novalidate>
@@ -60,6 +64,12 @@ function template(): string {
   `;
 }
 
+/**
+ * Значение поля формы из профиля: телефон в маске, дата рождения без времени.
+ * @param name Имя поля.
+ * @param profile Профиль.
+ * @returns Строка для поля ввода.
+ */
 function formValue(name: string, profile: Profile): string {
   const value = String(profile[name as keyof Profile] ?? "").trim();
   if (name === "phone_number") {
@@ -68,6 +78,12 @@ function formValue(name: string, profile: Profile): string {
   return name === "birthday" ? value.slice(0, 10) : value;
 }
 
+/**
+ * Значение в том виде, в каком оно уходит на бэк: телефон в формате +7…, email в нижнем регистре, остальное без пробелов по краям. По нему же сравнивается, изменилось ли поле.
+ * @param name Имя поля.
+ * @param value Значение из формы.
+ * @returns Нормализованное значение.
+ */
 function sentValue(name: string, value: string): string {
   if (name === "phone_number") {
     return normalizePhone(value);
@@ -100,6 +116,10 @@ export class ProfileEditor {
     this.#config = config;
   }
 
+  /**
+   * Открыта ли форма.
+   * @returns true, если форма видна.
+   */
   get isOpen(): boolean {
     return !this.#form.classList.contains("profile-editor_hidden");
   }
@@ -261,6 +281,12 @@ export class ProfileEditor {
     this.#showPreview(null);
   }
 
+  /**
+   * Добавляет поле. Пустым можно оставить только телефон, «О себе» и поля, которые и раньше были пустыми: бэк не умеет стирать остальные.
+   * @param parent Колонка формы.
+   * @param name Имя поля.
+   * @param config Подсказка, проверка и маска поля.
+   */
   #addField(parent: HTMLElement, name: string, config: FieldConfig): void {
     const field = new Input(parent, {
       ...config,
@@ -277,6 +303,10 @@ export class ProfileEditor {
     this.#fields[name] = field;
   }
 
+  /**
+   * Собирает только изменённые поля. Email уходит отдельно: его меняют через код подтверждения.
+   * @returns Поля для PATCH, новый email и новая аватарка.
+   */
   #changes(): ProfileChanges {
     const fields: Record<string, string> = {};
     let email: string | null = null;
@@ -294,16 +324,30 @@ export class ProfileEditor {
     return { fields, email, avatar: this.#photo.file };
   }
 
+  /**
+   * Есть ли что отправлять.
+   * @param changes Изменения формы.
+   * @param changes.fields Поля для PATCH.
+   * @param changes.email Новый email или null.
+   * @param changes.avatar Новая аватарка или null.
+   * @returns true, если изменилось хоть что-то.
+   */
   #hasChanges({ fields, email, avatar }: ProfileChanges): boolean {
     return Object.keys(fields).length > 0 || email !== null || avatar !== null;
   }
 
+  /**
+   * Делает кнопку «Изменить» серой, пока менять нечего.
+   */
   #updateSubmit(): void {
     const isActive = this.#hasChanges(this.#changes());
     this.#submit.classList.toggle("button_inactive", !isActive);
     this.#submit.setAttribute("aria-disabled", String(!isActive));
   }
 
+  /**
+   * Проверяет все поля и аватарку и, если есть изменения, отдаёт их странице.
+   */
   #send(): void {
     this.setError("");
     const results = Object.values(this.#fields).map((field) =>
@@ -317,6 +361,10 @@ export class ProfileEditor {
     this.#config.onSubmit(changes);
   }
 
+  /**
+   * Показывает превью выбранной аватарки и освобождает адрес предыдущего превью.
+   * @param file Выбранный файл или null, чтобы вернуть текущую аватарку.
+   */
   #showPreview(file: File | null): void {
     if (this.#previewUrl) {
       URL.revokeObjectURL(this.#previewUrl);
@@ -325,6 +373,10 @@ export class ProfileEditor {
     this.#showAvatar(this.#previewUrl || this.#avatarUrl);
   }
 
+  /**
+   * Показывает аватарку в круге или заглушку из макета, если её нет.
+   * @param url Адрес картинки или пустая строка.
+   */
   #showAvatar(url: string): void {
     this.#avatar.src = url || avatarPlaceholder;
     this.#avatar.classList.toggle("profile-editor__avatar_photo", Boolean(url));

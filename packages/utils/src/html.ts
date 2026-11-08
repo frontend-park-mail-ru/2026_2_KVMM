@@ -32,10 +32,20 @@ export function escapeHtml(value: string | number): string {
   return String(value).replace(/[&<>"']/g, (char) => HTML_ESCAPES[char]);
 }
 
+/**
+ * Полночь того же дня по местному времени — чтобы считать разницу в календарных днях.
+ * @param date Дата.
+ * @returns Начало дня.
+ */
 function startOfDay(date: Date): Date {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate());
 }
 
+/**
+ * Двузначное число с ведущим нулём для часов и минут.
+ * @param value Число.
+ * @returns Например, 07.
+ */
 function pad(value: number): string {
   return String(value).padStart(2, "0");
 }

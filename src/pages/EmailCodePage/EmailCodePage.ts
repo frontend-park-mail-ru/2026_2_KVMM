@@ -14,6 +14,13 @@ const RESEND_DELAY_MS = 2 * 60 * 1000;
 const WRONG_CODE = "Неверный или устаревший код";
 const EMAIL_TAKEN = "Этот email уже занят";
 
+/**
+ * Разметка экрана кода: куда отправлен код, поле кода, кнопка повторной отправки с таймером, «Продолжить» и кнопка ухода.
+ * @param pending Ожидающий подтверждения email.
+ * @param pending.email Адрес, на который отправлен код.
+ * @param pending.skip Подпись кнопки ухода: «Возможно потом» при регистрации, «Отменить» в профиле.
+ * @returns Разметка экрана.
+ */
 function template({ email, skip }: PendingEmail): string {
   return authLayoutTemplate(`
     <section class="auth-card auth-card_gap_large">
@@ -34,6 +41,11 @@ function template({ email, skip }: PendingEmail): string {
   `);
 }
 
+/**
+ * Оставшееся время до повторной отправки в виде м:сс.
+ * @param ms Сколько миллисекунд осталось.
+ * @returns Например, 1:05.
+ */
 function countdown(ms: number): string {
   const seconds = Math.ceil(ms / 1000);
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
@@ -117,6 +129,9 @@ export class EmailCodePage {
     window.clearInterval(this.#timer);
   }
 
+  /**
+   * Обновляет кнопку повторной отправки раз в секунду: пока не прошли 2 минуты, она выключена и показывает обратный отсчёт.
+   */
   #tick(): void {
     const sentAt = signupDraft.pendingEmail()?.sentAt ?? 0;
     const left = sentAt + RESEND_DELAY_MS - Date.now();
@@ -127,6 +142,9 @@ export class EmailCodePage {
         : "Отправить новый код";
   }
 
+  /**
+   * Отправляет код ещё раз и перезапускает таймер от нового времени отправки.
+   */
   async #sendAgain(): Promise<void> {
     this.#serverError.textContent = "";
     this.#resend.disabled = true;
@@ -144,6 +162,9 @@ export class EmailCodePage {
     this.#tick();
   }
 
+  /**
+   * Проверяет код. Успех — email подтверждён, переход дальше; 400 — неверный код; 409 — email занят, возврат к полю email с ошибкой; 401 — на вход.
+   */
   async #confirm(): Promise<void> {
     this.#serverError.textContent = "";
     if (!this.#code.validate()) {
