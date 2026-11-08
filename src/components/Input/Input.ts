@@ -96,7 +96,7 @@ function controlTemplate(config: InputConfig, kind: string): string {
 
   if (options) {
     return `
-      <select class="input__control${modifier}" name="${name}" autocomplete="${autocomplete}" required>
+      <select class="input__control${modifier}" name="${name}" autocomplete="${autocomplete}">
         <option class="input__option" value="" disabled selected hidden>${placeholder}</option>
         ${optionsTemplate(options)}
       </select>

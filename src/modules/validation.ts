@@ -20,7 +20,6 @@ const MESSAGES = {
   phoneCountry: "Можно указать только российский номер, он начинается с +7",
   phoneRegion:
     "Такого кода нет в российской нумерации: после +7 идёт 3, 4, 8 или 9",
-  contact: "Укажите email или номер телефона",
   nameChars: "Можно использовать только буквы, пробел, дефис и апостроф",
   passwordMin: "Пароль должен содержать минимум 8 символов",
   passwordMax: "Пароль должен содержать не более 64 символов",
@@ -28,8 +27,6 @@ const MESSAGES = {
     "Пароль может содержать только латинские буквы, цифры и символы",
   passwordStrength: "Пароль должен содержать хотя бы одну букву и одну цифру",
   passwordMismatch: "Пароли не совпадают",
-  gender: "Выберите пол",
-  birthdayRequired: "Укажите дату рождения",
   birthdayTooYoung: "Регистрация доступна с 14 лет",
   birthdayInvalid: "Проверьте дату рождения",
   consent: "Подтвердите согласие на обработку персональных данных",
@@ -252,15 +249,14 @@ export function validateNickname(value: string): string {
 }
 
 /**
- * Проверяет email по правилу WHATWG для input type=email, длина до 254 символов. Пустой допустим, если указан телефон.
+ * Проверяет email по правилу WHATWG для input type=email, длина до 254 символов. Поле необязательное: пустое допустимо.
  * @param value Email.
- * @param phone Значение поля телефона.
  * @returns Текст ошибки или пустая строка.
  */
-export function validateEmail(value: string, phone: string): string {
+export function validateEmail(value: string): string {
   const email = value.trim();
   if (!email) {
-    return normalizePhone(phone) ? "" : MESSAGES.contact;
+    return "";
   }
   return isEmail(email) ? "" : MESSAGES.email;
 }
@@ -280,15 +276,14 @@ export function normalizeLogin(value: string): string {
 }
 
 /**
- * Проверяет российский телефон: +7, код на 3, 4, 8 или 9 и ещё 9 цифр. Пустой допустим, если указан email.
+ * Проверяет российский телефон: +7, код на 3, 4, 8 или 9 и ещё 9 цифр. Поле необязательное: пустое допустимо.
  * @param value Телефон из поля с маской.
- * @param email Значение поля email.
  * @returns Текст ошибки или пустая строка.
  */
-export function validatePhone(value: string, email: string): string {
+export function validatePhone(value: string): string {
   const phone = normalizePhone(value);
   if (!phone) {
-    return email.trim() ? "" : MESSAGES.contact;
+    return "";
   }
   if (FOREIGN_PHONE_PATTERN.test(phone)) {
     return MESSAGES.phoneCountry;
@@ -300,20 +295,15 @@ export function validatePhone(value: string, email: string): string {
 }
 
 /**
- * Проверяет имя, фамилию или отчество: буквы, между частями один пробел, дефис или апостроф, 2–32 символа.
+ * Проверяет имя, фамилию или отчество: буквы, между частями один пробел, дефис или апостроф, 2–32 символа. Поле необязательное: пустое допустимо.
  * @param value Значение поля.
  * @param field Поле, для текста ошибки о длине.
- * @param isRequired Обязательно ли поле.
  * @returns Текст ошибки или пустая строка.
  */
-export function validateName(
-  value: string,
-  field: NameField,
-  isRequired: boolean = true,
-): string {
+export function validateName(value: string, field: NameField): string {
   const name = value.trim();
   if (!name) {
-    return isRequired ? MESSAGES.required : "";
+    return "";
   }
   if (!NAME_PATTERN.test(name)) {
     return MESSAGES.nameChars;
@@ -324,16 +314,7 @@ export function validateName(
 }
 
 /**
- * Проверяет, что пол выбран.
- * @param value male, female или пустая строка.
- * @returns Текст ошибки или пустая строка.
- */
-export function validateGender(value: string): string {
-  return value ? "" : MESSAGES.gender;
-}
-
-/**
- * Проверяет дату рождения: существующая дата, возраст от 14 до 120 лет по UTC.
+ * Проверяет дату рождения: существующая дата, возраст от 14 до 120 лет по UTC. Поле необязательное: пустое допустимо, а недописанная дата — ошибка.
  * @param value Дата YYYY-MM-DD или пустая строка.
  * @param validity Состояние поля, badInput — дата введена не полностью.
  * @param today Текущий момент.
@@ -348,7 +329,7 @@ export function validateBirthday(
     return MESSAGES.birthdayInvalid;
   }
   if (!value) {
-    return MESSAGES.birthdayRequired;
+    return "";
   }
   const birth = parseDate(value);
   if (!birth) {

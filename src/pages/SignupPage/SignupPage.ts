@@ -43,25 +43,18 @@ interface Step {
 }
 
 const DEPENDENT_FIELDS: Record<string, string[]> = {
-  email: ["phone_number"],
-  phone_number: ["email"],
   password: ["confirm_password"],
 };
 
-const REQUIRED_FIELDS = [
-  "nickname",
-  "password",
-  "confirm_password",
+const REQUIRED_FIELDS = ["nickname", "password", "confirm_password"];
+
+const ABOUT_FIELDS = [
   "profile_name",
   "surname",
+  "patronymic",
   "gender",
   "birthday",
 ];
-
-const OPTIONAL_PLACEHOLDERS: Record<string, string> = {
-  patronymic: "Введите отчество (необязательно)",
-  bio: "Расскажите о себе (необязательно)",
-};
 
 const PHONE_TAKEN = "Этот номер уже используется";
 const EMAIL_TAKEN = "Этот email уже занят";
@@ -111,7 +104,7 @@ const STEPS: Record<string, Step> = {
     label: "о себе",
     title: "Расскажи нам о себе",
     card: "auth-card_padding_large",
-    fields: ["profile_name", "surname", "patronymic", "gender", "birthday"],
+    fields: ABOUT_FIELDS,
     actions: [{ kind: "save", style: "primary", label: "Продолжить" }, SKIP],
   },
   "/signup/photo": {
@@ -209,16 +202,13 @@ function navTemplate(path: string): string {
 }
 
 /**
- * Подсказка поля: у обязательных — со звёздочкой, у необязательных — с пометкой «(необязательно)».
+ * Подсказка поля: у обязательных — логина и паролей — со звёздочкой, остальные необязательны, как на бэке.
  * @param name Имя поля.
  * @param placeholder Подсказка из настроек поля.
  * @returns Подсказка для шага.
  */
 function placeholderFor(name: string, placeholder: string): string {
-  if (REQUIRED_FIELDS.includes(name)) {
-    return `${placeholder} *`;
-  }
-  return OPTIONAL_PLACEHOLDERS[name] ?? placeholder;
+  return REQUIRED_FIELDS.includes(name) ? `${placeholder} *` : placeholder;
 }
 
 /**
@@ -422,7 +412,7 @@ export class SignupPage {
   }
 
   /**
-   * Сохраняет ввод в черновик и снова открывает шаг: изменённый шаг нужно пройти заново. Перепроверяет связанные поля с ошибкой: email и телефон, пароль и повтор.
+   * Сохраняет ввод в черновик и снова открывает шаг: изменённый шаг нужно пройти заново. Если ошибка показана у повтора пароля, перепроверяет его при правке пароля.
    * @param target Изменённое поле.
    */
   #onEdit(target: HTMLInputElement): void {
@@ -691,17 +681,19 @@ export class SignupPage {
   }
 
   /**
-   * Шаг 3: сохраняет имя, фамилию, отчество, пол и дату рождения. Пустое отчество не отправляется — бэк его не примет.
+   * Шаг 3: сохраняет только заполненные поля — имя, фамилию, отчество, пол и дату рождения. Пустые не отправляются: бэк их не примет. Если не заполнено ничего, шаг завершается без запроса, как «Возможно потом».
    */
   async #saveAbout(): Promise<void> {
-    const patronymic = this.#value("patronymic").trim();
-    const response = await api.updateProfile({
-      profile_name: this.#value("profile_name").trim(),
-      surname: this.#value("surname").trim(),
-      ...(patronymic ? { patronymic } : {}),
-      gender: this.#value("gender"),
-      birthday: this.#value("birthday"),
-    });
+    const fields = Object.fromEntries(
+      ABOUT_FIELDS.map((name) => [name, this.#value(name).trim()]).filter(
+        ([, value]) => value,
+      ),
+    );
+    if (Object.keys(fields).length === 0) {
+      this.#completeStep();
+      return;
+    }
+    const response = await api.updateProfile(fields);
     if (this.#isDestroyed) {
       return;
     }

@@ -4,7 +4,6 @@ import {
   validateBio,
   validateBirthday,
   validateEmail,
-  validateGender,
   validateName,
   validateNickname,
   validatePassword,
@@ -25,7 +24,7 @@ const GENDERS: InputOption[] = [
 ];
 
 /**
- * Поля профиля и регистрации с правилами проверки. Зависимые поля (email и телефон, пароль и повтор) читают соседнее значение через valueOf.
+ * Поля профиля и регистрации с правилами проверки. Обязательны только логин и пароли — как на бэке, остальные поля проверяются, только если заполнены. Повтор пароля читает пароль через valueOf.
  * @param valueOf Текущее значение другого поля по имени.
  * @returns Настройки полей по имени.
  */
@@ -59,14 +58,14 @@ export function fieldConfigs(
       placeholder: "Введите email",
       autocomplete: "email",
       attributes: { maxlength: MAX_LENGTH.email },
-      validate: (value) => validateEmail(value, valueOf("phone_number")),
+      validate: validateEmail,
     },
     phone_number: {
       type: "tel",
       placeholder: "Введите номер телефона",
       autocomplete: "tel",
       mask: attachPhoneMask,
-      validate: (value) => validatePhone(value, valueOf("email")),
+      validate: validatePhone,
     },
     profile_name: {
       type: "text",
@@ -87,13 +86,13 @@ export function fieldConfigs(
       placeholder: "Введите отчество",
       autocomplete: "additional-name",
       attributes: { maxlength: MAX_LENGTH.name },
-      validate: (value) => validateName(value, "patronymic", false),
+      validate: (value) => validateName(value, "patronymic"),
     },
     gender: {
       placeholder: "Выберите пол",
       autocomplete: "sex",
       options: GENDERS,
-      validate: validateGender,
+      validate: () => "",
     },
     birthday: {
       type: "date",
@@ -101,7 +100,6 @@ export function fieldConfigs(
       autocomplete: "bday",
       attributes: {
         ...birthdayRange(),
-        required: "required",
         "aria-label": "Дата рождения",
       },
       validate: validateBirthday,

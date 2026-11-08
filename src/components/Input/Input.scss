@@ -65,7 +65,7 @@
       cursor: pointer;
     }
 
-    &_select:invalid {
+    &_select:has(option[value=""]:checked) {
       color: var(--color-text-secondary);
     }
   }
