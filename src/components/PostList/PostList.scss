@@ -48,6 +48,18 @@
   &__retry {
     width: auto;
   }
+
+  &__new {
+    position: sticky;
+    top: 92px;
+    z-index: 1;
+    align-self: center;
+    box-shadow: 0 2px 8px var(--color-overlay);
+
+    &_hidden {
+      display: none;
+    }
+  }
 }
 
 @keyframes post-list-spin {

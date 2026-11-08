@@ -17,6 +17,6 @@ Frontend-репозиторий команды KVMM. Проект: VK.com
 
 ### Ссылки
 
-- [Деплой](http://161.104.106.151/)
+- [Деплой](https://nexlysocial.ru/)
 - [Backend repository](https://github.com/go-park-mail-ru/2026_2_KVMM)
 - [Figma](https://www.figma.com/design/OaiulngLSECqOEqQ4tOq25/KVMM-%E2%80%94-UX?node-id=0-1)

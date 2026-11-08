@@ -12,7 +12,7 @@ const MESSAGES = {
 };
 
 /**
- * Страница ленты: шапка с выходом, меню разделов, посты всех пользователей и подгрузка при прокрутке.
+ * Страница ленты: шапка с выходом, меню разделов, посты всех пользователей, подгрузка при прокрутке и кнопка «Показать новые посты», когда появились свежие.
  */
 export class FeedPage {
   #parent: HTMLElement;
@@ -37,6 +37,7 @@ export class FeedPage {
       load: (cursor, limit) => api.feed(cursor, limit),
       messages: MESSAGES,
       fill: true,
+      watchNew: true,
       onUnauthorized: () => {
         user.clear();
         this.#router.navigate("/login");

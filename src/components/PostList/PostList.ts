@@ -9,6 +9,8 @@ import spinnerIcon from "./spinner.svg";
 
 const PAGE_SIZE = 10;
 const LOAD_THRESHOLD = 600;
+const NEW_POSTS_INTERVAL = 60000;
+const NEW_POSTS_LABEL = "Показать новые посты";
 
 type ListStatus = "idle" | "loading" | "empty" | "end" | "error";
 
@@ -23,12 +25,13 @@ export interface PostListMessages {
 }
 
 /**
- * Настройки списка: откуда грузить страницы, тексты состояний и что делать со своими постами.
+ * Настройки списка: откуда грузить страницы, тексты состояний и что делать со своими постами. watchNew — раз в минуту проверять, не появились ли посты новее верхнего, и предлагать их показать.
  */
 export interface PostListConfig {
   load: (cursor: number, limit: number) => Promise<ApiResult<FeedResponse>>;
   messages: PostListMessages;
   fill?: boolean;
+  watchNew?: boolean;
   onEdit?: (post: PostData) => void;
   onUnauthorized: () => void;
 }
@@ -44,7 +47,12 @@ export class PostList {
   #config: PostListConfig;
   #list!: HTMLElement;
   #status!: HTMLElement;
+  #newButton!: HTMLButtonElement;
   #posts = new Map<number, Post>();
+  #fresh: PostData[] = [];
+  #isFreshComplete = true;
+  #isChecking = false;
+  #timer = 0;
   #cursor = 0;
   #hasMore = true;
   #isLoading = false;
@@ -66,11 +74,22 @@ export class PostList {
   render(): void {
     this.#parent.insertAdjacentHTML(
       "beforeend",
-      `<div class="post-list"><div class="post-list__items"></div><div class="post-list__status" role="status"></div></div>`,
+      `<div class="post-list"><button class="button button_pill button_filled post-list__new post-list__new_hidden" type="button"></button><div class="post-list__items"></div><div class="post-list__status" role="status"></div></div>`,
     );
     const element = this.#parent.lastElementChild as HTMLElement;
     this.#list = element.querySelector(".post-list__items") as HTMLElement;
     this.#status = element.querySelector(".post-list__status") as HTMLElement;
+    this.#newButton = element.querySelector(
+      ".post-list__new",
+    ) as HTMLButtonElement;
+    this.#newButton.addEventListener("click", () => this.#showFresh());
+    if (this.#config.watchNew) {
+      this.#timer = window.setInterval(
+        () => this.#checkFresh(),
+        NEW_POSTS_INTERVAL,
+      );
+      document.addEventListener("visibilitychange", this.#onVisible);
+    }
     this.#status.addEventListener("click", (event) => {
       if ((event.target as Element).closest(".post-list__retry")) {
         this.#hasError = false;
@@ -82,11 +101,13 @@ export class PostList {
   }
 
   /**
-   * Снимает обработчик прокрутки и игнорирует ответы, пришедшие после ухода со страницы.
+   * Снимает обработчики прокрутки и проверки новых постов и игнорирует ответы, пришедшие после ухода со страницы.
    */
   destroy(): void {
     this.#isDestroyed = true;
     window.removeEventListener("scroll", this.#onScroll);
+    clearInterval(this.#timer);
+    document.removeEventListener("visibilitychange", this.#onVisible);
   }
 
   /**
@@ -117,6 +138,61 @@ export class PostList {
     if (!this.#list.children.length && !this.#hasMore) {
       this.#setStatus("empty");
     }
+  }
+
+  /**
+   * Проверяет новые посты, когда вкладку снова показали. Стрелочная функция — чтобы снять её в destroy.
+   */
+  #onVisible = (): void => {
+    if (document.visibilityState === "visible") {
+      this.#checkFresh();
+    }
+  };
+
+  /**
+   * Тихо запрашивает первую страницу и ищет посты новее самого нового в списке. Не запускается, пока грузится первая страница, — иначе новыми показались бы все посты; подгрузке старых страниц не мешает. Если они есть, показывает кнопку с их числом. Если новыми оказалась вся страница, а дальше есть ещё, между ними и списком может быть разрыв, — тогда число с плюсом, а кнопка перезагрузит список.
+   */
+  async #checkFresh(): Promise<void> {
+    const isFirstLoad = this.#isLoading && this.#posts.size === 0;
+    if (this.#isChecking || isFirstLoad || this.#hasError) {
+      return;
+    }
+    this.#isChecking = true;
+    const { status, data } = await this.#config.load(0, PAGE_SIZE);
+    this.#isChecking = false;
+    if (this.#isDestroyed || status !== 200 || !Array.isArray(data?.posts)) {
+      return;
+    }
+    const newest = Math.max(0, ...this.#posts.keys());
+    this.#fresh = data.posts.filter(
+      (post) => post.id > newest && !this.#posts.has(post.id),
+    );
+    this.#isFreshComplete =
+      this.#fresh.length < data.posts.length || !data.has_more;
+    const count = `${this.#fresh.length}${this.#isFreshComplete ? "" : "+"}`;
+    this.#newButton.textContent = `${NEW_POSTS_LABEL} (${count})`;
+    this.#newButton.classList.toggle(
+      "post-list__new_hidden",
+      this.#fresh.length === 0,
+    );
+  }
+
+  /**
+   * Показывает новые посты сверху и прокручивает к ним. При возможном разрыве загружает список заново.
+   */
+  #showFresh(): void {
+    this.#newButton.classList.add("post-list__new_hidden");
+    if (this.#isFreshComplete) {
+      [...this.#fresh].reverse().forEach((post) => this.prepend(post));
+    } else {
+      this.#posts.forEach((post) => post.remove());
+      this.#posts.clear();
+      this.#cursor = 0;
+      this.#hasMore = true;
+      this.#loadPage();
+    }
+    this.#fresh = [];
+    window.scrollTo({ top: 0 });
   }
 
   /**
