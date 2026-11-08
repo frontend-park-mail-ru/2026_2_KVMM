@@ -308,6 +308,8 @@ export const api = {
     request<Profile>("POST", "/auth/email/confirm", {
       body: { email, code },
     }),
+  profileById: (profileId: number) =>
+    request<Profile>("GET", `/profile/search?profile_id=${profileId}`),
   userPosts: (profileId: number, cursor: number, limit: number) =>
     request<UserPostsResponse>(
       "GET",

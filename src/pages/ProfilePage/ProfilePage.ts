@@ -47,6 +47,7 @@ function cardTemplate(profile: Profile, avatarUrl: string): string {
     name: displayName(profile),
     avatarUrl,
     bio: profile.bio,
+    birthday: profile.birthday,
     actions: EDIT_BUTTON,
   });
 }

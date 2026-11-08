@@ -4,7 +4,7 @@ import type { Router, RouteParams } from "@nexly/router";
 import { user } from "../../modules/user";
 import { people } from "../../modules/people";
 import { findRelation } from "../../modules/relations";
-import { findChatPerson, openChat } from "../../modules/chats";
+import { openChat } from "../../modules/chats";
 import { friendRequests } from "../../modules/friendRequests";
 import type { RelationStatus } from "../../modules/relations";
 import { displayName } from "../../modules/profileName";
@@ -26,6 +26,7 @@ const MESSAGES = {
 };
 
 const UNKNOWN_NAME = "Пользователь";
+const MISSING_NAME = "Пользователь не найден";
 const RELATION_ERROR = "Не удалось узнать, друзья ли вы";
 
 /**
@@ -59,7 +60,7 @@ const NEXT_RELATION: Record<string, RelationStatus> = {
 };
 
 /**
- * Страница другого пользователя /profile/:id: имя, аватар, кнопки дружбы и его посты.
+ * Страница другого пользователя /profile/:id: имя, аватар, «О себе», дата рождения, кнопки дружбы и его посты.
  */
 export class UserPage {
   #parent: HTMLElement;
@@ -69,11 +70,14 @@ export class UserPage {
   #list!: PostList;
   #name: string | null = null;
   #avatarPath = "";
+  #bio = "";
+  #birthday = "";
   #relation: RelationStatus | null = null;
   #error = "";
   #isPostsLoaded = false;
   #isRelationLoaded = false;
-  #isChatsChecked = false;
+  #isProfileLoaded = false;
+  #isMissing = false;
   #isDestroyed = false;
 
   /**
@@ -88,13 +92,12 @@ export class UserPage {
   }
 
   /**
-   * Рисует карточку с известным из ленты, списков или чатов именем, затем загружает посты и связь с пользователем. Если имя неизвестно, ищет человека среди участников своих чатов.
+   * Рисует карточку с известным из ленты, списков или чатов именем, затем загружает профиль, посты и связь с пользователем.
    */
   render(): void {
     const known = people.get(this.#profileId);
     this.#name = known?.name ?? null;
     this.#avatarPath = known?.avatarUrl ?? "";
-    this.#isChatsChecked = Boolean(known);
 
     const main = new AppLayout(this.#parent, this.#router, null).render();
     main.insertAdjacentHTML("beforeend", "<section></section>");
@@ -121,10 +124,8 @@ export class UserPage {
       onUnauthorized: () => this.#goToLogin(),
     });
     this.#list.render();
+    this.#loadProfile();
     this.#loadRelation();
-    if (!this.#isChatsChecked) {
-      this.#loadFromChats();
-    }
   }
 
   /**
@@ -144,10 +145,10 @@ export class UserPage {
   }
 
   /**
-   * Перерисовывает карточку человека: имя, аватар, кнопки по связи, «Написать» и ошибку.
+   * Перерисовывает карточку человека: имя, аватар, «О себе», дату рождения, кнопки по связи, «Написать» и ошибку. У несуществующего профиля кнопок нет.
    */
   #renderCard(): void {
-    const actions =
+    const buttons =
       (this.#relation ? ACTIONS[this.#relation] : "") + WRITE_BUTTON;
     const error = `<p class="profile-card__error" role="alert">${escapeHtml(this.#error)}</p>`;
     this.#card.insertAdjacentHTML(
@@ -155,7 +156,9 @@ export class UserPage {
       profileCardTemplate({
         name: this.#name,
         avatarUrl: this.#avatarPath ? api.mediaUrl(this.#avatarPath) : "",
-        actions: actions + error,
+        bio: this.#bio,
+        birthday: this.#birthday,
+        actions: this.#isMissing ? "" : buttons + error,
       }),
     );
     const card = this.#card.nextElementSibling as HTMLElement;
@@ -165,13 +168,13 @@ export class UserPage {
   }
 
   /**
-   * Учитывает имя из очередного источника. Точный источник (связи, чаты) заменяет имя из постов, где бэк пишет «Фамилия Имя». «Пользователь» ставится, только когда проверены все источники.
+   * Учитывает имя из очередного источника. Точный источник (профиль, связи) заменяет имя из постов, где бэк пишет «Фамилия Имя». «Пользователь» ставится, только когда проверены все источники.
    * @param name Имя или пустая строка.
    * @param avatarPath Путь к аватарке или пустая строка.
    * @param isExact Источник с именем в правильном порядке.
    */
   #learn(name: string, avatarPath: string, isExact: boolean = false): void {
-    if (this.#isDestroyed) {
+    if (this.#isDestroyed || this.#isMissing) {
       return;
     }
     if (name && (isExact || !this.#name || this.#name === UNKNOWN_NAME)) {
@@ -186,7 +189,7 @@ export class UserPage {
       !this.#name &&
       this.#isPostsLoaded &&
       this.#isRelationLoaded &&
-      this.#isChatsChecked
+      this.#isProfileLoaded
     ) {
       this.#name = UNKNOWN_NAME;
     }
@@ -194,19 +197,24 @@ export class UserPage {
   }
 
   /**
-   * Ищет человека среди участников своих чатов: так находится имя того, кто написал первым и не встречался в ленте и друзьях.
+   * Загружает профиль: имя, «О себе» и дату рождения. Аватарок в ответе нет — они остаются из постов и списков. 404 — такого пользователя нет.
    */
-  async #loadFromChats(): Promise<void> {
-    const person = await findChatPerson(this.#profileId);
+  async #loadProfile(): Promise<void> {
+    const { status, data } = await api.profileById(this.#profileId);
     if (this.#isDestroyed) {
       return;
     }
-    this.#isChatsChecked = true;
-    this.#learn(
-      person ? displayName(person) : "",
-      person?.avatar_urls ?? "",
-      true,
-    );
+    this.#isProfileLoaded = true;
+    if (status === 404) {
+      this.#isMissing = true;
+      this.#name = MISSING_NAME;
+      this.#renderCard();
+      return;
+    }
+    const profile = status === 200 ? data : null;
+    this.#bio = profile?.bio ?? "";
+    this.#birthday = profile?.birthday ?? "";
+    this.#learn(profile ? displayName(profile) : "", "", true);
   }
 
   /**

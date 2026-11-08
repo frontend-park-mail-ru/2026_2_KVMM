@@ -76,9 +76,15 @@
     }
   }
 
-  &__bio {
-    margin: 0;
+  &__details {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
     padding: 15px 24px 14px;
+  }
+
+  &__detail {
+    margin: 0;
     color: var(--color-text);
     font: var(--font-body);
     white-space: pre-line;
@@ -105,7 +111,7 @@
       font: var(--font-title);
     }
 
-    &__bio {
+    &__details {
       padding: 0 16px 16px;
     }
   }

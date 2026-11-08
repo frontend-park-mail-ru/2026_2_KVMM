@@ -102,21 +102,3 @@ export async function openChat(profileId: number): Promise<ApiResult<Chat>> {
   }
   return response;
 }
-
-/**
- * Ищет человека среди участников своих чатов. Нужно странице человека, когда о нём ничего не известно из ленты и друзей: например, он написал первым.
- * @param profileId Кого искать.
- * @returns Короткий профиль или null, если общего чата нет или чаты не загрузились.
- */
-export async function findChatPerson(
-  profileId: number,
-): Promise<ShortProfile | null> {
-  const { data } = await loadAllChats();
-  for (const chat of data ?? []) {
-    const person = chat.participants?.find((item) => item.id === profileId);
-    if (person) {
-      return person;
-    }
-  }
-  return null;
-}
