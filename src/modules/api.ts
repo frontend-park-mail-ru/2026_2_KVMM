@@ -288,6 +288,14 @@ export const api = {
     request<{ message: string }>("POST", "/auth/email/change", {
       body: { email },
     }),
+  requestLoginCode: (email: string) =>
+    request<{ message: string }>("POST", "/auth/login/email/send/code", {
+      body: { email },
+    }),
+  loginByCode: (email: string, code: string) =>
+    request<Session>("POST", "/auth/login/email/code", {
+      body: { email, code },
+    }),
   confirmEmail: (email: string, code: string) =>
     request<Profile>("POST", "/auth/email/confirm", {
       body: { email, code },

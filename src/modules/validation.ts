@@ -262,6 +262,15 @@ export function validateEmail(value: string): string {
 }
 
 /**
+ * Проверяет email для входа по коду: здесь поле обязательно.
+ * @param value Email.
+ * @returns Текст ошибки или пустая строка.
+ */
+export function validateRequiredEmail(value: string): string {
+  return value.trim() ? validateEmail(value) : MESSAGES.required;
+}
+
+/**
  * Приводит логин, похожий на телефон (8 999 123-45-67, +7 (999)…), к виду +79991234567, остальное только обрезает.
  * @param value Логин, email или телефон с формы входа.
  * @returns Логин для отправки на бэк.

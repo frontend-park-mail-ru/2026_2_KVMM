@@ -100,6 +100,26 @@
     }
   }
 
+  &__mode {
+    margin-bottom: 14px;
+  }
+
+  &__link {
+    align-self: center;
+    margin: 12px 0 0;
+    color: var(--color-link);
+    font: var(--font-caption);
+
+    &:hover {
+      text-decoration: underline;
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--color-primary);
+      outline-offset: 2px;
+    }
+  }
+
   &__server-error {
     margin: 15px 0 0;
     color: var(--color-error);

@@ -662,6 +662,7 @@ export class SignupPage {
       }
       if (response.status === 200) {
         signupDraft.setPendingEmail(email, {
+          purpose: "change",
           next: "/signup/about",
           back: "/signup/email",
           skip: "Возможно потом",

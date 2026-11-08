@@ -1,4 +1,4 @@
-import { api } from "../../modules/api";
+import { api, isSession } from "../../modules/api";
 import type { Router } from "@nexly/router";
 import { user } from "../../modules/user";
 import { serverErrorMessage } from "../../modules/errors";
@@ -52,7 +52,7 @@ function countdown(ms: number): string {
 }
 
 /**
- * Подтверждение нового email кодом из письма — и при регистрации, и при смене email в профиле. Таймер повторной отправки на 2 минуты, кнопка ухода оставляет email неподтверждённым.
+ * Экран кода из письма. Подтверждает новый email (в регистрации и профиле) или впускает по email без пароля. Таймер повторной отправки на 2 минуты; кнопка ухода оставляет email неподтверждённым или возвращает ко входу по паролю.
  */
 export class EmailCodePage {
   #parent: HTMLElement;
@@ -112,9 +112,7 @@ export class EmailCodePage {
     });
     form
       .querySelector('[data-action="skip"]')
-      ?.addEventListener("click", () =>
-        this.#router.navigate(this.#pending.next),
-      );
+      ?.addEventListener("click", () => this.#leave());
     this.#resend.addEventListener("click", () => this.#sendAgain());
 
     this.#tick();
@@ -148,8 +146,11 @@ export class EmailCodePage {
   async #sendAgain(): Promise<void> {
     this.#serverError.textContent = "";
     this.#resend.disabled = true;
-    const { email } = this.#pending;
-    const response = await api.requestEmailChange(email);
+    const { email, purpose } = this.#pending;
+    const response =
+      purpose === "login"
+        ? await api.requestLoginCode(email)
+        : await api.requestEmailChange(email);
     if (this.#isDestroyed) {
       return;
     }
@@ -163,22 +164,70 @@ export class EmailCodePage {
   }
 
   /**
-   * Проверяет код. Успех — email подтверждён, переход дальше; 400 — неверный код; 409 — email занят, возврат к полю email с ошибкой; 401 — на вход.
+   * Кнопка ухода. При смене email — дальше без подтверждения, при входе по коду — назад ко входу по паролю.
+   */
+  #leave(): void {
+    if (this.#pending.purpose === "login") {
+      signupDraft.clearPendingEmail();
+      this.#router.navigate(this.#pending.back);
+      return;
+    }
+    this.#router.navigate(this.#pending.next);
+  }
+
+  /**
+   * Проверяет код. Вход: успех — сессия и лента, 401 — неверный код. Смена email: успех — email подтверждён, переход дальше; 400 — неверный код; 409 — email занят, возврат к полю email с ошибкой; 401 — на вход.
    */
   async #confirm(): Promise<void> {
     this.#serverError.textContent = "";
     if (!this.#code.validate()) {
       return;
     }
-
     this.#submit.disabled = true;
-    const { email, next, back } = this.#pending;
-    const response = await api.confirmEmail(email, this.#code.value.trim());
+    const code = this.#code.value.trim();
+    if (this.#pending.purpose === "login") {
+      await this.#confirmLogin(code);
+    } else {
+      await this.#confirmChange(code);
+    }
+    if (!this.#isDestroyed) {
+      this.#submit.disabled = false;
+    }
+  }
+
+  /**
+   * Вход по коду: сохраняет сессию, очищает черновики и открывает ленту.
+   * @param code Код из письма.
+   */
+  async #confirmLogin(code: string): Promise<void> {
+    const { email, next } = this.#pending;
+    const response = await api.loginByCode(email, code);
     if (this.#isDestroyed) {
       return;
     }
-    this.#submit.disabled = false;
+    if (response.status === 200 && isSession(response.data)) {
+      signupDraft.clear();
+      user.set(response.data);
+      this.#router.navigate(next, true);
+      return;
+    }
+    if (response.status === 401) {
+      this.#code.setError(WRONG_CODE);
+      return;
+    }
+    this.#serverError.textContent = serverErrorMessage(response);
+  }
 
+  /**
+   * Подтверждение нового email вошедшего пользователя.
+   * @param code Код из письма.
+   */
+  async #confirmChange(code: string): Promise<void> {
+    const { email, next, back } = this.#pending;
+    const response = await api.confirmEmail(email, code);
+    if (this.#isDestroyed) {
+      return;
+    }
     if (response.status === 200 && response.data?.id) {
       user.setProfile(response.data);
       signupDraft.complete(back);

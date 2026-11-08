@@ -10,9 +10,15 @@ interface LoginTarget {
 }
 
 /**
+ * Зачем отправлен код: подтвердить новый email вошедшего пользователя или войти по email без пароля.
+ */
+export type EmailPurpose = "change" | "login";
+
+/**
  * Откуда пришли подтверждать email: next — куда вести после кода, back — куда вернуть, если email заняли, skip — подпись кнопки ухода без подтверждения.
  */
 export interface EmailFlow {
+  purpose: EmailPurpose;
   next: string;
   back: string;
   skip: string;
@@ -106,8 +112,8 @@ export const signupDraft = {
     loginTarget = null;
   },
   setPendingEmail: (email: string, flow: EmailFlow): void => {
-    const { next, back, skip } = flow;
-    pendingEmail = { email, sentAt: Date.now(), next, back, skip };
+    const { purpose, next, back, skip } = flow;
+    pendingEmail = { email, sentAt: Date.now(), purpose, next, back, skip };
   },
   pendingEmail: (): PendingEmail | null => pendingEmail,
   clearPendingEmail: (): void => {

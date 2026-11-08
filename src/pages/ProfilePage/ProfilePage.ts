@@ -364,6 +364,7 @@ export class ProfilePage {
     }
     if (response.status === 200) {
       signupDraft.setPendingEmail(email, {
+        purpose: "change",
         next: PROFILE_PATH,
         back: PROFILE_PATH,
         skip: "Отменить",

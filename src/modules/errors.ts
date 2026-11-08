@@ -29,7 +29,6 @@ const SERVER_ERRORS: Record<string, string> = {
 };
 
 const REGISTER_FIELD_PATTERNS: [RegExp, string, string?][] = [
-  [/email or phone/i, "email", "Укажите email или номер телефона"],
   [/confirm_?password/i, "confirm_password"],
   [/phone_?number/i, "phone_number"],
   [/profile_?name/i, "profile_name"],

@@ -26,20 +26,22 @@ const signupRoutes = Object.fromEntries(
 );
 
 /**
- * Маршрут экрана кода подтверждения email. Экран доступен, только если код уже отправлен с той страницы, куда с него возвращаются, иначе — переход туда.
- * @param back Страница, с которой отправили код: шаг регистрации или профиль.
+ * Маршрут экрана кода из письма. Экран доступен, только если код уже отправлен с той страницы, куда с него возвращаются, иначе — переход туда.
+ * @param back Страница, с которой отправили код: вход, шаг регистрации или профиль.
+ * @param auth Нужна ли авторизация: для входа по коду — нет.
  * @returns Маршрут для роутера.
  */
-function emailCodeRoute(back: string): Route {
+function emailCodeRoute(back: string, auth: boolean = true): Route {
   return {
     page: EmailCodePage,
-    auth: true,
+    auth,
     redirect: () => (signupDraft.pendingEmail()?.back === back ? null : back),
   };
 }
 
 const routes: Record<string, Route> = {
   "/login": { page: LoginPage, auth: false },
+  "/login/code": emailCodeRoute("/login", false),
   ...signupRoutes,
   "/signup/code": emailCodeRoute(SIGNUP_STEPS[1]),
   "/feed": { page: FeedPage, auth: true },
