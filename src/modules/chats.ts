@@ -1,10 +1,10 @@
 import { api } from "./api";
 import { chatSocket } from "./chatSocket";
 import type { ApiResult, Chat, ShortProfile } from "./api";
-import { nextCursor } from "./cursor";
+import { nextCursor } from "@nexly/utils";
 import { people } from "./people";
 import { displayName } from "./profileName";
-import { escapeHtml } from "./utils";
+import { escapeHtml } from "@nexly/utils";
 
 const MAX_PAGES = 10;
 

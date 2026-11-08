@@ -4,7 +4,7 @@ import { user } from "./modules/user";
 import { chatSocket } from "./modules/chatSocket";
 import { network } from "./modules/network";
 import { renderOfflineBanner } from "./components/OfflineBanner/OfflineBanner";
-import { Router } from "./modules/router";
+import { Router } from "@nexly/router";
 import { LoginPage } from "./pages/LoginPage/LoginPage";
 import { SignupPage } from "./pages/SignupPage/SignupPage";
 import { FeedPage } from "./pages/FeedPage/FeedPage";
@@ -15,7 +15,7 @@ import { UserPage } from "./pages/UserPage/UserPage";
 import { ChatsPage } from "./pages/ChatsPage/ChatsPage";
 import { ConversationPage } from "./pages/ConversationPage/ConversationPage";
 import { SIGNUP_STEPS, signupDraft } from "./modules/signupDraft";
-import type { Route } from "./modules/router";
+import type { Route } from "@nexly/router";
 
 const signupRoutes = Object.fromEntries(
   SIGNUP_STEPS.map((path, index) => [
@@ -53,6 +53,11 @@ const routes: Record<string, Route> = {
 const router = new Router(
   document.getElementById("root") as HTMLElement,
   routes,
+  {
+    isAuthorized: () => user.isAuthorized,
+    guestHome: "/login",
+    userHome: "/feed",
+  },
 );
 
 user.onChange(() => {

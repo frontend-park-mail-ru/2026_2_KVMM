@@ -3,7 +3,7 @@ import type {
   FeedResponse,
   Post as PostData,
 } from "../../modules/api";
-import { nextCursor } from "../../modules/cursor";
+import { nextCursor } from "@nexly/utils";
 import { Post } from "../Post/Post";
 import spinnerIcon from "./spinner.svg";
 

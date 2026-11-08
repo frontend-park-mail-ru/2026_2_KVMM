@@ -10,6 +10,7 @@ const { DefinePlugin } = require('webpack');
 
 const srcDir = path.resolve(__dirname, 'src');
 const distDir = path.resolve(__dirname, 'dist');
+const packagesDir = path.resolve(__dirname, 'packages');
 const SW_FILE = 'sw.js';
 const SW_MANIFEST = /(["'])__NEXLY_MANIFEST__\1/;
 
@@ -71,6 +72,11 @@ module.exports = (env, argv) => {
                     test: /\.ts$/,
                     include: srcDir,
                     type: 'javascript/auto',
+                    use: 'babel-loader',
+                },
+                {
+                    test: /\.js$/,
+                    include: packagesDir,
                     use: 'babel-loader',
                 },
                 {

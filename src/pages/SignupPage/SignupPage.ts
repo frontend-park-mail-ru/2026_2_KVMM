@@ -1,6 +1,6 @@
 import { api, isSession } from "../../modules/api";
 import type { ApiResult, Profile, RegisterFields } from "../../modules/api";
-import type { Router } from "../../modules/router";
+import type { Router } from "@nexly/router";
 import { user } from "../../modules/user";
 import { registerFieldError, serverErrorMessage } from "../../modules/errors";
 import {

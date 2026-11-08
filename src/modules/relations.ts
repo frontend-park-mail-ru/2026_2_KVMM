@@ -1,6 +1,6 @@
 import { api } from "./api";
 import type { ApiResult, RelationshipsResponse, ShortProfile } from "./api";
-import { nextOffset } from "./cursor";
+import { nextOffset } from "@nexly/utils";
 
 /**
  * Связь текущего пользователя с человеком: нет связи, входящая заявка, отправленная заявка или дружба.

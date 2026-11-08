@@ -9,14 +9,21 @@
   "author": "",
   "type": "commonjs",
   "main": "server/index.js",
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
-    "dev": "webpack serve --mode development",
-    "build": "npm run typecheck && webpack --mode production",
+    "dev": "npm run build:packages && webpack serve --mode development",
+    "build": "npm run build:packages && npm run typecheck && webpack --mode production",
     "start": "node server",
     "typecheck": "tsc --noEmit && tsc --noEmit -p src/sw",
-    "lint": "eslint . --max-warnings=0"
+    "lint": "eslint . --max-warnings=0",
+    "build:packages": "npm run build --workspaces"
   },
   "dependencies": {
+    "@nexly/chat-socket": "1.0.0",
+    "@nexly/router": "1.0.0",
+    "@nexly/utils": "1.0.0",
     "express": "5.1.0",
     "morgan": "^1.10.1"
   },

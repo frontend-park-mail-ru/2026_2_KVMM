@@ -1,6 +1,6 @@
 import { api } from "../../modules/api";
 import type { ApiResult } from "../../modules/api";
-import type { Router, RouteParams } from "../../modules/router";
+import type { Router, RouteParams } from "@nexly/router";
 import { user } from "../../modules/user";
 import { people } from "../../modules/people";
 import { findRelation } from "../../modules/relations";
@@ -8,7 +8,7 @@ import { openChat } from "../../modules/chats";
 import type { RelationStatus } from "../../modules/relations";
 import { displayName } from "../../modules/profileName";
 import { serverErrorMessage } from "../../modules/errors";
-import { escapeHtml } from "../../modules/utils";
+import { escapeHtml } from "@nexly/utils";
 import { AppLayout } from "../../components/AppLayout/AppLayout";
 import { PostList } from "../../components/PostList/PostList";
 import { confirmDialog } from "../../components/Dialog/Dialog";

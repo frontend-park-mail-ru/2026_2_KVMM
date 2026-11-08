@@ -1,5 +1,5 @@
 import { api } from "../../modules/api";
-import type { Router } from "../../modules/router";
+import type { Router } from "@nexly/router";
 import { user } from "../../modules/user";
 import { AppLayout } from "../../components/AppLayout/AppLayout";
 import { PostList } from "../../components/PostList/PostList";

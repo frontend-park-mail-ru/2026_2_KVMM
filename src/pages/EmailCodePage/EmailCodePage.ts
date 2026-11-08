@@ -1,9 +1,9 @@
 import { api } from "../../modules/api";
-import type { Router } from "../../modules/router";
+import type { Router } from "@nexly/router";
 import { user } from "../../modules/user";
 import { serverErrorMessage } from "../../modules/errors";
 import { validateEmailCode } from "../../modules/validation";
-import { escapeHtml } from "../../modules/utils";
+import { escapeHtml } from "@nexly/utils";
 import { signupDraft } from "../../modules/signupDraft";
 import type { PendingEmail } from "../../modules/signupDraft";
 import { Input } from "../../components/Input/Input";

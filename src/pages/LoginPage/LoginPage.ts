@@ -1,5 +1,5 @@
 import { api, isSession } from "../../modules/api";
-import type { Router } from "../../modules/router";
+import type { Router } from "@nexly/router";
 import { user } from "../../modules/user";
 import { serverErrorMessage } from "../../modules/errors";
 import {

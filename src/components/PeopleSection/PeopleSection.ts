@@ -1,8 +1,8 @@
 import { api } from "../../modules/api";
 import type { ApiResult, ShortProfile } from "../../modules/api";
-import { nextOffset } from "../../modules/cursor";
+import { nextOffset } from "@nexly/utils";
 import { displayName } from "../../modules/profileName";
-import { escapeHtml } from "../../modules/utils";
+import { escapeHtml } from "@nexly/utils";
 import { people } from "../../modules/people";
 
 /**

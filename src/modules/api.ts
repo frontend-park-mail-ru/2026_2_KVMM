@@ -1,5 +1,8 @@
 import { user } from "./user";
 import { network } from "./network";
+import type { ChatMessage } from "@nexly/chat-socket";
+
+export type { ChatMessage };
 
 const API_URL = "/api";
 
@@ -74,21 +77,6 @@ export interface ShortProfile {
   surname?: string;
   patronymic?: string;
   avatar_urls?: string;
-}
-
-/**
- * Сообщение в чате. message_text = null у удалённых сообщений.
- */
-export interface ChatMessage {
-  id: number;
-  chat_id: number;
-  author_id: number;
-  message_text: string | null;
-  repost_from?: number;
-  reply_from?: number;
-  created_at: string;
-  updated_at?: string;
-  deleted_at?: string;
 }
 
 /**

@@ -1,6 +1,6 @@
 import { api } from "../../modules/api";
 import type { Post as PostData, PostAuthor } from "../../modules/api";
-import { escapeHtml, formatDate } from "../../modules/utils";
+import { escapeHtml, formatDate } from "@nexly/utils";
 import likeIcon from "./icons/like.svg";
 import commentIcon from "./icons/comment.svg";
 import shareIcon from "./icons/share.svg";

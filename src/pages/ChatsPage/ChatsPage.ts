@@ -1,6 +1,6 @@
 import { api } from "../../modules/api";
 import type { Chat, ShortProfile } from "../../modules/api";
-import type { Router } from "../../modules/router";
+import type { Router } from "@nexly/router";
 import { user } from "../../modules/user";
 import { chatSocket } from "../../modules/chatSocket";
 import type { ChatEvent } from "../../modules/chatSocket";
@@ -13,7 +13,7 @@ import {
   partnerView,
 } from "../../modules/chats";
 import { serverErrorMessage } from "../../modules/errors";
-import { escapeHtml, formatDate } from "../../modules/utils";
+import { escapeHtml, formatDate } from "@nexly/utils";
 import { AppLayout } from "../../components/AppLayout/AppLayout";
 import { PeopleSection } from "../../components/PeopleSection/PeopleSection";
 

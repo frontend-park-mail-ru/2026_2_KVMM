@@ -1,4 +1,4 @@
-import { escapeHtml } from "../../modules/utils";
+import { escapeHtml } from "@nexly/utils";
 
 /**
  * Данные карточки профиля. name = null — имя ещё загружается. actions — готовая разметка кнопок справа.

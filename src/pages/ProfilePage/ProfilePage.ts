@@ -5,7 +5,7 @@ import type {
   Post as PostData,
   Profile,
 } from "../../modules/api";
-import type { Router } from "../../modules/router";
+import type { Router } from "@nexly/router";
 import { user } from "../../modules/user";
 import { registerFieldError, serverErrorMessage } from "../../modules/errors";
 import { displayName } from "../../modules/profileName";

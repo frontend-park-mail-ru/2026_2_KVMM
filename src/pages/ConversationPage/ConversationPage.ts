@@ -1,7 +1,7 @@
 import sendIcon from "./icons/send.svg";
 import { api } from "../../modules/api";
 import type { Chat, ChatMessage } from "../../modules/api";
-import type { Router, RouteParams } from "../../modules/router";
+import type { Router, RouteParams } from "@nexly/router";
 import { user } from "../../modules/user";
 import { chatSocket } from "../../modules/chatSocket";
 import type { ChatEvent, SendResult } from "../../modules/chatSocket";
@@ -12,8 +12,8 @@ import {
   loadAllChats,
   partnerView,
 } from "../../modules/chats";
-import { nextCursor } from "../../modules/cursor";
-import { escapeHtml, formatDate } from "../../modules/utils";
+import { nextCursor } from "@nexly/utils";
+import { escapeHtml, formatDate } from "@nexly/utils";
 import { AppLayout } from "../../components/AppLayout/AppLayout";
 
 const MESSAGES = {

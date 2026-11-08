@@ -1,5 +1,5 @@
 import { api } from "../../modules/api";
-import type { Router } from "../../modules/router";
+import type { Router } from "@nexly/router";
 import { user } from "../../modules/user";
 import { NETWORK_ERROR } from "../../modules/errors";
 import { Header } from "../Header/Header";

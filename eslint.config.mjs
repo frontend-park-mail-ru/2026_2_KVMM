@@ -4,7 +4,7 @@ import globals from "globals";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["node_modules/", "dist/", ".design/"] },
+  { ignores: ["node_modules/", "dist/", ".design/", "packages/*/dist/"] },
   js.configs.recommended,
   {
     rules: {
@@ -23,7 +23,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ["src/**/*.ts"],
+    files: ["src/**/*.ts", "packages/*/src/**/*.ts"],
     extends: [tseslint.configs.recommended],
     ...jsdoc.configs["flat/recommended-typescript-error"],
     languageOptions: {

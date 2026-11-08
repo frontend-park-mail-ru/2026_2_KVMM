@@ -1,5 +1,3 @@
-import { user } from "./user";
-
 /**
  * Страница приложения: рисует себя в контейнер и при уходе освобождает подписки.
  */
@@ -67,8 +65,14 @@ export function matchPath(pattern: string, path: string): RouteParams | null {
   return params;
 }
 
-const GUEST_HOME = "/login";
-const USER_HOME = "/feed";
+/**
+ * Настройки роутера: как узнать, вошёл ли пользователь, и куда отправлять, если страница недоступна.
+ */
+export interface RouterOptions {
+  isAuthorized: () => boolean;
+  guestHome: string;
+  userHome: string;
+}
 
 /**
  * Роутер SPA на History API.
@@ -76,15 +80,22 @@ const USER_HOME = "/feed";
 export class Router {
   #root: HTMLElement;
   #routes: Record<string, Route>;
+  #options: RouterOptions;
   #page: Page | null = null;
 
   /**
    * @param root Элемент, в который рендерятся страницы.
    * @param routes Маршруты: путь → класс страницы, нужна ли авторизация и редирект.
+   * @param options Проверка входа и домашние страницы гостя и пользователя.
    */
-  constructor(root: HTMLElement, routes: Record<string, Route>) {
+  constructor(
+    root: HTMLElement,
+    routes: Record<string, Route>,
+    options: RouterOptions,
+  ) {
     this.#root = root;
     this.#routes = routes;
+    this.#options = options;
   }
 
   /**
@@ -109,7 +120,7 @@ export class Router {
   }
 
   /**
-   * Переходит на путь. Гостя уводит на /login, вошедшего — на /feed, если страница ему недоступна.
+   * Переходит на путь. Если страница недоступна, гостя уводит на guestHome, вошедшего — на userHome.
    * @param path Запрошенный путь.
    * @param replace Заменить текущую запись истории вместо новой.
    */
@@ -141,11 +152,12 @@ export class Router {
 
   #resolve(path: string): string {
     const match = this.#match(path);
-    if (match && match.route.auth === user.isAuthorized) {
+    const isAuthorized = this.#options.isAuthorized();
+    if (match && match.route.auth === isAuthorized) {
       return match.route.redirect?.(path, match.params) ?? path;
     }
 
-    return user.isAuthorized ? USER_HOME : GUEST_HOME;
+    return isAuthorized ? this.#options.userHome : this.#options.guestHome;
   }
 
   #render(path: string): void {
