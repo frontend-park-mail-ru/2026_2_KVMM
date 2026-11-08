@@ -8,6 +8,7 @@ import communitiesIcon from "./icons/communities.svg";
 import friendsIcon from "./icons/friends.svg";
 import friendsActiveIcon from "./icons/friends-active.svg";
 import settingsIcon from "./icons/settings.svg";
+import { friendRequests } from "../../modules/friendRequests";
 
 /**
  * Раздел меню.
@@ -65,9 +66,14 @@ function itemTemplate(
   const isActive = item.section === active;
   const icon = isActive && item.activeIcon ? item.activeIcon : item.icon;
   const labelModifier = isActive ? " sidebar__label_active" : "";
+  const badge =
+    item.section === "friends"
+      ? '<span class="sidebar__badge sidebar__badge_hidden" aria-hidden="true"></span>'
+      : "";
   const content = `
     <img class="sidebar__icon" draggable="false" src="${icon}" width="24" height="24" alt="">
     <span class="sidebar__label${labelModifier}">${item.label}</span>
+    ${badge}
   `;
   const current = isActive ? ' aria-current="page"' : "";
   const entry = item.href
@@ -89,8 +95,27 @@ function template(active: SidebarSection | null): string {
   `;
 }
 
+const MAX_BADGE = 99;
+
 /**
- * Боковое меню разделов: лента и профиль — ссылки, остальные разделы пока без перехода.
+ * Показывает число заявок на значке у «Друзей» и дублирует его в подписи ссылки для экранных читалок.
+ * @param badge Значок.
+ * @param count Число входящих заявок.
+ */
+function showRequests(badge: HTMLElement, count: number): void {
+  badge.textContent =
+    count === 0 ? "" : count > MAX_BADGE ? `${MAX_BADGE}+` : String(count);
+  badge.classList.toggle("sidebar__badge_hidden", count === 0);
+  const link = badge.closest(".sidebar__item");
+  if (count > 0) {
+    link?.setAttribute("aria-label", `Друзья, новых заявок: ${count}`);
+  } else {
+    link?.removeAttribute("aria-label");
+  }
+}
+
+/**
+ * Боковое меню разделов: лента, профиль, сообщения и друзья — ссылки, остальные разделы пока без перехода. У «Друзей» — значок с числом входящих заявок.
  */
 export class Sidebar {
   #parent: HTMLElement;
@@ -106,9 +131,21 @@ export class Sidebar {
   }
 
   /**
-   * Вставляет меню в контейнер.
+   * Вставляет меню в контейнер и подписывает значок заявок на обновления. Подписка снимается сама, когда меню уходит со страницы.
    */
   render(): void {
     this.#parent.insertAdjacentHTML("beforeend", template(this.#section));
+    const badge = this.#parent.querySelector<HTMLElement>(".sidebar__badge");
+    if (!badge) {
+      return;
+    }
+    showRequests(badge, friendRequests.count);
+    const unsubscribe = friendRequests.onChange((count) => {
+      if (badge.isConnected) {
+        showRequests(badge, count);
+      } else {
+        unsubscribe();
+      }
+    });
   }
 }

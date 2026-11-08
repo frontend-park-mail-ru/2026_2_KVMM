@@ -4,7 +4,8 @@ import type { Router, RouteParams } from "@nexly/router";
 import { user } from "../../modules/user";
 import { people } from "../../modules/people";
 import { findRelation } from "../../modules/relations";
-import { openChat } from "../../modules/chats";
+import { findChatPerson, openChat } from "../../modules/chats";
+import { friendRequests } from "../../modules/friendRequests";
 import type { RelationStatus } from "../../modules/relations";
 import { displayName } from "../../modules/profileName";
 import { serverErrorMessage } from "../../modules/errors";
@@ -65,6 +66,7 @@ export class UserPage {
   #error = "";
   #isPostsLoaded = false;
   #isRelationLoaded = false;
+  #isChatsChecked = false;
   #isDestroyed = false;
 
   /**
@@ -79,12 +81,13 @@ export class UserPage {
   }
 
   /**
-   * Рисует карточку с известным из ленты или списков именем, затем загружает посты и связь с пользователем.
+   * Рисует карточку с известным из ленты, списков или чатов именем, затем загружает посты и связь с пользователем. Если имя неизвестно, ищет человека среди участников своих чатов.
    */
   render(): void {
     const known = people.get(this.#profileId);
     this.#name = known?.name ?? null;
     this.#avatarPath = known?.avatarUrl ?? "";
+    this.#isChatsChecked = Boolean(known);
 
     const main = new AppLayout(this.#parent, this.#router, null).render();
     main.insertAdjacentHTML("beforeend", "<section></section>");
@@ -112,6 +115,9 @@ export class UserPage {
     });
     this.#list.render();
     this.#loadRelation();
+    if (!this.#isChatsChecked) {
+      this.#loadFromChats();
+    }
   }
 
   /**
@@ -157,10 +163,28 @@ export class UserPage {
         name,
         avatarUrl: this.#avatarPath,
       });
-    } else if (!this.#name && this.#isPostsLoaded && this.#isRelationLoaded) {
+    } else if (
+      !this.#name &&
+      this.#isPostsLoaded &&
+      this.#isRelationLoaded &&
+      this.#isChatsChecked
+    ) {
       this.#name = UNKNOWN_NAME;
     }
     this.#renderCard();
+  }
+
+  async #loadFromChats(): Promise<void> {
+    const person = await findChatPerson(this.#profileId);
+    if (this.#isDestroyed) {
+      return;
+    }
+    this.#isChatsChecked = true;
+    this.#learn(
+      person ? displayName(person) : "",
+      person?.avatar_urls ?? "",
+      true,
+    );
   }
 
   async #loadRelation(): Promise<void> {
@@ -244,6 +268,9 @@ export class UserPage {
     if (response.status === 401) {
       this.#goToLogin();
       return;
+    }
+    if (action === "accept" || action === "decline") {
+      friendRequests.refresh();
     }
     if (response.status === 409 || response.status === 404) {
       await this.#loadRelation();

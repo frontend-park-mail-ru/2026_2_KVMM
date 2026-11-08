@@ -2,6 +2,7 @@ import "./index.scss";
 import { api, isSession } from "./modules/api";
 import { user } from "./modules/user";
 import { chatSocket } from "./modules/chatSocket";
+import { friendRequests } from "./modules/friendRequests";
 import { network } from "./modules/network";
 import { renderOfflineBanner } from "./components/OfflineBanner/OfflineBanner";
 import { Router } from "@nexly/router";
@@ -63,8 +64,10 @@ const router = new Router(
 user.onChange(() => {
   if (user.isAuthorized) {
     chatSocket.start();
+    friendRequests.start();
   } else {
     chatSocket.stop();
+    friendRequests.stop();
     network.clearSaved();
   }
 });

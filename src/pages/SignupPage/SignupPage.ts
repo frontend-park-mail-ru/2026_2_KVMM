@@ -37,7 +37,6 @@ interface Step {
   fields: string[];
   fieldsModifier?: string;
   consent?: boolean;
-  hint?: string;
   slogan?: boolean;
   photo?: boolean;
   actions: StepAction[];
@@ -64,8 +63,6 @@ const OPTIONAL_PLACEHOLDERS: Record<string, string> = {
   bio: "Расскажите о себе (необязательно)",
 };
 
-const REQUIRED_HINT = "* — обязательные поля";
-const CONTACT_HINT = "Заполните хотя бы одно поле";
 const PHONE_TAKEN = "Этот номер уже используется";
 const EMAIL_TAKEN = "Этот email уже занят";
 const FIELD_REJECTED = "Сервер не принял это значение, проверьте его";
@@ -97,7 +94,6 @@ const STEPS: Record<string, Step> = {
     fields: ["nickname", "password", "confirm_password"],
     fieldsModifier: "auth-card__fields_compact",
     consent: true,
-    hint: REQUIRED_HINT,
     slogan: true,
     actions: [
       { kind: "register", style: "secondary", label: "Зарегистрироваться" },
@@ -109,7 +105,6 @@ const STEPS: Record<string, Step> = {
     title: "Добавьте email или телефон — это поможет защитить ваш аккаунт",
     card: "auth-card_gap_large auth-card_padding_large",
     fields: ["email", "phone_number"],
-    hint: CONTACT_HINT,
     actions: [{ kind: "save", style: "primary", label: "Подтвердить" }, SKIP],
   },
   "/signup/about": {
@@ -117,7 +112,6 @@ const STEPS: Record<string, Step> = {
     title: "Расскажи нам о себе",
     card: "auth-card_padding_large",
     fields: ["profile_name", "surname", "patronymic", "gender", "birthday"],
-    hint: REQUIRED_HINT,
     actions: [{ kind: "save", style: "primary", label: "Продолжить" }, SKIP],
   },
   "/signup/photo": {
@@ -193,13 +187,12 @@ function placeholderFor(name: string, placeholder: string): string {
 }
 
 function stepTemplate(step: Step, path: string): string {
-  const hint = step.hint ? `<p class="auth-card__hint">${step.hint}</p>` : "";
   return authLayoutTemplate(`
     <section class="auth-card ${step.card} auth-card_stepped">
       ${logoTemplate("auth-card__logo")}
       ${formTemplate(
         step,
-        `<p class="auth-card__title">${step.title}</p>${fieldsTemplate(step)}${hint}<p class="auth-card__server-error" role="alert"></p>`,
+        `<p class="auth-card__title">${step.title}</p>${fieldsTemplate(step)}<p class="auth-card__server-error" role="alert"></p>`,
       )}
       ${step.slogan ? `<p class="auth-card__slogan">${SLOGAN}</p>` : ""}
       ${navTemplate(path)}

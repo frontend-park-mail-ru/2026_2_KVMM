@@ -12,6 +12,7 @@ import { AppLayout } from "../../components/AppLayout/AppLayout";
 import { PeopleSection } from "../../components/PeopleSection/PeopleSection";
 import type { PeoplePage } from "../../components/PeopleSection/PeopleSection";
 import { confirmDialog } from "../../components/Dialog/Dialog";
+import { friendRequests } from "../../modules/friendRequests";
 
 const MESSAGES = {
   loading: "Загружаем список друзей",
@@ -235,6 +236,9 @@ export class FriendsPage {
       return;
     }
     section.remove(person.id);
+    if (section === this.#incoming) {
+      friendRequests.refresh();
+    }
     onDone?.();
     this.#updateStatus();
   }

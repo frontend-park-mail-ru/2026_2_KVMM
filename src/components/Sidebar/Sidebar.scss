@@ -64,6 +64,25 @@
     }
   }
 
+  &__badge {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 20px;
+    margin-left: auto;
+    padding: 0 6px;
+    border-radius: var(--radius-pill);
+    background: var(--color-link);
+    color: var(--color-text-inverse);
+    font: var(--font-caption);
+
+    &_hidden {
+      display: none;
+    }
+  }
+
   &__slogan {
     margin: 0;
     font: var(--font-caption);

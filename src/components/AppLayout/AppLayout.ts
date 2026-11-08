@@ -2,6 +2,7 @@ import { api } from "../../modules/api";
 import type { Router } from "@nexly/router";
 import { user } from "../../modules/user";
 import { NETWORK_ERROR } from "../../modules/errors";
+import { friendRequests } from "../../modules/friendRequests";
 import { Header } from "../Header/Header";
 import { Sidebar } from "../Sidebar/Sidebar";
 import type { SidebarSection } from "../Sidebar/Sidebar";
@@ -47,6 +48,7 @@ export class AppLayout {
    * @returns Колонка, в которую страница выводит своё содержимое.
    */
   render(): HTMLElement {
+    friendRequests.refresh();
     this.#parent.insertAdjacentHTML("beforeend", template());
     const layout = this.#parent.lastElementChild as HTMLElement;
     this.#header = new Header(
