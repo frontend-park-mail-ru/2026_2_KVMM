@@ -1,9 +1,10 @@
 import js from "@eslint/js";
 import jsdoc from "eslint-plugin-jsdoc";
 import globals from "globals";
+import tseslint from "typescript-eslint";
 
-export default [
-  { ignores: ["node_modules/"] },
+export default tseslint.config(
+  { ignores: ["node_modules/", "dist/", ".design/", "packages/*/dist/"] },
   js.configs.recommended,
   {
     rules: {
@@ -14,7 +15,7 @@ export default [
     },
   },
   {
-    files: ["server/**/*.js"],
+    files: ["server/**/*.js", "webpack.config.js", "postcss.config.js"],
     languageOptions: {
       ecmaVersion: "latest",
       sourceType: "commonjs",
@@ -22,16 +23,18 @@ export default [
     },
   },
   {
-    files: ["public/**/*.js"],
-    ...jsdoc.configs["flat/recommended-error"],
+    files: ["src/**/*.ts", "packages/*/src/**/*.ts"],
+    extends: [tseslint.configs.recommended],
+    ...jsdoc.configs["flat/recommended-typescript-error"],
     languageOptions: {
       ecmaVersion: "latest",
       sourceType: "module",
       globals: globals.browser,
     },
     rules: {
-      ...jsdoc.configs["flat/recommended-error"].rules,
+      ...jsdoc.configs["flat/recommended-typescript-error"].rules,
       "no-console": "error",
+      "@typescript-eslint/consistent-type-imports": "error",
       "jsdoc/require-jsdoc": [
         "error",
         {
@@ -47,4 +50,10 @@ export default [
       ],
     },
   },
-];
+  {
+    files: ["src/sw/**/*.ts"],
+    languageOptions: {
+      globals: globals.serviceworker,
+    },
+  },
+);

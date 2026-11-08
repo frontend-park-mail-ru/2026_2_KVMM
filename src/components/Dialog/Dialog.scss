@@ -1,0 +1,38 @@
+.dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: var(--color-overlay);
+
+  &__window {
+    display: flex;
+    flex-direction: column;
+    gap: 52px;
+    width: 100%;
+    max-width: 397px;
+    padding: 32px;
+    border-radius: var(--radius-card);
+    background: var(--color-surface);
+  }
+
+  &__text {
+    margin: 0;
+    color: var(--color-text);
+    font: var(--font-body);
+    text-align: center;
+  }
+
+  &__actions {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+  }
+
+  &__button {
+    width: 125px;
+  }
+}

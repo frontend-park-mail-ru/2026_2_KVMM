@@ -1,0 +1,23 @@
+{
+  "name": "@nexly/utils",
+  "version": "1.0.0",
+  "description": "Экранирование HTML, даты постов и курсоры подгрузки для фронтенда Nexly",
+  "private": true,
+  "license": "ISC",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsc -p ."
+  }
+}

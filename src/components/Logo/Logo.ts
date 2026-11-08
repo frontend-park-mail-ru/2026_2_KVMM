@@ -1,0 +1,36 @@
+import logoIcon from "./logo.svg";
+import logoSmallIcon from "./logo-small.svg";
+import wordmarkIcon from "./wordmark.svg";
+
+/**
+ * Разметка логотипа Nexly: большой — знак и надпись под ним, маленький — только знак, для шапки — знак и надпись в строку, ссылкой на ленту.
+ * @param mix Классы элемента родительского блока, например auth-card__logo.
+ * @param size Вариант логотипа.
+ * @returns HTML логотипа.
+ */
+export function logoTemplate(
+  mix: string = "",
+  size: "large" | "small" | "header" = "large",
+): string {
+  if (size === "header") {
+    return `
+      <a class="logo logo_header ${mix}" draggable="false" href="/feed" data-link aria-label="Nexly, лента">
+        <img class="logo__icon logo__icon_small" draggable="false" src="${logoSmallIcon}" width="48" height="48" alt="">
+        <img class="logo__wordmark" draggable="false" src="${wordmarkIcon}" width="110" height="44" alt="">
+      </a>
+    `;
+  }
+  if (size === "small") {
+    return `
+      <h1 class="logo ${mix}">
+        <img class="logo__icon logo__icon_small" draggable="false" src="${logoSmallIcon}" width="48" height="48" alt="Nexly">
+      </h1>
+    `;
+  }
+  return `
+    <h1 class="logo ${mix}">
+      <img class="logo__icon" draggable="false" src="${logoIcon}" width="82" height="82" alt="">
+      <span class="logo__text">Nexly</span>
+    </h1>
+  `;
+}

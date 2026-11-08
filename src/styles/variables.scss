@@ -1,0 +1,28 @@
+:root {
+  --color-page: #f7f7f7;
+  --color-surface: #ffffff;
+  --color-field: #f2f0f0;
+  --color-text: #000000;
+  --color-text-secondary: #82888f;
+  --color-text-inverse: #ffffff;
+  --color-primary: #c969fb;
+  --color-success: #24b82e;
+  --color-error: #ff5a63;
+  --color-link: #3d3ad6;
+  --color-avatar: #00d4ff;
+  --color-border: rgba(255, 255, 255, 0.1);
+  --color-track: #dcdee2;
+  --color-overlay: rgba(130, 136, 143, 0.29);
+  --gradient-brand: linear-gradient(180deg, #01bfa6 0%, #3d3ad6 100%);
+  --radius-card: 16px;
+  --radius-button: 12px;
+  --radius-field: 8px;
+  --radius-pill: 999px;
+  --radius-round: 50%;
+  --font-logo: 700 60px/73px "Inter", Arial, sans-serif;
+  --font-display: 600 45px/52px "Inter", Arial, sans-serif;
+  --font-title: 600 16px/20px "Inter", Arial, sans-serif;
+  --font-body: 400 16px/24px "Inter", Arial, sans-serif;
+  --font-body-strong: 600 16px/24px "Inter", Arial, sans-serif;
+  --font-caption: 400 12px/16px "Inter", Arial, sans-serif;
+}
