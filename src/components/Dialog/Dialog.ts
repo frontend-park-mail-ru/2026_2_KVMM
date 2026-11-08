@@ -1,5 +1,7 @@
+import { escapeHtml } from "../../modules/utils";
+
 /**
- * Тексты окна подтверждения: вопрос и подписи кнопок. Это статичная разметка, данные пользователя сюда не попадают.
+ * Тексты окна подтверждения: вопрос и подписи кнопок. Это обычный текст: в вопрос может попасть имя с бэка, поэтому всё экранируется.
  */
 export interface ConfirmOptions {
   message: string;
@@ -7,7 +9,10 @@ export interface ConfirmOptions {
   cancel: string;
 }
 
-function template({ message, confirm, cancel }: ConfirmOptions): string {
+function template(options: ConfirmOptions): string {
+  const message = escapeHtml(options.message);
+  const confirm = escapeHtml(options.confirm);
+  const cancel = escapeHtml(options.cancel);
   return `
     <div class="dialog">
       <div class="dialog__window" role="alertdialog" aria-modal="true" aria-label="${message}">
