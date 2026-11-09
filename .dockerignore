@@ -1,6 +1,9 @@
 .git
 .gitignore
 .DS_Store
+.design
+node_modules
+dist
 *.log
 *.pem
 *.key

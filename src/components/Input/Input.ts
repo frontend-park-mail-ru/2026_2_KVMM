@@ -1,0 +1,301 @@
+const EYE_ICON = `
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" />
+    <circle cx="12" cy="12" r="3" />
+  </svg>
+`;
+
+const EYE_OFF_ICON = `
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M10.6 5.1A10.4 10.4 0 0 1 12 5c6.4 0 10 7 10 7a17.6 17.6 0 0 1-2.9 3.9" />
+    <path d="M6.6 6.6C3.6 8.5 2 12 2 12s3.6 7 10 7c1.9 0 3.6-.6 5-1.5" />
+    <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" />
+    <path d="M3 3l18 18" />
+  </svg>
+`;
+
+/**
+ * Вариант выпадающего списка.
+ */
+export interface InputOption {
+  value: string;
+  label: string;
+}
+
+/**
+ * Настройки поля: options превращает его в выпадающий список, mask подключает маску к полю ввода.
+ */
+export interface InputConfig {
+  name: string;
+  type?: string;
+  placeholder: string;
+  autocomplete?: string;
+  attributes?: Record<string, string | number>;
+  options?: InputOption[];
+  validate: (value: string, validity: ValidityState) => string;
+  mask?: (control: HTMLInputElement) => void;
+}
+
+type Control = HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
+
+const TOGGLE_LABELS = {
+  show: "Показать пароль",
+  hide: "Скрыть пароль",
+};
+
+/**
+ * Пункты выпадающего списка. Значения и подписи — константы приложения, не данные пользователя.
+ * @param options Варианты списка.
+ * @returns Разметка option.
+ */
+function optionsTemplate(options: InputOption[]): string {
+  return options
+    .map(
+      ({ value, label }) =>
+        `<option class="input__option" value="${value}">${label}</option>`,
+    )
+    .join("");
+}
+
+/**
+ * Дополнительные атрибуты поля (maxlength, min и т. п.) в виде строки для шаблона.
+ * @param attributes Имена и значения атрибутов из настроек поля.
+ * @returns Атрибуты через пробел.
+ */
+function attributesTemplate(
+  attributes: Record<string, string | number> = {},
+): string {
+  return Object.entries(attributes)
+    .map(([name, value]) => `${name}="${value}"`)
+    .join(" ");
+}
+
+/**
+ * Вид поля, от которого зависят разметка и модификаторы: список, пароль, дата, многострочное или обычное.
+ * @param config Настройки поля.
+ * @param config.type Тип input.
+ * @param config.options Варианты списка, если поле — выпадающий список.
+ * @returns select, password, date, textarea или пустая строка.
+ */
+function kindOf({ type = "", options }: InputConfig): string {
+  if (options) {
+    return "select";
+  }
+  return ["password", "date", "textarea"].includes(type) ? type : "";
+}
+
+/**
+ * Сам элемент ввода: select с вариантами, textarea или input нужного типа.
+ * @param config Настройки поля.
+ * @param kind Вид поля из kindOf.
+ * @returns Разметка элемента ввода.
+ */
+function controlTemplate(config: InputConfig, kind: string): string {
+  const { name, type, placeholder, autocomplete, options, attributes } = config;
+  const modifier = kind ? ` input__control_${kind}` : "";
+
+  if (options) {
+    return `
+      <select class="input__control${modifier}" name="${name}" autocomplete="${autocomplete}">
+        <option class="input__option" value="" disabled selected hidden>${placeholder}</option>
+        ${optionsTemplate(options)}
+      </select>
+    `;
+  }
+
+  if (kind === "textarea") {
+    return `
+      <textarea
+        class="input__control${modifier}"
+        name="${name}"
+        placeholder="${placeholder}"
+        ${attributesTemplate(attributes)}
+      ></textarea>
+    `;
+  }
+
+  const passwordAttributes = type === "password" ? 'spellcheck="false"' : "";
+  return `
+    <input
+      class="input__control${modifier}"
+      name="${name}"
+      type="${type}"
+      placeholder="${placeholder}"
+      autocomplete="${autocomplete}"
+      ${passwordAttributes}
+      ${attributesTemplate(attributes)}
+    >
+  `;
+}
+
+/**
+ * Кнопка «показать пароль». Изначально пароль скрыт, поэтому иконка — перечёркнутый глаз.
+ * @returns Разметка кнопки.
+ */
+function toggleTemplate(): string {
+  return `
+    <button class="input__toggle" type="button" aria-label="${TOGGLE_LABELS.show}" aria-pressed="false">
+      ${EYE_OFF_ICON}
+    </button>
+  `;
+}
+
+/**
+ * Разметка поля целиком: обёртка с модификатором вида, элемент ввода, кнопка пароля и место под ошибку. У даты подсказка хранится в data-placeholder: у input type=date своего placeholder нет.
+ * @param config Настройки поля.
+ * @returns Разметка поля.
+ */
+function template(config: InputConfig): string {
+  const kind = kindOf(config);
+  const fieldModifier =
+    kind === "select" || kind === "date" ? ` input__field_${kind}` : "";
+  const placeholder =
+    kind === "date" ? ` data-placeholder="${config.placeholder}"` : "";
+  return `
+    <div class="input">
+      <div class="input__field${fieldModifier}"${placeholder}>
+        ${controlTemplate(config, kind)}
+        ${kind === "password" ? toggleTemplate() : ""}
+      </div>
+      <p class="input__error"></p>
+    </div>
+  `;
+}
+
+/**
+ * Поле формы с текстом ошибки под ним. Для пароля добавляет кнопку показа, для даты — подпись вместо пустой маски.
+ */
+export class Input {
+  #parent: HTMLElement;
+  #config: InputConfig;
+  #element!: HTMLElement;
+  #field!: HTMLElement;
+  #control!: Control;
+  #error!: HTMLElement;
+
+  /**
+   * @param parent Контейнер, в конец которого добавляется поле.
+   * @param config Настройки: name, type, placeholder, autocomplete, attributes, options, validate и mask — функция, которая подключает маску к полю.
+   */
+  constructor(parent: HTMLElement, config: InputConfig) {
+    this.#parent = parent;
+    this.#config = config;
+  }
+
+  /**
+   * Текущее значение поля.
+   * @returns Значение как строка.
+   */
+  get value(): string {
+    return this.#control.value;
+  }
+
+  /**
+   * Подставляет значение, например при возврате на шаг формы.
+   * @param value Значение поля.
+   */
+  set value(value: string) {
+    this.#control.value = value;
+    this.#control.dispatchEvent(new Event("change"));
+  }
+
+  /**
+   * Ставит фокус в поле.
+   */
+  focus(): void {
+    this.#control.focus();
+  }
+
+  /**
+   * Показана ли сейчас ошибка: тогда поле перепроверяется при каждом вводе.
+   * @returns true, если под полем есть текст ошибки.
+   */
+  get hasError(): boolean {
+    return Boolean(this.#error.textContent);
+  }
+
+  /**
+   * Вставляет поле в контейнер и подписывается на ввод и уход из поля.
+   */
+  render(): void {
+    this.#parent.insertAdjacentHTML("beforeend", template(this.#config));
+    this.#element = this.#parent.lastElementChild as HTMLElement;
+    this.#field = this.#element.querySelector(".input__field") as HTMLElement;
+    this.#control = this.#element.querySelector(".input__control") as Control;
+    this.#error = this.#element.querySelector(".input__error") as HTMLElement;
+
+    this.#config.mask?.(this.#control as HTMLInputElement);
+    this.#control.addEventListener("blur", () => this.validate());
+    this.#control.addEventListener("input", () => {
+      if (this.hasError) {
+        this.validate();
+      }
+    });
+
+    if (this.#config.type === "date") {
+      this.#bindDatePlaceholder();
+    }
+    const toggle =
+      this.#element.querySelector<HTMLButtonElement>(".input__toggle");
+    if (toggle) {
+      this.#bindToggle(toggle);
+    }
+  }
+
+  /**
+   * Проверяет значение и показывает или убирает ошибку.
+   * @returns true, если значение корректно.
+   */
+  validate(): boolean {
+    const message = this.#config.validate(this.value, this.#control.validity);
+    this.setError(message);
+    return !message;
+  }
+
+  /**
+   * Показывает ошибку под полем, например ответ сервера, или убирает её.
+   * @param message Текст ошибки или пустая строка.
+   */
+  setError(message: string): void {
+    this.#error.textContent = message;
+    this.#control.classList.toggle("input__control_invalid", Boolean(message));
+    this.#control.setAttribute("aria-invalid", String(Boolean(message)));
+  }
+
+  /**
+   * Показывает подсказку вместо пустой даты, пока поле не в фокусе: браузер сам рисует «дд.мм.гггг», а по макету нужен текст подсказки.
+   */
+  #bindDatePlaceholder(): void {
+    const update = () => {
+      const isEmpty = !this.#control.value && !this.#control.validity.badInput;
+      const isFocused = document.activeElement === this.#control;
+      this.#field.classList.toggle(
+        "input__field_placeholder",
+        isEmpty && !isFocused,
+      );
+    };
+    ["focus", "blur", "input", "change"].forEach((type) =>
+      this.#control.addEventListener(type, update),
+    );
+    update();
+  }
+
+  /**
+   * Переключает пароль между скрытым и видимым. mousedown не забирает фокус у поля, чтобы курсор оставался на месте.
+   * @param toggle Кнопка «показать пароль».
+   */
+  #bindToggle(toggle: HTMLButtonElement): void {
+    const control = this.#control as HTMLInputElement;
+    toggle.addEventListener("mousedown", (event) => event.preventDefault());
+    toggle.addEventListener("click", () => {
+      const isHidden = control.type === "password";
+      control.type = isHidden ? "text" : "password";
+      toggle.innerHTML = isHidden ? EYE_ICON : EYE_OFF_ICON;
+      toggle.setAttribute(
+        "aria-label",
+        isHidden ? TOGGLE_LABELS.hide : TOGGLE_LABELS.show,
+      );
+      toggle.setAttribute("aria-pressed", String(isHidden));
+    });
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "name": "@nexly/chat-socket",
+  "version": "1.0.0",
+  "description": "Клиент WebSocket чатов: одна вкладка держит соединение, остальные работают через BroadcastChannel",
+  "private": true,
+  "license": "ISC",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsc -p ."
+  }
+}

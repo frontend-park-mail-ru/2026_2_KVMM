@@ -1,0 +1,20 @@
+.offline-banner {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  z-index: 10;
+  display: none;
+  max-width: calc(100% - 32px);
+  margin: 0;
+  padding: 8px 16px;
+  border-radius: var(--radius-pill);
+  background: var(--color-text);
+  color: var(--color-text-inverse);
+  font: var(--font-caption);
+  text-align: center;
+  transform: translateX(-50%);
+
+  &_visible {
+    display: block;
+  }
+}

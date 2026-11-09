@@ -1,0 +1,158 @@
+.input {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+
+  &__field {
+    position: relative;
+  }
+
+  &__control {
+    width: 100%;
+    height: 42px;
+    margin: 0;
+    padding: 8px 12px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-field);
+    background: var(--color-field);
+    color: var(--color-text);
+    font: var(--font-body);
+    outline: none;
+
+    &::placeholder {
+      color: var(--color-text-secondary);
+      opacity: 1;
+    }
+
+    &:-webkit-autofill {
+      box-shadow: 0 0 0 1000px var(--color-field) inset;
+      caret-color: var(--color-text);
+      -webkit-text-fill-color: var(--color-text);
+    }
+
+    &:autofill {
+      box-shadow: 0 0 0 1000px var(--color-field) inset;
+      filter: none;
+    }
+
+    &:focus {
+      border-color: var(--color-primary);
+    }
+
+    &_invalid,
+    &_invalid:focus {
+      border-color: var(--color-error);
+    }
+
+    &_password {
+      padding-right: 44px;
+    }
+
+    &_password::-ms-reveal {
+      display: none;
+    }
+
+    &_textarea {
+      display: block;
+      height: 183px;
+      padding: 3px 12px;
+      resize: none;
+    }
+
+    &_select {
+      padding-right: 40px;
+      appearance: none;
+      cursor: pointer;
+    }
+
+    &_select:has(option[value=""]:checked) {
+      color: var(--color-text-secondary);
+    }
+  }
+
+  &__option {
+    color: var(--color-text);
+  }
+
+  &__control {
+    &_date {
+      padding-right: 7px;
+    }
+
+    &_date::-webkit-calendar-picker-indicator {
+      width: 18px;
+      height: 16px;
+      margin: 0;
+      padding: 0;
+      background: var(--color-text-secondary);
+      cursor: pointer;
+      mask: url("@/components/Input/icons/calendar.svg") center / 18px 16px
+        no-repeat;
+    }
+  }
+
+  &__field {
+    &_select::after {
+      position: absolute;
+      top: 0;
+      right: 14px;
+      bottom: 0;
+      width: 14px;
+      background: var(--color-text);
+      content: "";
+      mask: url("@/components/Input/icons/chevron-down.svg") center / 14px 8px
+        no-repeat;
+      pointer-events: none;
+    }
+
+    &_date::before {
+      position: absolute;
+      top: 1px;
+      right: 40px;
+      bottom: 1px;
+      left: 1px;
+      display: none;
+      align-items: center;
+      padding: 0 11px;
+      border-radius: var(--radius-field);
+      background: var(--color-field);
+      color: var(--color-text-secondary);
+      font: var(--font-body);
+      content: attr(data-placeholder);
+      pointer-events: none;
+    }
+
+    &_placeholder::before {
+      display: flex;
+    }
+  }
+
+  &__toggle {
+    position: absolute;
+    top: 50%;
+    right: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-field);
+    color: var(--color-text-secondary);
+    transform: translateY(-50%);
+
+    &:focus-visible {
+      outline: 2px solid var(--color-primary);
+    }
+  }
+
+  &__error {
+    margin: 4px 0 0;
+    color: var(--color-error);
+    font: var(--font-caption);
+    text-align: left;
+
+    &:empty {
+      display: none;
+    }
+  }
+}

@@ -1,0 +1,11 @@
+.friends-status {
+  margin: 0;
+  padding: 0 24px;
+  color: var(--color-text-secondary);
+  font: var(--font-body);
+  text-align: center;
+
+  &:empty {
+    display: none;
+  }
+}
