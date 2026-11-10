@@ -223,7 +223,7 @@ export class PeopleSection {
   }
 
   /**
-   * Добавляет строку человека и запоминает его в кеше людей, чтобы его страница сразу знала имя. Сломанная аватарка заменяется буквой.
+   * Добавляет строку человека и запоминает его в кеше людей, чтобы его страница сразу знала имя.
    * @param person Короткий профиль.
    * @param position В начало или в конец списка.
    */
@@ -237,12 +237,6 @@ export class PeopleSection {
       position,
       itemTemplate(person, this.#config.actions),
     );
-    const item =
-      position === "afterbegin"
-        ? this.#list.firstElementChild
-        : this.#list.lastElementChild;
-    const image = item?.querySelector(".people__avatar-image");
-    image?.addEventListener("error", () => image.remove());
   }
 
   /**

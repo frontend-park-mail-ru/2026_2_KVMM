@@ -35,6 +35,10 @@
     color: var(--color-text-secondary);
     font: var(--font-body);
     text-align: center;
+
+    &_loading {
+      animation: appear-late 0.2s ease-out 0.4s both;
+    }
   }
 
   &__spinner {

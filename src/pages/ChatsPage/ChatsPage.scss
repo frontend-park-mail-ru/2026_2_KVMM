@@ -76,6 +76,10 @@
     user-select: none;
   }
 
+  &__avatar_image {
+    color: transparent;
+  }
+
   &__avatar-image {
     position: absolute;
     inset: 0;
@@ -111,6 +115,10 @@
     color: var(--color-text-secondary);
     font: var(--font-body);
     text-align: center;
+
+    &_loading {
+      animation: appear-late 0.2s ease-out 0.4s both;
+    }
 
     &:empty {
       display: none;

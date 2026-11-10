@@ -201,13 +201,11 @@ export class Post {
   }
 
   /**
-   * Подключает отрисованный пост: замена сломанной аватарки буквой, карандаш и «Читать еще», если текст не поместился.
+   * Подключает отрисованный пост: карандаш и «Читать еще», если текст не поместился.
    * @param element Элемент поста.
    */
   #bind(element: HTMLElement): void {
     this.#element = element;
-    const avatarImage = element.querySelector(".post__avatar-image");
-    avatarImage?.addEventListener("error", () => avatarImage.remove());
     element
       .querySelector(".post__edit")
       ?.addEventListener("click", () => this.#options.onEdit?.(this.#post));

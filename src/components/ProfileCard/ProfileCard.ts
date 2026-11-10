@@ -1,11 +1,12 @@
 import { escapeHtml, formatBirthday } from "@nexly/utils";
+import { avatarTemplate, keepAvatar } from "../../modules/avatar";
 
 /**
- * Данные карточки профиля. name = null — имя ещё загружается. actions — готовая разметка кнопок справа.
+ * Данные карточки профиля. name = null — имя ещё загружается, avatarPath = null — ещё неизвестно, есть ли аватарка. actions — готовая разметка кнопок справа.
  */
 export interface ProfileCardData {
   name: string | null;
-  avatarUrl: string;
+  avatarPath: string | null;
   bio?: string;
   birthday?: string;
   actions: string;
@@ -38,7 +39,7 @@ function detailsTemplate(bio?: string, birthday?: string): string {
  * Карточка профиля: аватар, имя, кнопки, «О себе» и дата рождения. Используется и на своей, и на чужой странице.
  * @param data Данные карточки.
  * @param data.name Имя или null, пока оно загружается.
- * @param data.avatarUrl Адрес аватарки или пустая строка.
+ * @param data.avatarPath Путь к аватарке, пустая строка — её нет, null — ещё неизвестно.
  * @param data.bio Рассказ о себе.
  * @param data.birthday Дата рождения в формате ISO.
  * @param data.actions Разметка кнопок справа.
@@ -46,22 +47,18 @@ function detailsTemplate(bio?: string, birthday?: string): string {
  */
 export function profileCardTemplate({
   name,
-  avatarUrl,
+  avatarPath,
   bio,
   birthday,
   actions,
 }: ProfileCardData): string {
-  const letter = name ? ([...name][0]?.toUpperCase() ?? "?") : "";
-  const image = avatarUrl
-    ? `<img class="profile-card__avatar-image" src="${escapeHtml(avatarUrl)}" alt="">`
-    : "";
   const title = name
     ? `<h1 class="profile-card__name" title="${escapeHtml(name)}">${escapeHtml(name)}</h1>`
     : `<h1 class="profile-card__name profile-card__name_loading">${LOADING_NAME}</h1>`;
   return `
     <section class="profile-card">
       <div class="profile-card__main">
-        <div class="profile-card__avatar">${escapeHtml(letter)}${image}</div>
+        ${avatarTemplate("profile-card", name ?? "", avatarPath)}
         ${title}
         <div class="profile-card__actions">${actions}</div>
       </div>
@@ -71,10 +68,18 @@ export function profileCardTemplate({
 }
 
 /**
- * Убирает картинку аватара, если она не загрузилась, — остаётся буква.
- * @param card Элемент карточки.
+ * Заменяет карточку новой разметкой. Уже загруженная аватарка переносится в новую карточку, если картинка та же, поэтому при обновлении имени, кнопок или «О себе» она не мигает.
+ * @param card Текущий элемент карточки.
+ * @param data Новые данные карточки.
+ * @returns Новый элемент карточки.
  */
-export function bindAvatarFallback(card: Element): void {
-  const image = card.querySelector(".profile-card__avatar-image");
-  image?.addEventListener("error", () => image.remove());
+export function replaceProfileCard(
+  card: HTMLElement,
+  data: ProfileCardData,
+): HTMLElement {
+  card.insertAdjacentHTML("afterend", profileCardTemplate(data));
+  const next = card.nextElementSibling as HTMLElement;
+  keepAvatar(card, next, "profile-card");
+  card.remove();
+  return next;
 }

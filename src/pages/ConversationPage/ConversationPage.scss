@@ -59,6 +59,10 @@
     user-select: none;
   }
 
+  &__avatar_image {
+    color: transparent;
+  }
+
   &__avatar-image {
     position: absolute;
     inset: 0;
@@ -183,6 +187,10 @@
 
     &:empty {
       display: none;
+    }
+
+    &_loading {
+      animation: appear-late 0.2s ease-out 0.4s both;
     }
   }
 

@@ -13,6 +13,33 @@ const distDir = path.resolve(__dirname, 'dist');
 const packagesDir = path.resolve(__dirname, 'packages');
 const SW_FILE = 'sw.js';
 const SW_MANIFEST = /(["'])__NEXLY_MANIFEST__\1/;
+const PRELOAD_FONTS = /^assets\/inter-(latin|cyrillic)-(400|600)\.[0-9a-f]+\.woff2$/;
+
+/**
+ * Добавляет в index.html предзагрузку основных начертаний Inter. Браузер качает шрифты сразу, вместе со скриптом, а не когда страница уже нарисовала текст, поэтому текст не перерисовывается из запасного шрифта в Inter.
+ */
+class FontPreloadPlugin {
+    apply(compiler) {
+        compiler.hooks.compilation.tap('FontPreload', (compilation) => {
+            HtmlWebpackPlugin.getHooks(compilation).alterAssetTagGroups.tap('FontPreload', (data) => {
+                const links = Object.keys(compilation.assets)
+                    .filter((name) => PRELOAD_FONTS.test(name))
+                    .sort()
+                    .map((name) =>
+                        HtmlWebpackPlugin.createHtmlTagObject('link', {
+                            rel: 'preload',
+                            href: `/${name}`,
+                            as: 'font',
+                            type: 'font/woff2',
+                            crossorigin: true,
+                        }),
+                    );
+                data.headTags.unshift(...links);
+                return data;
+            });
+        });
+    }
+}
 
 /**
  * Вписывает в service worker список файлов сборки и версию: воркер кеширует их при установке, а новая версия сборки заменяет старый кеш.
@@ -100,6 +127,7 @@ module.exports = (env, argv) => {
                 favicon: path.join(srcDir, 'components', 'Logo', 'logo.svg'),
                 chunks: ['main'],
             }),
+            new FontPreloadPlugin(),
             new DefinePlugin({ SERVICE_WORKER: JSON.stringify(isProduction) }),
             new ServiceWorkerManifestPlugin(),
             new MiniCssExtractPlugin({

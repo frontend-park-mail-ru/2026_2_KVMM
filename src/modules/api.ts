@@ -80,11 +80,23 @@ export interface ShortProfile {
 }
 
 /**
- * Личный чат. Из участников берём только короткий профиль: остальные поля бэк отдавать не должен.
+ * Участник чата. Бэк присылает профиль целиком, а аватарку — списком из одной последней. Фронт берёт только имя и аватарку.
+ */
+export interface ChatParticipant {
+  id: number;
+  nickname: string;
+  profile_name?: string;
+  surname?: string;
+  patronymic?: string;
+  avatar_urls?: string[];
+}
+
+/**
+ * Личный чат с участниками и последним сообщением.
  */
 export interface Chat {
   id: number;
-  participants?: ShortProfile[];
+  participants?: ChatParticipant[];
   last_message?: ChatMessage;
   streak_days: number;
   created_at: string;

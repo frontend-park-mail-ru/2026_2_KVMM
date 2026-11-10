@@ -96,7 +96,7 @@ export class ChatsPage {
         <section class="chat-list">
           <h1 class="chat-list__title">Ваши чаты</h1>
           <ul class="chat-list__items"></ul>
-          <p class="chat-list__status">${MESSAGES.loading}</p>
+          <p class="chat-list__status chat-list__status_loading">${MESSAGES.loading}</p>
         </section>
       `,
     );
@@ -162,6 +162,7 @@ export class ChatsPage {
     if (this.#isDestroyed) {
       return;
     }
+    this.#status.classList.remove("chat-list__status_loading");
     if (status === 401) {
       this.#goToLogin();
       return;

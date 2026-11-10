@@ -15,10 +15,11 @@ import { PostList } from "../../components/PostList/PostList";
 import { PostEditor } from "../../components/PostEditor/PostEditor";
 import { ProfileEditor } from "../../components/ProfileEditor/ProfileEditor";
 import type { ProfileChanges } from "../../components/ProfileEditor/ProfileEditor";
+import type { ProfileCardData } from "../../components/ProfileCard/ProfileCard";
 import { confirmDialog } from "../../components/Dialog/Dialog";
 import {
-  bindAvatarFallback,
   profileCardTemplate,
+  replaceProfileCard,
 } from "../../components/ProfileCard/ProfileCard";
 
 const MESSAGES = {
@@ -37,19 +38,22 @@ const EDIT_BUTTON =
   '<button class="button button_pill" type="button" data-action="edit-profile">Редактировать профиль</button>';
 
 /**
- * Карточка своего профиля с кнопкой «Редактировать профиль».
+ * Данные карточки своего профиля с кнопкой «Редактировать профиль».
  * @param profile Профиль.
- * @param avatarUrl Адрес аватарки или пустая строка.
- * @returns Разметка карточки.
+ * @param avatarPath Путь к аватарке, пустая строка — её нет, null — ещё не загружена.
+ * @returns Данные для карточки.
  */
-function cardTemplate(profile: Profile, avatarUrl: string): string {
-  return profileCardTemplate({
+function cardData(
+  profile: Profile,
+  avatarPath: string | null,
+): ProfileCardData {
+  return {
     name: displayName(profile),
-    avatarUrl,
+    avatarPath,
     bio: profile.bio,
     birthday: profile.birthday,
     actions: EDIT_BUTTON,
-  });
+  };
 }
 
 /**
@@ -62,7 +66,7 @@ export class ProfilePage {
   #profileEditor!: ProfileEditor;
   #editor!: PostEditor;
   #list!: PostList;
-  #avatarUrl = "";
+  #avatarPath: string | null = null;
   #isDestroyed = false;
 
   /**
@@ -80,7 +84,10 @@ export class ProfilePage {
   render(): void {
     const profile = user.profile as Profile;
     const main = new AppLayout(this.#parent, this.#router, "profile").render();
-    main.insertAdjacentHTML("beforeend", cardTemplate(profile, ""));
+    main.insertAdjacentHTML(
+      "beforeend",
+      profileCardTemplate(cardData(profile, this.#avatarPath)),
+    );
     this.#card = main.lastElementChild as HTMLElement;
     main.addEventListener("click", (event) => {
       if ((event.target as Element).closest('[data-action="edit-profile"]')) {
@@ -135,14 +142,10 @@ export class ProfilePage {
    * @param profile Профиль.
    */
   #renderCard(profile: Profile): void {
-    this.#card.insertAdjacentHTML(
-      "afterend",
-      cardTemplate(profile, this.#avatarUrl),
+    this.#card = replaceProfileCard(
+      this.#card,
+      cardData(profile, this.#avatarPath),
     );
-    const card = this.#card.nextElementSibling as HTMLElement;
-    this.#card.remove();
-    this.#card = card;
-    bindAvatarFallback(card);
   }
 
   /**
@@ -175,15 +178,14 @@ export class ProfilePage {
   }
 
   /**
-   * Загружает текущую аватарку: /auth/me её не отдаёт, берём первую из списка аватарок.
+   * Загружает текущую аватарку: /auth/me её не отдаёт, берём первую из списка аватарок. До ответа круг пустой, без буквы, чтобы буква не сменялась картинкой.
    */
   async #loadAvatar(): Promise<void> {
     const { status, data } = await api.avatars();
-    const url = status === 200 ? data?.avatars?.[0]?.url : undefined;
-    if (this.#isDestroyed || !url) {
+    if (this.#isDestroyed) {
       return;
     }
-    this.#avatarUrl = api.mediaUrl(url);
+    this.#avatarPath = status === 200 ? (data?.avatars?.[0]?.url ?? "") : "";
     this.#renderCard(user.profile as Profile);
   }
 
@@ -196,7 +198,10 @@ export class ProfilePage {
     }
     this.#editor.close();
     this.#editor.hide(true);
-    this.#profileEditor.open(user.profile as Profile, this.#avatarUrl);
+    this.#profileEditor.open(
+      user.profile as Profile,
+      this.#avatarPath ? api.mediaUrl(this.#avatarPath) : "",
+    );
   }
 
   /**
@@ -336,9 +341,9 @@ export class ProfilePage {
       return false;
     }
     if (response.status === 201 && response.data?.url) {
-      this.#avatarUrl = api.mediaUrl(response.data.url);
+      this.#avatarPath = response.data.url;
       this.#renderCard(user.profile as Profile);
-      this.#profileEditor.setAvatar(this.#avatarUrl);
+      this.#profileEditor.setAvatar(api.mediaUrl(this.#avatarPath));
       return true;
     }
     if (response.status === 400 || response.status === 409) {
