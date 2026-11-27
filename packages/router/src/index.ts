@@ -36,9 +36,10 @@ interface Match {
 
 const PARAM = /^:(\w+)$/;
 const ID_PATTERN = /^[1-9]\d{0,15}$/;
+const UUID_PATTERN = /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i;
 
 /**
- * Сопоставляет путь с шаблоном маршрута. Параметр :name совпадает с положительным целым id — других параметров в приложении нет.
+ * Сопоставляет путь с шаблоном маршрута. Параметр :name принимает UUID или положительный числовой ID.
  * @param pattern Шаблон, например /profile/:id.
  * @param path Путь без query и hash.
  * @returns Параметры или null, если путь не подходит.
@@ -56,7 +57,7 @@ export function matchPath(pattern: string, path: string): RouteParams | null {
       if (expected[index] !== actual[index]) {
         return null;
       }
-    } else if (ID_PATTERN.test(actual[index])) {
+    } else if (ID_PATTERN.test(actual[index]) || UUID_PATTERN.test(actual[index])) {
       params[name] = actual[index];
     } else {
       return null;

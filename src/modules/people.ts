@@ -6,16 +6,16 @@ export interface KnownPerson {
   avatarUrl: string;
 }
 
-const known = new Map<number, KnownPerson>();
+const known = new Map<string | number, KnownPerson>();
 
 /**
- * Имена и аватарки людей, встреченных в ленте и списках друзей. Нужны, чтобы страница человека сразу показала имя: отдельной ручки чужого профиля у бэка нет.
+ * Имена и аватарки людей, встреченных в ленте, списках друзей и чатах. Карточка может показать их, пока загружается профиль.
  */
 export const people = {
-  remember: (id: number, person: KnownPerson): void => {
-    if (id > 0 && person.name) {
-      known.set(id, person);
+  remember: (key: string | number, person: KnownPerson): void => {
+    if ((typeof key === "string" ? key.length > 0 : key > 0) && person.name) {
+      known.set(key, person);
     }
   },
-  get: (id: number): KnownPerson | null => known.get(id) ?? null,
+  get: (key: string | number): KnownPerson | null => known.get(key) ?? null,
 };

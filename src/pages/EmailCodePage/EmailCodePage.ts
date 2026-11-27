@@ -265,7 +265,7 @@ export class EmailCodePage {
     if (this.#isDestroyed) {
       return;
     }
-    if (response.status === 200 && response.data?.id) {
+    if (response.status === 200 && response.data?.uid) {
       user.setProfile(response.data);
       signupDraft.complete(back);
       signupDraft.clearPendingEmail();

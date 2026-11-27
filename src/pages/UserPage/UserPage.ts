@@ -57,12 +57,13 @@ const NEXT_RELATION: Record<string, RelationStatus> = {
 };
 
 /**
- * Страница другого пользователя /profile/:id: имя, аватар, «О себе», дата рождения, кнопки дружбы и его посты.
+ * Страница другого пользователя /profile/:id: имя, аватар, «О себе», дата рождения и посты.
  */
 export class UserPage {
   #parent: HTMLElement;
   #router: Router;
-  #profileId: number;
+  #profileUid: string;
+  #legacyProfileId: number | undefined;
   #card!: HTMLElement;
   #list!: PostList;
   #name: string | null = null;
@@ -80,19 +81,24 @@ export class UserPage {
   /**
    * @param parent Контейнер страницы.
    * @param router Роутер для перехода на /login.
-   * @param params Параметры пути, id — профиль пользователя.
+   * @param params Параметры пути, id — UUID профиля пользователя.
    */
   constructor(parent: HTMLElement, router: Router, params: RouteParams) {
     this.#parent = parent;
     this.#router = router;
-    this.#profileId = Number(params.id);
+    this.#profileUid = params.id;
+    // Модули дружбы и чатов пока принимают числовой ID из прежних ссылок.
+    const legacyId = Number(params.id);
+    this.#legacyProfileId =
+      Number.isSafeInteger(legacyId) && legacyId > 0 ? legacyId : undefined;
+    this.#isRelationLoaded = this.#legacyProfileId === undefined;
   }
 
   /**
    * Рисует карточку с известным из ленты, списков или чатов именем, затем загружает профиль, посты и связь с пользователем.
    */
   render(): void {
-    const known = people.get(this.#profileId);
+    const known = people.get(this.#legacyProfileId ?? this.#profileUid);
     this.#name = known?.name ?? null;
     this.#avatarPath = known?.avatarUrl || null;
 
@@ -111,7 +117,7 @@ export class UserPage {
 
     this.#list = new PostList(main, {
       load: async (cursor, limit) => {
-        const response = await api.userPosts(this.#profileId, cursor, limit);
+        const response = await api.userPosts(this.#profileUid, cursor, limit);
         const author = response.data?.posts?.[0]?.author;
         this.#isPostsLoaded = true;
         this.#learn(
@@ -125,7 +131,9 @@ export class UserPage {
     });
     this.#list.render();
     this.#loadProfile();
-    this.#loadRelation();
+    if (this.#legacyProfileId !== undefined) {
+      this.#loadRelation(this.#legacyProfileId);
+    }
   }
 
   /**
@@ -156,7 +164,10 @@ export class UserPage {
       avatarPath: this.#avatarPath,
       bio: this.#bio,
       birthday: this.#birthday,
-      actions: this.#isMissing ? "" : buttons + error,
+      actions:
+        this.#isMissing || this.#legacyProfileId === undefined
+          ? ""
+          : buttons + error,
     });
   }
 
@@ -191,7 +202,7 @@ export class UserPage {
       this.#avatarPath ??= "";
     }
     if (this.#name && this.#name !== UNKNOWN_NAME) {
-      people.remember(this.#profileId, {
+      people.remember(this.#legacyProfileId ?? this.#profileUid, {
         name: this.#name,
         avatarUrl: this.#avatarPath ?? "",
       });
@@ -203,7 +214,7 @@ export class UserPage {
    * Загружает профиль: имя, аватарку, «О себе» и дату рождения. Аватарки приходят списком, новые сначала. 404 — такого пользователя нет.
    */
   async #loadProfile(): Promise<void> {
-    const { status, data } = await api.profileById(this.#profileId);
+    const { status, data } = await api.profileByUid(this.#profileUid);
     if (this.#isDestroyed) {
       return;
     }
@@ -232,10 +243,11 @@ export class UserPage {
 
   /**
    * Узнаёт, кто вы друг другу, и берёт имя из списка связей.
+   * @param profileId Числовой идентификатор профиля для модуля дружбы.
    */
-  async #loadRelation(): Promise<void> {
+  async #loadRelation(profileId: number): Promise<void> {
     const me = user.profile?.id ?? 0;
-    const result = await findRelation(this.#profileId, me);
+    const result = await findRelation(profileId, me);
     if (this.#isDestroyed) {
       return;
     }
@@ -257,24 +269,26 @@ export class UserPage {
   /**
    * Запрос к бэку для кнопки дружбы. Отклонение, отмена и удаление — один и тот же запрос.
    * @param action Действие кнопки.
+   * @param profileId Числовой идентификатор профиля для модуля дружбы.
    * @returns Ответ бэка.
    */
-  #send(action: string): Promise<ApiResult<unknown>> {
+  #send(action: string, profileId: number): Promise<ApiResult<unknown>> {
     if (action === "add") {
-      return api.addFriend(this.#profileId);
+      return api.addFriend(profileId);
     }
     if (action === "accept") {
-      return api.acceptFriend(this.#profileId);
+      return api.acceptFriend(profileId);
     }
-    return api.removeFriend(this.#profileId);
+    return api.removeFriend(profileId);
   }
 
   /**
    * Открывает чат с человеком и переходит в диалог.
+   * @param profileId Числовой идентификатор собеседника.
    */
-  async #write(): Promise<void> {
+  async #write(profileId: number): Promise<void> {
     this.#setButtonsDisabled(true);
-    const response = await openChat(this.#profileId);
+    const response = await openChat(profileId);
     if (this.#isDestroyed) {
       return;
     }
@@ -305,8 +319,12 @@ export class UserPage {
    * @param action Действие кнопки.
    */
   async #act(action: string): Promise<void> {
+    const profileId = this.#legacyProfileId;
+    if (profileId === undefined) {
+      return;
+    }
     if (action === "write") {
-      this.#write();
+      this.#write(profileId);
       return;
     }
     if (!(action in NEXT_RELATION)) {
@@ -323,7 +341,7 @@ export class UserPage {
       }
     }
     this.#setButtonsDisabled(true);
-    const response = await this.#send(action);
+    const response = await this.#send(action, profileId);
     if (this.#isDestroyed) {
       return;
     }
@@ -335,7 +353,7 @@ export class UserPage {
       friendRequests.refresh();
     }
     if (response.status === 409 || response.status === 404) {
-      await this.#loadRelation();
+      await this.#loadRelation(profileId);
       return;
     }
     const isDone = response.status === 200 || response.status === 201;

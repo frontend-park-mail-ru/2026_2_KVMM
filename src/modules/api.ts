@@ -10,7 +10,9 @@ const API_URL = "/api";
  * Профиль пользователя в ответах бэкенда.
  */
 export interface Profile {
-  id: number;
+  uid: string;
+  /** Числовой идентификатор для прежних вызовов модулей друзей и чатов. */
+  id?: number;
   nickname: string;
   email?: string;
   phone_number?: string;
@@ -37,9 +39,9 @@ export interface PostAuthor {
  * Пост ленты.
  */
 export interface Post {
-  id: number;
+  uid: string;
   post_text?: string;
-  author_profile_id?: number;
+  author_profile_uid?: string;
   author: PostAuthor;
   created_at: string;
   comments_count: number;
@@ -54,17 +56,17 @@ export interface Post {
  */
 export interface FeedResponse {
   posts: Post[];
-  cursor: number;
+  cursor?: string;
   limit: number;
   has_more: boolean;
-  next_cursor?: number;
+  next_cursor?: string;
 }
 
 /**
  * Страница постов одного пользователя.
  */
 export interface UserPostsResponse extends FeedResponse {
-  profile_id: number;
+  profile_uid: string;
 }
 
 /**
@@ -215,7 +217,7 @@ export interface ProfileUpdate {
  * Загруженная аватарка.
  */
 export interface Avatar {
-  id: number;
+  uid: string;
   url: string;
   created_at: string;
 }
@@ -274,7 +276,33 @@ async function request<T>(
  */
 export function isSession(data: unknown): data is Session {
   const session = data as Session | null;
-  return Boolean(session?.profile && typeof session.csrf_token === "string");
+  return Boolean(
+    typeof session?.profile?.uid === "string" &&
+      session.profile.uid &&
+      typeof session.csrf_token === "string",
+  );
+}
+
+/**
+ * Параметры страницы постов. Для первой страницы бэк ждёт запрос без курсора.
+ * @param cursor Курсор из предыдущего ответа или пустая строка.
+ * @param limit Размер страницы.
+ * @param profileUid UUID автора для списка постов профиля.
+ * @returns Параметры запроса.
+ */
+function postPageQuery(
+  cursor: string,
+  limit: number,
+  profileUid?: string,
+): URLSearchParams {
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (cursor) {
+    params.set("cursor", cursor);
+  }
+  if (profileUid) {
+    params.set("profile_uid", profileUid);
+  }
+  return params;
 }
 
 /**
@@ -287,8 +315,8 @@ export const api = {
   register: (fields: RegisterFields) =>
     request<Session>("POST", "/auth/register", { body: fields }),
   logout: () => request<null>("POST", "/auth/logout"),
-  feed: (cursor: number, limit: number) =>
-    request<FeedResponse>("GET", `/feed?cursor=${cursor}&limit=${limit}`),
+  feed: (cursor: string, limit: number) =>
+    request<FeedResponse>("GET", `/feed?${postPageQuery(cursor, limit)}`),
   updateProfile: (fields: ProfileUpdate) =>
     request<Profile>("PATCH", "/profile/update", { body: fields }),
   uploadAvatar: (file: File) => {
@@ -320,21 +348,27 @@ export const api = {
     request<Profile>("POST", "/auth/email/confirm", {
       body: { email, code },
     }),
-  profileById: (profileId: number) =>
-    request<Profile>("GET", `/profile/search?profile_id=${profileId}`),
-  userPosts: (profileId: number, cursor: number, limit: number) =>
+  profileByUid: (profileUid: string) =>
+    request<Profile>(
+      "GET",
+      `/profiles/find?uid=${encodeURIComponent(profileUid)}`,
+    ),
+  userPosts: (profileUid: string, cursor: string, limit: number) =>
     request<UserPostsResponse>(
       "GET",
-      `/posts/user?profile_id=${profileId}&cursor=${cursor}&limit=${limit}`,
+      `/posts/user?${postPageQuery(cursor, limit, profileUid)}`,
     ),
   createPost: (text: string) =>
     request<Post>("POST", "/posts/create", { body: { post_text: text } }),
-  updatePost: (postId: number, text: string) =>
+  updatePost: (postUid: string, text: string) =>
     request<Post>("PATCH", "/posts/update", {
-      body: { post_id: postId, post_text: text },
+      body: { post_uid: postUid, post_text: text },
     }),
-  deletePost: (postId: number) =>
-    request<null>("DELETE", `/posts/delete?post_id=${postId}`),
+  deletePost: (postUid: string) =>
+    request<null>(
+      "DELETE",
+      `/posts/delete?post_uid=${encodeURIComponent(postUid)}`,
+    ),
   avatars: () => request<{ avatars: Avatar[] }>("GET", "/profile/avatars"),
   friends: (cursor: number) =>
     request<RelationshipsResponse>(
@@ -368,8 +402,8 @@ export const api = {
     request<Relationship>("DELETE", "/relationships/cancle", {
       body: { profile_id: profileId, relationships_type: FRIENDSHIP },
     }),
-  deleteAvatar: (avatarId: number) =>
-    request<null>("DELETE", `/profile/avatars/${avatarId}`),
+  deleteAvatar: (avatarUid: string) =>
+    request<null>("DELETE", `/profile/avatars/${encodeURIComponent(avatarUid)}`),
   chats: (cursor: number) =>
     request<ChatsResponse>("GET", `/chats/list?cursor=${cursor}`, {
       csrf: true,

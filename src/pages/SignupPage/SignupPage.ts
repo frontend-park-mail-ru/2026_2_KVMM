@@ -707,7 +707,7 @@ export class SignupPage {
    * @returns true, если профиль сохранён.
    */
   #applyProfile(response: ApiResult<Profile>): boolean {
-    if (response.status === 200 && response.data?.id) {
+    if (response.status === 200 && response.data?.uid) {
       user.setProfile(response.data);
       return true;
     }

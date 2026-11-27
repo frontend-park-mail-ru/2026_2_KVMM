@@ -108,7 +108,7 @@ export class ProfilePage {
     this.#editor.render();
 
     this.#list = new PostList(main, {
-      load: (cursor, limit) => api.userPosts(profile.id, cursor, limit),
+      load: (cursor, limit) => api.userPosts(profile.uid, cursor, limit),
       messages: MESSAGES,
       onEdit: (post) => this.#editPost(post),
       onUnauthorized: () => this.#goToLogin(),
@@ -299,7 +299,7 @@ export class ProfilePage {
     if (this.#isDestroyed) {
       return false;
     }
-    if (response.status === 200 && response.data?.id) {
+    if (response.status === 200 && response.data?.uid) {
       this.#applyProfile(response.data);
       this.#profileEditor.commit(response.data);
       return true;
@@ -320,7 +320,7 @@ export class ProfilePage {
     }
     const { data } = await api.avatars();
     const oldest = data?.avatars?.at(-1);
-    if (!oldest || (await api.deleteAvatar(oldest.id)).status !== 204) {
+    if (!oldest || (await api.deleteAvatar(oldest.uid)).status !== 204) {
       return response;
     }
     return api.uploadAvatar(file);
@@ -406,7 +406,7 @@ export class ProfilePage {
   async #save(text: string, post: PostData | null): Promise<void> {
     this.#editor.setBusy(true);
     const response = post
-      ? await api.updatePost(post.id, text)
+      ? await api.updatePost(post.uid, text)
       : await api.createPost(text);
     if (this.#isDestroyed) {
       return;
@@ -415,7 +415,7 @@ export class ProfilePage {
 
     const saved = response.data;
     const isSaved = post ? response.status === 200 : response.status === 201;
-    if (!isSaved || !saved?.id) {
+    if (!isSaved || !saved?.uid) {
       this.#showError(response);
       return;
     }
@@ -441,7 +441,7 @@ export class ProfilePage {
       return;
     }
     this.#editor.setBusy(true);
-    const response = await api.deletePost(post.id);
+    const response = await api.deletePost(post.uid);
     if (this.#isDestroyed) {
       return;
     }
@@ -450,7 +450,7 @@ export class ProfilePage {
       this.#showError(response);
       return;
     }
-    this.#list.remove(post.id);
+    this.#list.remove(post.uid);
     this.#editor.close();
   }
 }

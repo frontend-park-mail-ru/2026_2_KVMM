@@ -3,7 +3,6 @@ import type {
   FeedResponse,
   Post as PostData,
 } from "../../modules/api";
-import { nextCursor } from "@nexly/utils";
 import { Post } from "../Post/Post";
 import spinnerIcon from "./spinner.svg";
 
@@ -28,7 +27,7 @@ export interface PostListMessages {
  * Настройки списка: откуда грузить страницы, тексты состояний и что делать со своими постами. watchNew — раз в минуту проверять, не появились ли посты новее верхнего, и предлагать их показать.
  */
 export interface PostListConfig {
-  load: (cursor: number, limit: number) => Promise<ApiResult<FeedResponse>>;
+  load: (cursor: string, limit: number) => Promise<ApiResult<FeedResponse>>;
   messages: PostListMessages;
   fill?: boolean;
   watchNew?: boolean;
@@ -48,12 +47,14 @@ export class PostList {
   #list!: HTMLElement;
   #status!: HTMLElement;
   #newButton!: HTMLButtonElement;
-  #posts = new Map<number, Post>();
+  #posts = new Map<string, Post>();
   #fresh: PostData[] = [];
   #isFreshComplete = true;
   #isChecking = false;
   #timer = 0;
-  #cursor = 0;
+  #cursor = "";
+  #seenCursors = new Set<string>();
+  #newestTimestamp: number | null = null;
   #hasMore = true;
   #isLoading = false;
   #hasError = false;
@@ -115,8 +116,12 @@ export class PostList {
    * @param post Пост из ответа бэка.
    */
   prepend(post: PostData): void {
+    if (this.#posts.has(post.uid)) {
+      return;
+    }
     const item = this.#createPost(post);
     item.render("afterbegin");
+    this.#newestTimestamp = Date.parse(post.created_at);
     this.#setStatus(this.#hasMore ? "idle" : "end");
   }
 
@@ -125,16 +130,16 @@ export class PostList {
    * @param post Пост из ответа бэка.
    */
   replace(post: PostData): void {
-    this.#posts.get(post.id)?.update(post);
+    this.#posts.get(post.uid)?.update(post);
   }
 
   /**
    * Убирает удалённый пост из списка.
-   * @param postId Идентификатор поста.
+   * @param postUid UUID поста.
    */
-  remove(postId: number): void {
-    this.#posts.get(postId)?.remove();
-    this.#posts.delete(postId);
+  remove(postUid: string): void {
+    this.#posts.get(postUid)?.remove();
+    this.#posts.delete(postUid);
     if (!this.#list.children.length && !this.#hasMore) {
       this.#setStatus("empty");
     }
@@ -158,15 +163,20 @@ export class PostList {
       return;
     }
     this.#isChecking = true;
-    const { status, data } = await this.#config.load(0, PAGE_SIZE);
+    const { status, data } = await this.#config.load("", PAGE_SIZE);
     this.#isChecking = false;
     if (this.#isDestroyed || status !== 200 || !Array.isArray(data?.posts)) {
       return;
     }
-    const newest = Math.max(0, ...this.#posts.keys());
-    this.#fresh = data.posts.filter(
-      (post) => post.id > newest && !this.#posts.has(post.id),
-    );
+    const firstKnown = data.posts.findIndex((post) => this.#posts.has(post.uid));
+    const newest = this.#newestTimestamp;
+    // Порядок первой страницы точнее времени, если в ней есть знакомый пост.
+    this.#fresh =
+      firstKnown >= 0
+        ? data.posts.slice(0, firstKnown)
+        : data.posts.filter(
+            (post) => newest === null || Date.parse(post.created_at) > newest,
+          );
     this.#isFreshComplete =
       this.#fresh.length < data.posts.length || !data.has_more;
     const count = `${this.#fresh.length}${this.#isFreshComplete ? "" : "+"}`;
@@ -187,7 +197,9 @@ export class PostList {
     } else {
       this.#posts.forEach((post) => post.remove());
       this.#posts.clear();
-      this.#cursor = 0;
+      this.#cursor = "";
+      this.#seenCursors.clear();
+      this.#newestTimestamp = null;
       this.#hasMore = true;
       this.#loadPage();
     }
@@ -196,13 +208,13 @@ export class PostList {
   }
 
   /**
-   * Создаёт компонент поста и запоминает его по id, чтобы потом обновлять, удалять и не показывать дважды.
+   * Создаёт компонент поста и запоминает его по UUID, чтобы потом обновлять, удалять и не показывать дважды.
    * @param post Пост.
    * @returns Компонент поста, ещё не отрисованный.
    */
   #createPost(post: PostData): Post {
     const item = new Post(this.#list, post, { onEdit: this.#config.onEdit });
-    this.#posts.set(post.id, item);
+    this.#posts.set(post.uid, item);
     return item;
   }
 
@@ -248,7 +260,7 @@ export class PostList {
   }
 
   /**
-   * Загружает следующую страницу постов. Не запускается повторно, пока идёт загрузка, после ошибки и в конце списка. Дубли по id отбрасываются, курсор двигается только вперёд.
+   * Загружает следующую страницу постов. Дубли по UUID пропускаются. Отсутствующий или повторный курсор завершает подгрузку.
    */
   async #loadPage(): Promise<void> {
     if (this.#isLoading || !this.#hasMore || this.#hasError) {
@@ -273,13 +285,19 @@ export class PostList {
       return;
     }
 
-    data.posts
-      .filter((post) => !this.#posts.has(post.id))
-      .forEach((post) => this.#createPost(post).render("beforeend"));
-    ({ cursor: this.#cursor, hasMore: this.#hasMore } = nextCursor(
-      this.#cursor,
-      data,
-    ));
+    for (const post of data.posts) {
+      if (!this.#posts.has(post.uid)) {
+        this.#createPost(post).render("beforeend");
+        this.#newestTimestamp ??= Date.parse(post.created_at);
+      }
+    }
+    const next = data.next_cursor;
+    if (data.has_more && next && !this.#seenCursors.has(next)) {
+      this.#cursor = next;
+      this.#seenCursors.add(next);
+    } else {
+      this.#hasMore = false;
+    }
 
     if (!this.#list.children.length) {
       this.#setStatus("empty");

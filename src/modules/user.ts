@@ -45,7 +45,7 @@ export const user = {
    */
   set(data: Session): void {
     const isNew =
-      profile?.id !== data.profile.id || csrfToken !== data.csrf_token;
+      profile?.uid !== data.profile.uid || csrfToken !== data.csrf_token;
     profile = data.profile;
     csrfToken = data.csrf_token;
     if (isNew) {

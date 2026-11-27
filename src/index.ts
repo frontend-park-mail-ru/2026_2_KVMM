@@ -55,7 +55,7 @@ const routes: Record<string, Route> = {
     page: UserPage,
     auth: true,
     redirect: (_path, { id }) =>
-      Number(id) === user.profile?.id ? "/profile" : null,
+      id.toLowerCase() === user.profile?.uid ? "/profile" : null,
   },
 };
 

@@ -65,16 +65,18 @@ function mediaTemplate(path: string): string {
 }
 
 /**
- * Адрес страницы автора: своя — /profile, чужая — /profile/id. У постов сообществ ссылки нет.
+ * Адрес страницы автора: своя — /profile, чужая — /profile/uid. У постов сообществ ссылки нет.
  * @param post Пост.
  * @returns Путь или пустая строка.
  */
 function authorPath(post: PostData): string {
-  const id = post.author_profile_id;
-  if (!id) {
+  const uid = post.author_profile_uid;
+  if (!uid) {
     return "";
   }
-  return id === user.profile?.id ? "/profile" : `/profile/${id}`;
+  return uid === user.profile?.uid
+    ? "/profile"
+    : `/profile/${encodeURIComponent(uid)}`;
 }
 
 /**
@@ -145,8 +147,8 @@ export class Post {
     this.#parent = parent;
     this.#post = post;
     this.#options = options;
-    if (post.author_profile_id) {
-      people.remember(post.author_profile_id, {
+    if (post.author_profile_uid) {
+      people.remember(post.author_profile_uid, {
         name: post.author.name,
         avatarUrl: post.author.avatar_urls ?? "",
       });
@@ -196,7 +198,7 @@ export class Post {
    */
   #markup(): string {
     const isOwn =
-      user.profile !== null && this.#post.author_profile_id === user.profile.id;
+      user.profile !== null && this.#post.author_profile_uid === user.profile.uid;
     return template(this.#post, Boolean(this.#options.onEdit) && isOwn);
   }
 
