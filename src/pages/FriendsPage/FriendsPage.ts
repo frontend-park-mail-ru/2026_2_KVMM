@@ -79,7 +79,7 @@ export class FriendsPage {
     const main = new AppLayout(this.#parent, this.#router, "friends").render();
     main.insertAdjacentHTML(
       "beforeend",
-      `<p class="friends-status">${MESSAGES.loading}</p>`,
+      `<p class="friends-status friends-status_loading">${MESSAGES.loading}</p>`,
     );
     this.#status = main.lastElementChild as HTMLElement;
     const me = (user.profile as { id: number }).id;
@@ -165,6 +165,7 @@ export class FriendsPage {
     if (this.#isDestroyed) {
       return;
     }
+    this.#status.classList.remove("friends-status_loading");
     if (statuses.includes(401)) {
       this.#goToLogin();
       return;

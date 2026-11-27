@@ -65,7 +65,6 @@ const ACTIONS: Record<LoginMode, string> = {
   code: '<button class="button button_primary" type="submit">Отправить код</button>',
 };
 
-const ACCOUNT_NOT_FOUND = "Аккаунт с такой почтой не найден";
 const CODE_FLOW = {
   purpose: "login" as const,
   next: "/feed",
@@ -261,7 +260,7 @@ export class LoginPage {
   }
 
   /**
-   * Отправляет код входа на email и открывает экран кода. Неизвестный email — ошибка под полем.
+   * Отправляет код входа на email и открывает экран кода. Есть ли аккаунт с этим email, бэк не сообщает, чтобы адреса нельзя было перебирать: на неизвестный письмо просто не придёт.
    */
   async #submitCode(): Promise<void> {
     this.#serverError.textContent = "";
@@ -281,10 +280,6 @@ export class LoginPage {
     if (response.status === 200) {
       signupDraft.setPendingEmail(email, CODE_FLOW);
       this.#router.navigate("/login/code");
-      return;
-    }
-    if (response.status === 401) {
-      field.setError(ACCOUNT_NOT_FOUND);
       return;
     }
     if (response.status === 400) {

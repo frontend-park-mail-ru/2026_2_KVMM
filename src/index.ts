@@ -5,6 +5,7 @@ import { chatSocket } from "./modules/chatSocket";
 import { friendRequests } from "./modules/friendRequests";
 import { network } from "./modules/network";
 import { renderOfflineBanner } from "./components/OfflineBanner/OfflineBanner";
+import { watchAvatars } from "./modules/avatar";
 import { Router } from "@nexly/router";
 import { LoginPage } from "./pages/LoginPage/LoginPage";
 import { SignupPage } from "./pages/SignupPage/SignupPage";
@@ -80,6 +81,7 @@ user.onChange(() => {
 });
 
 renderOfflineBanner(document.body);
+watchAvatars();
 if (SERVICE_WORKER) {
   network.registerWorker();
 }

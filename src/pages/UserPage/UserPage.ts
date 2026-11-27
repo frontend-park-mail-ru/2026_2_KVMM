@@ -13,10 +13,7 @@ import { escapeHtml } from "@nexly/utils";
 import { AppLayout } from "../../components/AppLayout/AppLayout";
 import { PostList } from "../../components/PostList/PostList";
 import { confirmDialog } from "../../components/Dialog/Dialog";
-import {
-  bindAvatarFallback,
-  profileCardTemplate,
-} from "../../components/ProfileCard/ProfileCard";
+import { replaceProfileCard } from "../../components/ProfileCard/ProfileCard";
 
 const MESSAGES = {
   loading: "Загружаем страницу пользователя",
@@ -69,7 +66,7 @@ export class UserPage {
   #card!: HTMLElement;
   #list!: PostList;
   #name: string | null = null;
-  #avatarPath = "";
+  #avatarPath: string | null = null;
   #bio = "";
   #birthday = "";
   #relation: RelationStatus | null = null;
@@ -97,7 +94,7 @@ export class UserPage {
   render(): void {
     const known = people.get(this.#profileId);
     this.#name = known?.name ?? null;
-    this.#avatarPath = known?.avatarUrl ?? "";
+    this.#avatarPath = known?.avatarUrl || null;
 
     const main = new AppLayout(this.#parent, this.#router, null).render();
     main.insertAdjacentHTML("beforeend", "<section></section>");
@@ -117,7 +114,10 @@ export class UserPage {
         const response = await api.userPosts(this.#profileId, cursor, limit);
         const author = response.data?.posts?.[0]?.author;
         this.#isPostsLoaded = true;
-        this.#learn(author?.name ?? "", author?.avatar_urls ?? "");
+        this.#learn(
+          author?.name ?? "",
+          author ? (author.avatar_urls ?? "") : null,
+        );
         return response;
       },
       messages: MESSAGES,
@@ -151,70 +151,83 @@ export class UserPage {
     const buttons =
       (this.#relation ? ACTIONS[this.#relation] : "") + WRITE_BUTTON;
     const error = `<p class="profile-card__error" role="alert">${escapeHtml(this.#error)}</p>`;
-    this.#card.insertAdjacentHTML(
-      "afterend",
-      profileCardTemplate({
-        name: this.#name,
-        avatarUrl: this.#avatarPath ? api.mediaUrl(this.#avatarPath) : "",
-        bio: this.#bio,
-        birthday: this.#birthday,
-        actions: this.#isMissing ? "" : buttons + error,
-      }),
-    );
-    const card = this.#card.nextElementSibling as HTMLElement;
-    this.#card.remove();
-    this.#card = card;
-    bindAvatarFallback(card);
+    this.#card = replaceProfileCard(this.#card, {
+      name: this.#name,
+      avatarPath: this.#avatarPath,
+      bio: this.#bio,
+      birthday: this.#birthday,
+      actions: this.#isMissing ? "" : buttons + error,
+    });
   }
 
   /**
-   * Учитывает имя из очередного источника. Точный источник (профиль, связи) заменяет имя из постов, где бэк пишет «Фамилия Имя». «Пользователь» ставится, только когда проверены все источники.
+   * Учитывает имя и аватарку из очередного источника. Точный источник (профиль, связи) заменяет имя из постов, где бэк пишет «Фамилия Имя»; аватарку меняет только профиль, остальные лишь заполняют неизвестную. «Пользователь» и буква вместо аватарки ставятся, только когда проверены все источники.
    * @param name Имя или пустая строка.
-   * @param avatarPath Путь к аватарке или пустая строка.
+   * @param avatarPath Путь к аватарке, пустая строка — её нет, null — источник о ней не знает.
    * @param isExact Источник с именем в правильном порядке.
+   * @param isProfile Источник — сам профиль человека.
    */
-  #learn(name: string, avatarPath: string, isExact: boolean = false): void {
+  #learn(
+    name: string,
+    avatarPath: string | null,
+    isExact: boolean = false,
+    isProfile: boolean = false,
+  ): void {
     if (this.#isDestroyed || this.#isMissing) {
       return;
     }
     if (name && (isExact || !this.#name || this.#name === UNKNOWN_NAME)) {
       this.#name = name;
-      this.#avatarPath =
-        (isExact && avatarPath) || this.#avatarPath || avatarPath;
-      people.remember(this.#profileId, {
-        name,
-        avatarUrl: this.#avatarPath,
-      });
-    } else if (
-      !this.#name &&
+    }
+    if (avatarPath !== null && (isProfile || this.#avatarPath === null)) {
+      this.#avatarPath = avatarPath;
+    }
+    if (
       this.#isPostsLoaded &&
       this.#isRelationLoaded &&
       this.#isProfileLoaded
     ) {
-      this.#name = UNKNOWN_NAME;
+      this.#name ??= UNKNOWN_NAME;
+      this.#avatarPath ??= "";
+    }
+    if (this.#name && this.#name !== UNKNOWN_NAME) {
+      people.remember(this.#profileId, {
+        name: this.#name,
+        avatarUrl: this.#avatarPath ?? "",
+      });
     }
     this.#renderCard();
   }
 
   /**
-   * Загружает профиль: имя, «О себе» и дату рождения. Аватарок в ответе нет — они остаются из постов и списков. 404 — такого пользователя нет.
+   * Загружает профиль: имя, аватарку, «О себе» и дату рождения. Аватарки приходят списком, новые сначала. 404 — такого пользователя нет.
    */
   async #loadProfile(): Promise<void> {
     const { status, data } = await api.profileById(this.#profileId);
     if (this.#isDestroyed) {
       return;
     }
+    if (status === 401) {
+      this.#goToLogin();
+      return;
+    }
     this.#isProfileLoaded = true;
     if (status === 404) {
       this.#isMissing = true;
       this.#name = MISSING_NAME;
+      this.#avatarPath = "";
       this.#renderCard();
       return;
     }
     const profile = status === 200 ? data : null;
     this.#bio = profile?.bio ?? "";
     this.#birthday = profile?.birthday ?? "";
-    this.#learn(profile ? displayName(profile) : "", "", true);
+    this.#learn(
+      profile ? displayName(profile) : "",
+      profile ? (profile.avatar_urls?.[0] ?? "") : null,
+      true,
+      true,
+    );
   }
 
   /**
@@ -236,7 +249,7 @@ export class UserPage {
     const profile = result.profile;
     this.#learn(
       profile ? displayName(profile) : "",
-      profile?.avatar_urls ?? "",
+      profile ? (profile.avatar_urls ?? "") : null,
       true,
     );
   }

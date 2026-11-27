@@ -1,6 +1,6 @@
 import { api } from "./api";
 import { chatSocket } from "./chatSocket";
-import type { ApiResult, Chat, ShortProfile } from "./api";
+import type { ApiResult, Chat, ChatParticipant, ShortProfile } from "./api";
 import { nextCursor } from "@nexly/utils";
 import { people } from "./people";
 import { displayName } from "./profileName";
@@ -8,16 +8,26 @@ import { displayName } from "./profileName";
 const MAX_PAGES = 10;
 
 /**
- * Запоминает участников чата в кеше людей: тогда страница человека, открытая из чата, сразу знает его имя. Аватарку из кеша не затирает — у участников её нет.
+ * Участник чата в виде короткого профиля, как в списках друзей: аватарка — строкой, а не списком.
+ * @param participant Участник из ответа бэка.
+ * @returns Короткий профиль.
+ */
+function toShortProfile(participant: ChatParticipant): ShortProfile {
+  return { ...participant, avatar_urls: participant.avatar_urls?.[0] ?? "" };
+}
+
+/**
+ * Запоминает участников чата в кеше людей: тогда страница человека, открытая из чата, сразу знает его имя и аватарку.
  * @param chat Чат с участниками.
  */
 function rememberParticipants(chat: Chat): void {
-  chat.participants?.forEach((person) =>
+  chat.participants?.forEach((participant) => {
+    const person = toShortProfile(participant);
     people.remember(person.id, {
       name: displayName(person),
       avatarUrl: person.avatar_urls || people.get(person.id)?.avatarUrl || "",
-    }),
-  );
+    });
+  });
 }
 
 /**
@@ -28,13 +38,13 @@ function rememberParticipants(chat: Chat): void {
  */
 export function chatPartner(chat: Chat, myId: number): ShortProfile | null {
   const participants = chat.participants ?? [];
-  return (
-    participants.find((person) => person.id !== myId) ?? participants[0] ?? null
-  );
+  const partner =
+    participants.find((person) => person.id !== myId) ?? participants[0];
+  return partner ? toShortProfile(partner) : null;
 }
 
 /**
- * Имя и аватарка собеседника. Аватарки у участников чата бэк не отдаёт, поэтому она берётся из встреченных раньше постов и списков.
+ * Имя и аватарка собеседника. Аватарка — из чата, а если её там нет, из встреченных раньше постов и списков.
  * @param person Собеседник.
  * @returns Имя для показа и путь к аватарке или пустая строка.
  */

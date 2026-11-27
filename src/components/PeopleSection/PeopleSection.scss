@@ -70,6 +70,10 @@
     user-select: none;
   }
 
+  &__avatar_image {
+    color: transparent;
+  }
+
   &__avatar-image {
     position: absolute;
     inset: 0;

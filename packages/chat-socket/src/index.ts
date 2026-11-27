@@ -40,11 +40,11 @@ const TAB_ID = Math.random().toString(36).slice(2);
 /**
  * Состояние соединения:
  * idle — не запущено; connecting — подключаемся; online — подписаны на чаты;
- * waiting — ждём повторной попытки; replaced — соединение забрало другое устройство;
+ * waiting — ждём повторной попытки; stalled — соединение рвётся сразу после подключения, клиент ждёт действия пользователя;
  * unauthorized — бэк не принял сессию.
  */
 export type ChatSocketStatus =
-  "idle" | "connecting" | "online" | "waiting" | "replaced" | "unauthorized";
+  "idle" | "connecting" | "online" | "waiting" | "stalled" | "unauthorized";
 
 /**
  * Статус и чаты, на которые подписано соединение.
@@ -125,9 +125,9 @@ function subscribedIds(event: { chat_id?: number; chat_ids?: number[] }) {
 }
 
 /**
- * Клиент WebSocket чатов. Бэк держит одно соединение на пользователя, поэтому сокет открывает
- * только вкладка-лидер (Web Locks), а остальные получают события и отправляют сообщения через неё
- * по BroadcastChannel. Когда лидер закрывается, замок и соединение переходят к следующей вкладке.
+ * Клиент WebSocket чатов. Сокет открывает только вкладка-лидер (Web Locks), а остальные получают
+ * события и отправляют сообщения через неё по BroadcastChannel: на браузер одно соединение, сколько бы
+ * вкладок ни было открыто. Когда лидер закрывается, замок и соединение переходят к следующей вкладке.
  */
 export class ChatSocket {
   #options: ChatSocketOptions;
@@ -485,7 +485,7 @@ export class ChatSocket {
   }
 
   /**
-   * Соединение закрылось не по нашей воле. Переподключается с растущей паузой. Если соединение три раза подряд вытеснили быстрее чем за 5 секунд, значит, его забирает другое устройство, — клиент сдаётся до следующего действия пользователя.
+   * Соединение закрылось не по нашей воле. Переподключается с растущей паузой. Если соединение три раза подряд закрылось быстрее чем за 5 секунд после подключения, повторять бесполезно — клиент перестаёт переподключаться до следующего действия пользователя.
    */
   #onClose(): void {
     const lived = this.#onlineAt ? Date.now() - this.#onlineAt : -1;
@@ -497,7 +497,7 @@ export class ChatSocket {
       this.#shortLives = lived < SHORT_LIFE ? this.#shortLives + 1 : 0;
     }
     if (this.#shortLives >= MAX_SHORT_LIVES) {
-      this.#setState("replaced", []);
+      this.#setState("stalled", []);
       return;
     }
     const delay =
@@ -519,7 +519,7 @@ export class ChatSocket {
       return;
     }
     const status = this.#state.status;
-    if (status === "waiting" || status === "replaced") {
+    if (status === "waiting" || status === "stalled") {
       this.#attempt = 0;
       this.#shortLives = 0;
       this.#connect();

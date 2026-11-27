@@ -77,7 +77,6 @@ const ABOUT_FIELDS = [
 ];
 
 const PHONE_TAKEN = "Этот номер уже используется";
-const EMAIL_TAKEN = "Этот email уже занят";
 const FIELD_REJECTED = "Сервер не принял это значение, проверьте его";
 const PHOTO_HINT = "Формат: png, jpg, jpeg; до 5мб";
 
@@ -655,7 +654,7 @@ export class SignupPage {
   }
 
   /**
-   * Шаг 1 по email: просит бэк прислать код и открывает экран кода. Аккаунт создаётся после ввода кода. 409 — email уже занят.
+   * Шаг 1 по email: просит бэк прислать код и открывает экран кода. Аккаунт создаётся после ввода кода. Занят ли email, бэк не сообщает, чтобы адреса нельзя было перебирать: на занятый письмо просто не придёт.
    */
   async #registerByEmail(): Promise<void> {
     const field = this.#fields.email;
@@ -674,10 +673,6 @@ export class SignupPage {
         skip: "Изменить email",
       });
       this.#router.navigate("/signup/code");
-      return;
-    }
-    if (response.status === 409) {
-      field.setError(EMAIL_TAKEN);
       return;
     }
     if (response.status === 400) {

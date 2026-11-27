@@ -225,7 +225,7 @@ export class PostList {
   }
 
   /**
-   * Показывает под списком состояние: спиннер при подгрузке, текст загрузки, пустого списка, конца или ошибки с кнопкой повтора.
+   * Показывает под списком состояние: спиннер при подгрузке, текст загрузки, пустого списка, конца или ошибки с кнопкой повтора. Текст первой загрузки проявляется с задержкой: при быстром ответе он не успевает мелькнуть.
    * @param status Состояние списка.
    */
   #setStatus(status: ListStatus): void {
@@ -242,7 +242,8 @@ export class PostList {
       this.#status.innerHTML = SPINNER;
       return;
     }
-    const message = `<p class="post-list__message">${this.#config.messages[status]}</p>`;
+    const modifier = status === "loading" ? " post-list__message_loading" : "";
+    const message = `<p class="post-list__message${modifier}">${this.#config.messages[status]}</p>`;
     this.#status.innerHTML = status === "error" ? message + RETRY : message;
   }
 

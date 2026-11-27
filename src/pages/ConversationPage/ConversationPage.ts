@@ -83,7 +83,7 @@ const TEMPLATE = `
       <header class="conversation__header conversation__header_hidden"></header>
       <div class="conversation__messages" role="log" aria-live="polite">
         <ol class="conversation__list"></ol>
-        <p class="conversation__notice">${MESSAGES.loading}</p>
+        <p class="conversation__notice conversation__notice_loading">${MESSAGES.loading}</p>
       </div>
       <form class="conversation__form" novalidate>
         <textarea class="conversation__input" name="message" rows="1" maxlength="${MAX_LENGTH}" placeholder="Введите текст сообщения" aria-label="Сообщение"></textarea>
@@ -325,6 +325,7 @@ export class ConversationPage {
    * @param text Текст или пустая строка.
    */
   #showNotice(text: string): void {
+    this.#notice.classList.remove("conversation__notice_loading");
     this.#notice.textContent = text;
     this.#root.classList.toggle("conversation_noticed", Boolean(text));
   }

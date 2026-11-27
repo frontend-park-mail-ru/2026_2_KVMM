@@ -43,3 +43,13 @@ input[type="checkbox"],
 input[type="file"] {
   cursor: inherit;
 }
+
+@keyframes appear-late {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
