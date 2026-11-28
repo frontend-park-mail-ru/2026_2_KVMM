@@ -1,5 +1,5 @@
 import { confirmDialog } from "../components/Dialog/Dialog";
-import { createEntry, deleteEntry, updateEntry } from "./api";
+import { createEntry, deleteEntry, redirectOnAccessDenied, updateEntry } from "./api";
 import type { Entry, EntryValue, JsonValue } from "./api";
 
 const UUID_FORMAT = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -74,6 +74,11 @@ export function bindEntryEditor(panel: HTMLElement, onChanged: () => void): (ent
   let busy = false;
 
   const showError = (message: string): void => showMessage(error, message);
+  const showRequestError = (cause: unknown, fallback: string): void => {
+    if (!redirectOnAccessDenied(cause)) {
+      showError(cause instanceof Error ? cause.message : fallback);
+    }
+  };
   const fieldControls = [scope, name, json, rollout];
 
   const showFieldError = (field: FieldControl, message: string, invalid = Boolean(message)): void => {
@@ -183,7 +188,7 @@ export function bindEntryEditor(panel: HTMLElement, onChanged: () => void): (ent
       panel.hidden = true;
       onChanged();
     } catch (cause) {
-      showError(cause instanceof Error ? cause.message : "Не удалось сохранить ключ");
+      showRequestError(cause, "Не удалось сохранить ключ");
     } finally {
       setBusy(false);
       save.textContent = "Сохранить";
@@ -211,7 +216,7 @@ export function bindEntryEditor(panel: HTMLElement, onChanged: () => void): (ent
       panel.hidden = true;
       onChanged();
     } catch (cause) {
-      showError(cause instanceof Error ? cause.message : "Не удалось удалить флаг");
+      showRequestError(cause, "Не удалось удалить флаг");
     } finally {
       setBusy(false);
       if (!panel.hidden) {

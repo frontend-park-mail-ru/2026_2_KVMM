@@ -4,6 +4,7 @@ const { randomUUID } = require('node:crypto');
 const { json } = require('express');
 
 const ENTRIES_PATH = '/api/onlineconf/admin/entries';
+const MOCK_CSRF_TOKEN = 'onlineconf-mock-csrf';
 const SCOPES = new Set(['frontend', 'auth', 'user', 'posts', 'community', 'backend']);
 const UUID_FORMAT = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -117,7 +118,35 @@ function deleteMockEntry(req, res) {
     res.status(204).end();
 }
 
-function registerOnlineConfMock(app) {
+function registerOnlineConfMock(app, mode) {
+    app.get('/api/auth/me', (req, res, next) => {
+        if (req.get('X-OnlineConf-Dev-Mock') !== '1') {
+            next();
+            return;
+        }
+
+        res.set('Cache-Control', 'private, no-store');
+        if (mode === 'guest') {
+            res.status(401).json({ code: 'unauthorized', message: 'Требуется вход' });
+            return;
+        }
+        res.json({ csrf_token: MOCK_CSRF_TOKEN });
+    });
+    app.use(ENTRIES_PATH, (req, res, next) => {
+        if (mode === 'guest') {
+            res.status(401).json({ code: 'unauthorized', message: 'Требуется вход' });
+            return;
+        }
+        if (mode === 'member') {
+            res.status(403).json({ code: 'forbidden', message: 'Нет доступа к OnlineConf' });
+            return;
+        }
+        if (['POST', 'PATCH', 'DELETE'].includes(req.method) && req.get('X-CSRF-Token') !== MOCK_CSRF_TOKEN) {
+            res.status(403).json({ code: 'csrf_failed', message: 'Не прошла проверка CSRF. Повторите попытку.' });
+            return;
+        }
+        next();
+    });
     app.get(ENTRIES_PATH, listMockEntries);
     app.post(ENTRIES_PATH, json(), createMockEntry);
     app.patch(ENTRIES_PATH + '/:id', json(), updateMockEntry);

@@ -6,3 +6,4 @@ declare module "*.svg" {
 declare module "*.scss";
 
 declare const SERVICE_WORKER: boolean;
+declare const ONLINECONF_DEV_MOCK: boolean;

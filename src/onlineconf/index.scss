@@ -73,7 +73,7 @@
   }
 }
 
-.onlineconf__filters {
+.onlineconf__filters:not([hidden]) {
   display: grid;
   grid-template-columns: minmax(0, 360px) minmax(0, 200px);
   gap: 16px;
@@ -247,7 +247,7 @@
 }
 
 @media (max-width: 520px) {
-  .onlineconf__filters {
+  .onlineconf__filters:not([hidden]) {
     grid-template-columns: minmax(0, 1fr);
   }
 

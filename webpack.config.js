@@ -76,6 +76,8 @@ const backPublicDir = path.resolve(process.env.BACK_PUBLIC_DIR || path.join(__di
 
 module.exports = (env, argv) => {
     const isProduction = argv.mode === 'production';
+    const onlineConfMock = process.env.ONLINECONF_MOCK || '';
+    const useOnlineConfMock = !isProduction && ['1', 'guest', 'member'].includes(onlineConfMock);
     const hash = isProduction ? '.[contenthash:8]' : '';
 
     return {
@@ -138,7 +140,10 @@ module.exports = (env, argv) => {
                 chunks: [ONLINECONF_DIR],
             }),
             new FontPreloadPlugin(),
-            new DefinePlugin({ SERVICE_WORKER: JSON.stringify(isProduction) }),
+            new DefinePlugin({
+                SERVICE_WORKER: JSON.stringify(isProduction),
+                ONLINECONF_DEV_MOCK: JSON.stringify(useOnlineConfMock),
+            }),
             new ServiceWorkerManifestPlugin(),
             new MiniCssExtractPlugin({
                 filename: ({ chunk }) => `${assetDirectory(chunk.name)}/[name]${hash}.css`,
@@ -155,8 +160,8 @@ module.exports = (env, argv) => {
         devServer: {
             port: Number(process.env.PORT) || 8001,
             setupMiddlewares(middlewares, devServer) {
-                if (process.env.ONLINECONF_MOCK === '1') {
-                    registerOnlineConfMock(devServer.app);
+                if (useOnlineConfMock) {
+                    registerOnlineConfMock(devServer.app, onlineConfMock);
                 }
                 return middlewares;
             },

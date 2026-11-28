@@ -15,13 +15,45 @@ type NewEntry = Omit<EntryBase, "id"> & EntryValue;
 
 const ENTRIES_URL = "/api/onlineconf/admin/entries";
 
+class OnlineConfHttpError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly code: string,
+  ) {
+    super(message);
+  }
+}
+
+/**
+ * Возвращает пользователя в ленту Nexly при отказе в доступе.
+ * @param cause Причина ошибки запроса.
+ * @returns Признак перехода на ленту.
+ */
+export function redirectOnAccessDenied(cause: unknown): boolean {
+  if (!(cause instanceof OnlineConfHttpError)) {
+    return false;
+  }
+  if (cause.status === 401 || (cause.status === 403 && cause.code !== "csrf_failed")) {
+    window.location.replace("/feed");
+    return true;
+  }
+  return false;
+}
+
 async function request(url: string, options: RequestInit = {}): Promise<unknown> {
-  const headers = new Headers({ Accept: "application/json" });
+  const headers = new Headers(options.headers);
+  headers.set("Accept", "application/json");
   if (options.body) {
     headers.set("Content-Type", "application/json");
   }
 
-  const response = await fetch(url, { ...options, headers, cache: "no-store" }).catch((cause: unknown) => {
+  const response = await fetch(url, {
+    ...options,
+    headers,
+    credentials: "same-origin",
+    cache: "no-store",
+  }).catch((cause: unknown) => {
     if (options.signal?.aborted) {
       throw cause;
     }
@@ -30,13 +62,35 @@ async function request(url: string, options: RequestInit = {}): Promise<unknown>
   const data: unknown = await response.json().catch(() => null);
 
   if (!response.ok) {
-    const message = data && typeof data === "object" && "message" in data && typeof data.message === "string"
-      ? data.message.trim()
+    const details = data && typeof data === "object" ? data : {};
+    const message = "message" in details && typeof details.message === "string"
+      ? details.message.trim()
       : "";
-    throw new Error(message || "Запрос OnlineConf завершился ошибкой (" + response.status + ")");
+    const code = "code" in details && typeof details.code === "string" ? details.code : "";
+    throw new OnlineConfHttpError(
+      message || "Запрос OnlineConf завершился ошибкой (" + response.status + ")",
+      response.status,
+      code,
+    );
   }
 
   return data;
+}
+
+async function writeEntry(url: string, method: "POST" | "PATCH" | "DELETE", payload?: object): Promise<void> {
+  const session = await request("/api/auth/me", {
+    headers: ONLINECONF_DEV_MOCK ? { "X-OnlineConf-Dev-Mock": "1" } : undefined,
+  });
+  if (!session || typeof session !== "object" || !("csrf_token" in session) ||
+      typeof session.csrf_token !== "string" || !session.csrf_token.trim()) {
+    throw new Error("Не удалось получить токен сессии. Обновите страницу и попробуйте снова.");
+  }
+
+  await request(url, {
+    method,
+    headers: { "X-CSRF-Token": session.csrf_token },
+    body: payload === undefined ? undefined : JSON.stringify(payload),
+  });
 }
 
 /**
@@ -69,7 +123,7 @@ export async function listEntries(query: string, scope: string, signal: AbortSig
  * @returns Запрос завершается после сохранения.
  */
 export async function createEntry(entry: NewEntry): Promise<void> {
-  await request(ENTRIES_URL, { method: "POST", body: JSON.stringify(entry) });
+  await writeEntry(ENTRIES_URL, "POST", entry);
 }
 
 /**
@@ -83,10 +137,7 @@ export async function updateEntry(id: string, value: EntryValue): Promise<void> 
     ? { value: value.value }
     : { rollout: value.rollout, include: value.include, exclude: value.exclude };
 
-  await request(ENTRIES_URL + "/" + encodeURIComponent(id), {
-    method: "PATCH",
-    body: JSON.stringify(payload),
-  });
+  await writeEntry(ENTRIES_URL + "/" + encodeURIComponent(id), "PATCH", payload);
 }
 
 /**
@@ -95,5 +146,5 @@ export async function updateEntry(id: string, value: EntryValue): Promise<void> 
  * @returns Запрос завершается после удаления.
  */
 export async function deleteEntry(id: string): Promise<void> {
-  await request(ENTRIES_URL + "/" + encodeURIComponent(id), { method: "DELETE" });
+  await writeEntry(ENTRIES_URL + "/" + encodeURIComponent(id), "DELETE");
 }

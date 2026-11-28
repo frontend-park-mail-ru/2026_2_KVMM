@@ -1,4 +1,4 @@
-import { listEntries } from "./api";
+import { listEntries, redirectOnAccessDenied } from "./api";
 import type { Entry } from "./api";
 import { bindEntryEditor } from "./editor";
 import "./index.scss";
@@ -57,6 +57,8 @@ if (filters && table && status && retry && create && editor) {
       if (request.signal.aborted) {
         return;
       }
+      filters.hidden = false;
+      create.hidden = false;
       if (!entries.length) {
         showStatus(query || scope ? "Ключи не найдены" : "Ключей пока нет");
         return;
@@ -65,8 +67,8 @@ if (filters && table && status && retry && create && editor) {
       rows.replaceChildren(...entries.map((entry) => createEntryRow(entry, openEditor)));
       table.hidden = false;
       status.hidden = true;
-    } catch {
-      if (!request.signal.aborted) {
+    } catch (cause) {
+      if (!request.signal.aborted && !redirectOnAccessDenied(cause)) {
         showStatus("Не удалось загрузить ключи", true);
       }
     }
