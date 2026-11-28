@@ -12,8 +12,11 @@ const srcDir = path.resolve(__dirname, 'src');
 const distDir = path.resolve(__dirname, 'dist');
 const packagesDir = path.resolve(__dirname, 'packages');
 const SW_FILE = 'sw.js';
+const ONLINECONF_DIR = 'onlineconf';
 const SW_MANIFEST = /(["'])__NEXLY_MANIFEST__\1/;
 const PRELOAD_FONTS = /^assets\/inter-(latin|cyrillic)-(400|600)\.[0-9a-f]+\.woff2$/;
+
+const assetDirectory = (entryName) => entryName === ONLINECONF_DIR ? `${ONLINECONF_DIR}/assets` : 'assets';
 
 /**
  * Добавляет в index.html предзагрузку основных начертаний Inter. Браузер качает шрифты сразу, вместе со скриптом, а не когда страница уже нарисовала текст, поэтому текст не перерисовывается из запасного шрифта в Inter.
@@ -55,7 +58,7 @@ class ServiceWorkerManifestPlugin {
                         return;
                     }
                     const files = Object.keys(assets)
-                        .filter((name) => name !== SW_FILE && !/\.(map|txt)$/.test(name))
+                        .filter((name) => name !== SW_FILE && !name.startsWith(`${ONLINECONF_DIR}/`) && !/\.(map|txt)$/.test(name))
                         .map((name) => `/${name}`)
                         .sort();
                     const version = crypto.createHash('sha256').update(files.join('\n')).digest('hex').slice(0, 12);
@@ -78,11 +81,12 @@ module.exports = (env, argv) => {
         entry: {
             main: path.join(srcDir, 'index.ts'),
             sw: path.join(srcDir, 'sw', 'sw.ts'),
+            [ONLINECONF_DIR]: path.join(srcDir, ONLINECONF_DIR, 'index.ts'),
         },
         output: {
             path: distDir,
             publicPath: '/',
-            filename: (pathData) => (pathData.chunk.name === 'sw' ? SW_FILE : `assets/[name]${hash}.js`),
+            filename: ({ chunk }) => chunk.name === 'sw' ? SW_FILE : `${assetDirectory(chunk.name)}/[name]${hash}.js`,
             assetModuleFilename: 'assets/[name].[contenthash:8][ext]',
             clean: true,
         },
@@ -127,11 +131,16 @@ module.exports = (env, argv) => {
                 favicon: path.join(srcDir, 'components', 'Logo', 'logo.svg'),
                 chunks: ['main'],
             }),
+            new HtmlWebpackPlugin({
+                template: path.join(srcDir, ONLINECONF_DIR, 'index.html'),
+                filename: `${ONLINECONF_DIR}/index.html`,
+                chunks: [ONLINECONF_DIR],
+            }),
             new FontPreloadPlugin(),
             new DefinePlugin({ SERVICE_WORKER: JSON.stringify(isProduction) }),
             new ServiceWorkerManifestPlugin(),
             new MiniCssExtractPlugin({
-                filename: `assets/[name]${hash}.css`,
+                filename: ({ chunk }) => `${assetDirectory(chunk.name)}/[name]${hash}.css`,
             }),
         ],
         optimization: {
@@ -144,7 +153,12 @@ module.exports = (env, argv) => {
         },
         devServer: {
             port: Number(process.env.PORT) || 8001,
-            historyApiFallback: true,
+            historyApiFallback: {
+                rewrites: [
+                    { from: /^\/onlineconf\/?$/, to: `/${ONLINECONF_DIR}/index.html` },
+                    { from: /^\/onlineconf\//, to: ({ parsedUrl }) => parsedUrl.pathname },
+                ],
+            },
             static: fs.existsSync(backPublicDir) ? [{ directory: backPublicDir, publicPath: '/public' }] : false,
             proxy: [
                 {

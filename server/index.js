@@ -49,6 +49,16 @@ if (fs.existsSync(backPublicDir)) {
 }
 
 app.use(
+    '/onlineconf',
+    express.static(path.join(distDir, 'onlineconf'), {
+        setHeaders(res) {
+            res.setHeader('Cache-Control', 'private, no-store');
+        },
+    }),
+    (_req, res) => res.status(404).end(),
+);
+
+app.use(
     express.static(distDir, {
         setHeaders(res, filePath) {
             const isHashed = filePath.startsWith(assetsDir);

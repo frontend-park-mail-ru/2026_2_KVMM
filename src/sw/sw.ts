@@ -121,6 +121,9 @@ sw.addEventListener("fetch", (event) => {
   if (request.method !== "GET" || url.origin !== sw.location.origin) {
     return;
   }
+  if (url.pathname === "/onlineconf" || url.pathname.startsWith("/onlineconf/")) {
+    return;
+  }
   if (url.pathname.startsWith("/api/media/")) {
     event.respondWith(cacheFirst(request, MEDIA_CACHE, MEDIA_LIMIT));
   } else if (url.pathname === "/api/chats/ws") {

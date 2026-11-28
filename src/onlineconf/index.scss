@@ -1,0 +1,38 @@
+@use "../styles/variables";
+@use "../styles/fonts";
+@use "../styles/base";
+
+.onlineconf__header {
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-track);
+}
+
+.onlineconf__container {
+  width: min(100% - 32px, 1120px);
+  margin-inline: auto;
+}
+
+.onlineconf__home {
+  display: inline-flex;
+  align-items: center;
+  min-height: 56px;
+  font: var(--font-body-strong);
+}
+
+.onlineconf__home:hover {
+  color: var(--color-link);
+}
+
+.onlineconf__main {
+  padding-block: clamp(24px, 6vw, 56px);
+}
+
+.onlineconf__title {
+  margin: 0;
+  font-size: clamp(28px, 5vw, 40px);
+  line-height: 1.15;
+}
+
+.onlineconf__description {
+  margin: 8px 0 0;
+}
