@@ -6,6 +6,52 @@
     <title>OnlineConf</title>
   </head>
   <body>
-    <div id="onlineconf"></div>
+    <header class="onlineconf__header">
+      <div class="onlineconf__container">
+        <a class="onlineconf__home" href="/">Nexly</a>
+      </div>
+    </header>
+
+    <main class="onlineconf__container onlineconf__main">
+      <h1 class="onlineconf__title">OnlineConf</h1>
+      <p class="onlineconf__description">Настройки и фича-флаги Nexly</p>
+
+      <section class="onlineconf__panel" aria-labelledby="onlineconf-keys-title">
+        <h2 id="onlineconf-keys-title" class="onlineconf__section-title">Ключи</h2>
+        <form id="onlineconf-filters" class="onlineconf__filters" role="search">
+          <label class="onlineconf__filter">
+            Поиск по имени
+            <input name="q" type="search" placeholder="Например, likes" />
+          </label>
+          <label class="onlineconf__filter">
+            Скоуп
+            <select name="scope">
+              <option value="">Все скоупы</option>
+              <option value="frontend">frontend</option>
+              <option value="auth">auth</option>
+              <option value="user">user</option>
+              <option value="posts">posts</option>
+              <option value="community">community</option>
+              <option value="backend">backend</option>
+            </select>
+          </label>
+        </form>
+
+        <table id="onlineconf-entries" class="onlineconf__table" aria-labelledby="onlineconf-keys-title" hidden>
+          <thead>
+            <tr>
+              <th scope="col">Ключ</th>
+              <th scope="col">Скоуп</th>
+              <th scope="col">Тип</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+        <p id="onlineconf-status" class="onlineconf__status" role="status">Загружаем ключи…</p>
+        <button id="onlineconf-retry" class="onlineconf__retry" type="button" hidden>
+          Повторить загрузку
+        </button>
+      </section>
+    </main>
   </body>
 </html>

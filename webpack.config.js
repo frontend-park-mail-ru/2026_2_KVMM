@@ -7,6 +7,7 @@ const HtmlWebpackPlugin = require('html-webpack-plugin');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const CssMinimizerPlugin = require('css-minimizer-webpack-plugin');
 const { DefinePlugin } = require('webpack');
+const { listMockEntries } = require('./server/dev/onlineconfMock');
 
 const srcDir = path.resolve(__dirname, 'src');
 const distDir = path.resolve(__dirname, 'dist');
@@ -153,6 +154,12 @@ module.exports = (env, argv) => {
         },
         devServer: {
             port: Number(process.env.PORT) || 8001,
+            setupMiddlewares(middlewares, devServer) {
+                if (process.env.ONLINECONF_MOCK === '1') {
+                    devServer.app.get('/api/onlineconf/admin/entries', listMockEntries);
+                }
+                return middlewares;
+            },
             historyApiFallback: {
                 rewrites: [
                     { from: /^\/onlineconf\/?$/, to: `/${ONLINECONF_DIR}/index.html` },

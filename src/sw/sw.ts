@@ -121,7 +121,11 @@ sw.addEventListener("fetch", (event) => {
   if (request.method !== "GET" || url.origin !== sw.location.origin) {
     return;
   }
-  if (url.pathname === "/onlineconf" || url.pathname.startsWith("/onlineconf/")) {
+  if (
+    url.pathname === "/onlineconf" ||
+    url.pathname.startsWith("/onlineconf/") ||
+    url.pathname.startsWith("/api/onlineconf/admin/")
+  ) {
     return;
   }
   if (url.pathname.startsWith("/api/media/")) {
