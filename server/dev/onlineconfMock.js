@@ -3,9 +3,12 @@
 const { createHash, randomUUID } = require('node:crypto');
 const { json } = require('express');
 
-const ENTRIES_PATH = '/api/onlineconf/admin/entries';
+const ADMIN_PATH = '/api/onlineconf/admin';
+const ENTRIES_PATH = ADMIN_PATH + '/entries';
+const ADMINS_PATH = ADMIN_PATH + '/admins';
 const MOCK_CSRF_TOKEN = 'onlineconf-mock-csrf';
 const MOCK_VIEWER_UID = '11111111-1111-4111-8111-111111111111';
+const MOCK_BOOTSTRAP_UID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const MOCK_LIKES_BUCKET = Number(createHash('sha256').update('posts/likes_enabled:42').digest().readBigUInt64BE() % 100n);
 const SCOPES = new Set(['frontend', 'auth', 'user', 'posts', 'community', 'backend']);
 const UUID_FORMAT = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -14,6 +17,10 @@ const entries = [
     { uid: '11111111-1111-4111-8111-111111111111', scope: 'posts', name: 'likes_enabled', kind: 'flag', rollout: 100, include: [], exclude: [] },
     { uid: '22222222-2222-4222-8222-222222222222', scope: 'posts', name: 'max_text_length', kind: 'config', value: 256 },
     { uid: '33333333-3333-4333-8333-333333333333', scope: 'frontend', name: 'feed_title', kind: 'config', value: 'Лента' },
+];
+
+const admins = [
+    { profile_uid: MOCK_BOOTSTRAP_UID, created_at: '2026-11-28T11:05:13Z', is_bootstrap: true },
 ];
 
 function serializeEntry(entry) {
@@ -120,6 +127,46 @@ function updateMockEntry(req, res) {
     }
 }
 
+function readMockAdminUid(value, res) {
+    const uid = typeof value === 'string' ? value.trim().toLowerCase() : '';
+    if (uid !== MOCK_VIEWER_UID) {
+        const message = uid === MOCK_BOOTSTRAP_UID
+            ? 'Доступ корневого администратора постоянный'
+            : 'Пользователь с таким UUID не найден';
+        res.status(400).json({ code: 'validation_error', message });
+        return null;
+    }
+    return uid;
+}
+
+function grantMockAdmin(req, res) {
+    const uid = readMockAdminUid(req.body?.profile_uid, res);
+    if (!uid) {
+        return;
+    }
+    if (admins.some(admin => admin.profile_uid === uid)) {
+        res.status(409).json({ code: 'conflict', message: 'У пользователя уже есть доступ' });
+        return;
+    }
+    const admin = { profile_uid: uid, created_at: new Date().toISOString(), is_bootstrap: false };
+    admins.push(admin);
+    res.status(201).json(admin);
+}
+
+function revokeMockAdmin(req, res) {
+    const uid = readMockAdminUid(req.params.profile_uid, res);
+    if (!uid) {
+        return;
+    }
+    const index = admins.findIndex(admin => admin.profile_uid === uid);
+    if (index === -1) {
+        res.status(404).json({ code: 'not_found', message: 'Администратор не найден' });
+        return;
+    }
+    admins.splice(index, 1);
+    res.status(204).end();
+}
+
 function mockLikesEnabled() {
     const flag = entries.find(entry => entry.scope === 'posts' && entry.name === 'likes_enabled' && entry.kind === 'flag');
     return !flag || (!flag.exclude.includes(MOCK_VIEWER_UID) &&
@@ -161,7 +208,7 @@ function registerOnlineConfMock(app, mode) {
         }
         res.json({ csrf_token: MOCK_CSRF_TOKEN });
     });
-    app.use(ENTRIES_PATH, (req, res, next) => {
+    app.use(ADMIN_PATH, (req, res, next) => {
         if (mode === 'guest') {
             res.status(401).json({ code: 'unauthorized', message: 'Требуется вход' });
             return;
@@ -170,7 +217,7 @@ function registerOnlineConfMock(app, mode) {
             res.status(403).json({ code: 'forbidden', message: 'Нет доступа к OnlineConf' });
             return;
         }
-        if (['POST', 'PATCH'].includes(req.method) && req.get('X-CSRF-Token') !== MOCK_CSRF_TOKEN) {
+        if (['POST', 'PATCH', 'DELETE'].includes(req.method) && req.get('X-CSRF-Token') !== MOCK_CSRF_TOKEN) {
             res.status(403).json({ code: 'csrf_failed', message: 'Не прошла проверка CSRF. Повторите попытку.' });
             return;
         }
@@ -179,6 +226,9 @@ function registerOnlineConfMock(app, mode) {
     app.get(ENTRIES_PATH, listMockEntries);
     app.post(ENTRIES_PATH, json(), createMockEntry);
     app.patch(ENTRIES_PATH + '/:uid', json(), updateMockEntry);
+    app.get(ADMINS_PATH, (_req, res) => res.set('Cache-Control', 'private, no-store').json({ admins }));
+    app.post(ADMINS_PATH, json(), grantMockAdmin);
+    app.delete(ADMINS_PATH + '/:profile_uid', revokeMockAdmin);
 }
 
 module.exports = { registerOnlineConfMock };

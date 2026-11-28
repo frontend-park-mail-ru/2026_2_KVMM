@@ -13,9 +13,23 @@ export type EntryValue = ConfigValue | Required<FlagValue>;
 export type Entry = EntryBase & (ConfigValue | FlagValue);
 type NewEntry = Omit<EntryBase, "uid"> & EntryValue;
 
-const ENTRIES_URL = "/api/onlineconf/admin/entries";
+/** Профиль, которому выдан доступ к OnlineConf. */
+export interface OnlineConfAdmin {
+  profile_uid: string;
+  created_at: string;
+  is_bootstrap: boolean;
+}
 
-class OnlineConfHttpError extends Error {
+const ENTRIES_URL = "/api/onlineconf/admin/entries";
+const ADMINS_URL = "/api/onlineconf/admin/admins";
+
+/** Ошибка административного API с кодом и HTTP-статусом. */
+export class OnlineConfHttpError extends Error {
+  /**
+   * @param message Сообщение об ошибке.
+   * @param status HTTP-статус.
+   * @param code Код ошибки из ответа.
+   */
   constructor(
     message: string,
     readonly status: number,
@@ -77,7 +91,7 @@ async function request(url: string, options: RequestInit = {}): Promise<unknown>
   return data;
 }
 
-async function writeEntry(url: string, method: "POST" | "PATCH", payload: object): Promise<void> {
+async function write(url: string, method: "POST" | "PATCH" | "DELETE", payload?: object): Promise<void> {
   const session = await request("/api/auth/me", {
     headers: ONLINECONF_DEV_MOCK ? { "X-OnlineConf-Dev-Mock": "1" } : undefined,
   });
@@ -89,7 +103,7 @@ async function writeEntry(url: string, method: "POST" | "PATCH", payload: object
   await request(url, {
     method,
     headers: { "X-CSRF-Token": session.csrf_token },
-    body: JSON.stringify(payload),
+    body: payload === undefined ? undefined : JSON.stringify(payload),
   });
 }
 
@@ -123,7 +137,7 @@ export async function listEntries(query: string, scope: string, signal: AbortSig
  * @returns Запрос завершается после сохранения.
  */
 export async function createEntry(entry: NewEntry): Promise<void> {
-  await writeEntry(ENTRIES_URL, "POST", entry);
+  await write(ENTRIES_URL, "POST", entry);
 }
 
 /**
@@ -137,5 +151,35 @@ export async function updateEntry(uid: string, value: EntryValue): Promise<void>
     ? { value: value.value }
     : { rollout: value.rollout, include: value.include, exclude: value.exclude };
 
-  await writeEntry(ENTRIES_URL + "/" + encodeURIComponent(uid), "PATCH", payload);
+  await write(ENTRIES_URL + "/" + encodeURIComponent(uid), "PATCH", payload);
+}
+
+/**
+ * Получает профили с доступом к OnlineConf.
+ * @returns Список администраторов.
+ */
+export async function listAdmins(): Promise<OnlineConfAdmin[]> {
+  const data = await request(ADMINS_URL);
+  if (!data || typeof data !== "object" || !("admins" in data) || !Array.isArray(data.admins)) {
+    throw new Error("В ответе OnlineConf отсутствует список администраторов");
+  }
+  return data.admins as OnlineConfAdmin[];
+}
+
+/**
+ * Выдаёт профилю доступ к OnlineConf.
+ * @param profileUid Публичный UUID профиля Nexly.
+ * @returns Запрос завершается после выдачи доступа.
+ */
+export async function grantAdmin(profileUid: string): Promise<void> {
+  await write(ADMINS_URL, "POST", { profile_uid: profileUid });
+}
+
+/**
+ * Отзывает доступ профиля к OnlineConf.
+ * @param profileUid Публичный UUID профиля Nexly.
+ * @returns Запрос завершается после отзыва доступа.
+ */
+export async function revokeAdmin(profileUid: string): Promise<void> {
+  await write(ADMINS_URL + "/" + encodeURIComponent(profileUid), "DELETE");
 }

@@ -1,15 +1,6 @@
 import { createEntry, redirectOnAccessDenied, updateEntry } from "./api";
 import type { Entry, EntryValue, JsonValue } from "./api";
-
-const UUID_FORMAT = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
-
-function element<T extends HTMLElement>(root: HTMLElement, selector: string): T {
-  const node = root.querySelector<T>(selector);
-  if (!node) {
-    throw new Error("Поле OnlineConf не найдено: " + selector);
-  }
-  return node;
-}
+import { element, showMessage, UUID_FORMAT } from "./form";
 
 function checkUserIds(text: string): { ids: string[]; error: string } {
   const lines = new Map<string, number>();
@@ -35,13 +26,6 @@ function checkUserIds(text: string): { ids: string[]; error: string } {
   }
 
   return { ids: [...lines.keys()], error };
-}
-
-function showMessage(target: HTMLElement, message: string): void {
-  if (target.textContent !== message) {
-    target.textContent = message;
-  }
-  target.hidden = !message;
 }
 
 type FieldControl = HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;

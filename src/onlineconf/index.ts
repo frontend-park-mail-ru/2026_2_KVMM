@@ -1,5 +1,6 @@
 import { listEntries, redirectOnAccessDenied } from "./api";
 import type { Entry } from "./api";
+import { bindAdminManager } from "./admins";
 import { bindEntryEditor } from "./editor";
 import "./index.scss";
 
@@ -83,4 +84,26 @@ if (filters && table && status && retry && create && editor) {
   });
   retry.addEventListener("click", () => void refreshEntries());
   void refreshEntries();
+}
+
+const keyWorkspace = document.getElementById("onlineconf-keys");
+const adminWorkspace = document.getElementById("onlineconf-admins");
+const showKeys = document.getElementById("onlineconf-show-keys");
+const showAdmins = document.getElementById("onlineconf-show-admins");
+
+if (keyWorkspace && adminWorkspace && showKeys && showAdmins) {
+  const refreshAdmins = bindAdminManager(adminWorkspace);
+  const selectSection = (admins: boolean): void => {
+    keyWorkspace.hidden = admins;
+    adminWorkspace.hidden = !admins;
+    showKeys.setAttribute("aria-pressed", String(!admins));
+    showAdmins.setAttribute("aria-pressed", String(admins));
+  };
+  showKeys.addEventListener("click", () => selectSection(false));
+  showAdmins.addEventListener("click", () => {
+    if (adminWorkspace.hidden) {
+      selectSection(true);
+      refreshAdmins();
+    }
+  });
 }
