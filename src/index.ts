@@ -1,6 +1,7 @@
 import "./index.scss";
 import { api, isSession } from "./modules/api";
 import { user } from "./modules/user";
+import { postRuntime } from "./modules/postRuntime";
 import { chatSocket } from "./modules/chatSocket";
 import { friendRequests } from "./modules/friendRequests";
 import { network } from "./modules/network";
@@ -70,6 +71,7 @@ const router = new Router(
 );
 
 user.onChange(() => {
+  void postRuntime.refresh();
   if (user.isAuthorized) {
     chatSocket.start();
     friendRequests.start();

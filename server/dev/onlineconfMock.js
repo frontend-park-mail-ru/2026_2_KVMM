@@ -119,6 +119,17 @@ function deleteMockEntry(req, res) {
 }
 
 function registerOnlineConfMock(app, mode) {
+    app.get('/api/posts/runtime', (_req, res) => {
+        res.set('Cache-Control', 'private, no-store');
+        if (mode === 'guest') {
+            res.status(401).json({ code: 'unauthorized', message: 'Требуется вход' });
+            return;
+        }
+        const limit = entries.find(entry =>
+            entry.scope === 'posts' && entry.name === 'max_text_length' && entry.kind === 'config',
+        );
+        res.json({ max_text_length: limit?.value ?? 256, likes_enabled: true });
+    });
     app.get('/api/auth/me', (req, res, next) => {
         if (req.get('X-OnlineConf-Dev-Mock') !== '1') {
             next();

@@ -33,7 +33,6 @@ const MESSAGES = {
   bio: "Рассказ о себе должен быть не длиннее 256 символов",
   code: "Введите 6 цифр из письма",
   postEmpty: "Напишите текст поста",
-  postLength: "Пост должен быть не длиннее 256 символов",
   avatarType: "Можно загрузить только png или jpg",
   avatarSize: "Файл должен быть не больше 5 МБ",
 };
@@ -76,7 +75,7 @@ const PASSWORD_CHARS_PATTERN = /^[\x21-\x7E]+$/;
 const DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
 
 /**
- * Длина в символах, а не в UTF-16: эмодзи и составные буквы считаются за один.
+ * Число кодовых точек Unicode.
  * @param value Строка.
  * @returns Число символов.
  */
@@ -429,14 +428,33 @@ export function validateAvatarFile(file: File | null): string {
 }
 
 /**
- * Проверяет текст поста: не пустой и не длиннее 256 символов, как на бэке.
+ * Убирает пробельные символы по краям текста поста по правилам Go strings.TrimSpace.
  * @param value Текст из поля.
+ * @returns Текст для отправки.
+ */
+export function trimPostText(value: string): string {
+  return value.replace(/^\p{White_Space}+|\p{White_Space}+$/gu, "");
+}
+
+/**
+ * Считает кодовые точки в тексте, который будет отправлен.
+ * @param value Текст из поля.
+ * @returns Длина текста поста.
+ */
+export function postTextLength(value: string): number {
+  return length(trimPostText(value));
+}
+
+/**
+ * Проверяет, что текст поста заполнен и укладывается в действующий лимит.
+ * @param value Текст из поля.
+ * @param maxLength Максимальная длина поста.
  * @returns Текст ошибки или пустая строка.
  */
-export function validatePostText(value: string): string {
-  const text = value.trim();
-  if (!text) {
+export function validatePostText(value: string, maxLength = MAX_LENGTH.post): string {
+  const count = postTextLength(value);
+  if (count === 0) {
     return MESSAGES.postEmpty;
   }
-  return length(text) <= MAX_LENGTH.post ? "" : MESSAGES.postLength;
+  return count <= maxLength ? "" : `Лимит текста поста — ${maxLength} симв.`;
 }

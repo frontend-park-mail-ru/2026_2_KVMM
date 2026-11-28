@@ -220,27 +220,29 @@ export interface Avatar {
 interface RequestOptions {
   body?: unknown;
   csrf?: boolean;
+  cache?: RequestCache;
 }
 
 /**
  * Запрос к бэку с cookie сессии. Тело-объект уходит как JSON, FormData — как есть. CSRF-токен добавляется к изменяющим запросам и к тем GET, где его требует бэк. Сетевую ошибку превращает в status 0 и сообщает модулю сети, есть ли связь.
  * @param method HTTP-метод.
  * @param path Путь после /api.
- * @param options Тело запроса и нужен ли CSRF-токен.
+ * @param options Тело запроса, CSRF и режим кеширования.
  * @param options.body Тело: объект или FormData.
  * @param options.csrf Добавить ли X-CSRF-Token; по умолчанию — для всех, кроме GET.
+ * @param options.cache Режим кеширования браузера.
  * @returns Статус и разобранный JSON или null.
  */
 async function request<T>(
   method: string,
   path: string,
-  { body, csrf = method !== "GET" }: RequestOptions = {},
+  { body, csrf = method !== "GET", cache }: RequestOptions = {},
 ): Promise<ApiResult<T>> {
   const headers: Record<string, string> = {};
   if (csrf && user.csrfToken) {
     headers["X-CSRF-Token"] = user.csrfToken;
   }
-  const options: RequestInit = { method, credentials: "include", headers };
+  const options: RequestInit = { method, credentials: "include", headers, cache };
 
   if (body instanceof FormData) {
     options.body = body;
@@ -353,6 +355,8 @@ export const api = {
       "GET",
       `/posts/user?${postPageQuery(cursor, limit, profileUid)}`,
     ),
+  postsRuntime: () =>
+    request<{ max_text_length: number }>("GET", "/posts/runtime", { cache: "no-store" }),
   createPost: (text: string) =>
     request<Post>("POST", "/posts/create", { body: { post_text: text } }),
   updatePost: (postUid: string, text: string) =>

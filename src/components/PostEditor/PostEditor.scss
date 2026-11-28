@@ -39,6 +39,17 @@
     }
   }
 
+  &__counter {
+    margin: 0;
+    color: var(--color-text-secondary);
+    font: var(--font-caption);
+    text-align: right;
+
+    &_over {
+      color: #a92831;
+    }
+  }
+
   &__actions {
     display: grid;
     grid-template-columns: 192px 192px;

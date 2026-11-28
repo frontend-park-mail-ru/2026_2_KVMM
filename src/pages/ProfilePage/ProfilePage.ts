@@ -7,6 +7,7 @@ import type {
 } from "../../modules/api";
 import type { Router } from "@nexly/router";
 import { user } from "../../modules/user";
+import { postRuntime } from "../../modules/postRuntime";
 import { registerFieldError, serverErrorMessage } from "../../modules/errors";
 import { displayName } from "../../modules/profileName";
 import { signupDraft } from "../../modules/signupDraft";
@@ -127,6 +128,7 @@ export class ProfilePage {
     this.#isDestroyed = true;
     this.#list?.destroy();
     this.#profileEditor?.destroy();
+    this.#editor?.destroy();
   }
 
   /**
@@ -411,7 +413,19 @@ export class ProfilePage {
     if (this.#isDestroyed) {
       return;
     }
+    const exceededLimit = response.status === 400 && response.data?.code === "post_text_too_long";
+    if (exceededLimit) {
+      await postRuntime.refresh();
+      if (this.#isDestroyed) {
+        return;
+      }
+    }
     this.#editor.setBusy(false);
+
+    if (exceededLimit) {
+      this.#editor.showLimitError();
+      return;
+    }
 
     const saved = response.data;
     const isSaved = post ? response.status === 200 : response.status === 201;

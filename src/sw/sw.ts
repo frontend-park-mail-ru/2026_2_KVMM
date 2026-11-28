@@ -125,6 +125,7 @@ sw.addEventListener("fetch", (event) => {
     url.pathname === "/onlineconf" ||
     url.pathname.startsWith("/onlineconf/") ||
     url.pathname.startsWith("/api/onlineconf/admin/") ||
+    url.pathname === "/api/posts/runtime" ||
     (url.pathname === "/api/auth/me" && request.cache === "no-store")
   ) {
     return;

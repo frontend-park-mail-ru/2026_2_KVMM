@@ -1,5 +1,6 @@
 import type { Post as PostData } from "../../modules/api";
-import { MAX_LENGTH, validatePostText } from "../../modules/validation";
+import { postRuntime } from "../../modules/postRuntime";
+import { postTextLength, trimPostText, validatePostText } from "../../modules/validation";
 import { Input } from "../Input/Input";
 
 /**
@@ -22,6 +23,7 @@ function template(): string {
       <button class="button button_outline post-editor__open" type="button">Создать пост</button>
       <form class="post-editor__form post-editor__form_hidden" novalidate>
         <div class="post-editor__field"></div>
+        <p id="post-editor-count" class="post-editor__counter"></p>
         <p class="post-editor__error" role="alert"></p>
         <div class="post-editor__actions">
           <button class="button button_neutral" type="button" data-action="cancel">Отменить</button>
@@ -45,8 +47,10 @@ export class PostEditor {
   #actions!: HTMLElement;
   #submit!: HTMLButtonElement;
   #error!: HTMLElement;
+  #counter!: HTMLElement;
   #text!: Input;
   #post: PostData | null = null;
+  #stopLimitWatch?: () => void;
 
   /**
    * @param parent Контейнер формы.
@@ -78,6 +82,9 @@ export class PostEditor {
     this.#error = this.#element.querySelector(
       ".post-editor__error",
     ) as HTMLElement;
+    this.#counter = this.#element.querySelector(
+      ".post-editor__counter",
+    ) as HTMLElement;
 
     this.#text = new Input(
       this.#element.querySelector(".post-editor__field") as HTMLElement,
@@ -85,18 +92,21 @@ export class PostEditor {
         name: "post_text",
         type: "textarea",
         placeholder: "Что у вас нового?",
-        attributes: { maxlength: MAX_LENGTH.post },
-        validate: validatePostText,
+        attributes: { "aria-describedby": "post-editor-count" },
+        validate: (value) => validatePostText(value, postRuntime.maxTextLength),
       },
     );
     this.#text.render();
+    this.#updateCounter();
+    this.#stopLimitWatch = postRuntime.onLimitChange(() => this.#updateCounter());
 
     this.#open.addEventListener("click", () => this.#show(null));
+    this.#form.addEventListener("input", () => this.#updateCounter());
     this.#form.addEventListener("submit", (event) => {
       event.preventDefault();
       this.setError("");
       if (this.#text.validate()) {
-        this.#handlers.onSubmit(this.#text.value.trim(), this.#post);
+        this.#handlers.onSubmit(trimPostText(this.#text.value), this.#post);
       }
     });
     this.#form.addEventListener("click", (event) => {
@@ -109,6 +119,11 @@ export class PostEditor {
         this.#handlers.onDelete(this.#post);
       }
     });
+  }
+
+  /** Освобождает подписку на изменения лимита. */
+  destroy(): void {
+    this.#stopLimitWatch?.();
   }
 
   /**
@@ -135,6 +150,7 @@ export class PostEditor {
     this.#post = null;
     this.#text.value = "";
     this.#text.setError("");
+    this.#updateCounter();
     this.setError("");
     this.setBusy(false);
     this.#form.classList.add("post-editor__form_hidden");
@@ -167,6 +183,26 @@ export class PostEditor {
     this.#text.setError(message);
   }
 
+  /** Показывает, что сервер отклонил отправленный текст по длине. */
+  showLimitError(): void {
+    const error = validatePostText(this.#text.value, postRuntime.maxTextLength);
+    if (error) {
+      this.setFieldError(error);
+      return;
+    }
+    this.setError("Сервер отклонил отправленный текст по длине. Проверьте лимит и попробуйте снова.");
+  }
+
+  #updateCounter(): void {
+    const count = postTextLength(this.#text.value);
+    const limit = postRuntime.maxTextLength;
+    this.#counter.textContent = `${count} / ${limit} симв.`;
+    this.#counter.classList.toggle("post-editor__counter_over", count > limit);
+    if (count > limit || (count > 0 && this.#text.hasError)) {
+      this.#text.validate();
+    }
+  }
+
   /**
    * Раскрывает форму: для нового поста — пустую с «Опубликовать», для правки — с текстом поста, «Изменить» и «Удалить».
    * @param post Пост для правки или null для нового.
@@ -175,6 +211,7 @@ export class PostEditor {
     this.#post = post;
     this.#text.value = post?.post_text ?? "";
     this.#text.setError("");
+    this.#updateCounter();
     this.setError("");
     this.#submit.textContent = post ? LABELS.edit : LABELS.create;
     this.#actions.classList.toggle("post-editor__actions_edit", Boolean(post));
