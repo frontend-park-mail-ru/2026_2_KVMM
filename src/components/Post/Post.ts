@@ -1,24 +1,26 @@
 import { api } from "../../modules/api";
 import type { Post as PostData } from "../../modules/api";
 import { escapeHtml, formatDate } from "@nexly/utils";
-import likeIcon from "./icons/like.svg";
 import commentIcon from "./icons/comment.svg";
 import shareIcon from "./icons/share.svg";
 import editIcon from "./icons/edit.svg";
 import { user } from "../../modules/user";
 import { people } from "../../modules/people";
 import { avatarTemplate } from "../../modules/avatar";
+import { serverErrorMessage } from "../../modules/errors";
 
 /**
- * Настройки карточки: onEdit включает карандаш у постов текущего пользователя.
+ * Обработчики правки своего поста и окончания сессии.
  */
 export interface PostOptions {
   onEdit?: (post: PostData) => void;
+  onUnauthorized?: () => void;
 }
 
 const IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "gif", "webp", "avif"];
 const VIDEO_EXTENSIONS = ["mp4", "webm", "ogg", "mov"];
 const SHOW_MORE = "Читать еще";
+const LIKE_ERROR = "Не удалось изменить лайк. Попробуйте ещё раз";
 
 /**
  * Имя файла из пути вложения.
@@ -88,6 +90,7 @@ function authorPath(post: PostData): string {
 function template(post: PostData, canEdit: boolean): string {
   const { author, post_text: text, media_urls: media = [] } = post;
   const authorName = author.name;
+  const likesId = `post-likes-${escapeHtml(post.uid)}`;
   const visual = media.filter((path) => mediaKind(path) !== "file");
   const files = media.filter((path) => mediaKind(path) === "file");
   const path = authorPath(post);
@@ -112,10 +115,10 @@ function template(post: PostData, canEdit: boolean): string {
       ${visual.map(mediaTemplate).join("")}
       ${files.length ? `<div class="post__files">${files.map(mediaTemplate).join("")}</div>` : ""}
       <footer class="post__actions">
-        <span class="post__action">
-          <img class="post__action-icon" draggable="false" src="${likeIcon}" width="20" height="20" alt="Нравится">
-          ${escapeHtml(post.likes_count)}
-        </span>
+        <button class="post__action post__like" type="button" aria-label="Нравится" aria-pressed="${Boolean(post.is_liked_by_me)}" aria-describedby="${likesId}">
+          <span class="post__action-icon post__like-icon" aria-hidden="true"></span>
+          <span class="post__like-count" id="${likesId}">${escapeHtml(post.likes_count)}</span>
+        </button>
         <span class="post__action">
           <img class="post__action-icon" draggable="false" src="${commentIcon}" width="20" height="20" alt="">
           Комментарии
@@ -124,6 +127,7 @@ function template(post: PostData, canEdit: boolean): string {
           <img class="post__action-icon" draggable="false" src="${shareIcon}" width="20" height="20" alt="">
           Поделиться
         </span>
+        <p class="post__like-error" role="alert"></p>
       </footer>
     </article>
   `;
@@ -137,11 +141,12 @@ export class Post {
   #post: PostData;
   #options: PostOptions;
   #element: HTMLElement | null = null;
+  #isUpdatingLike = false;
 
   /**
    * @param parent Список постов.
    * @param post Пост из ответа бэка.
-   * @param options Обработчик правки своих постов.
+   * @param options Обработчики правки постов и окончания сессии.
    */
   constructor(parent: HTMLElement, post: PostData, options: PostOptions = {}) {
     this.#parent = parent;
@@ -203,7 +208,7 @@ export class Post {
   }
 
   /**
-   * Подключает отрисованный пост: карандаш и «Читать еще», если текст не поместился.
+   * Подключает лайк, карандаш и раскрытие длинного текста.
    * @param element Элемент поста.
    */
   #bind(element: HTMLElement): void {
@@ -211,10 +216,83 @@ export class Post {
     element
       .querySelector(".post__edit")
       ?.addEventListener("click", () => this.#options.onEdit?.(this.#post));
+    element
+      .querySelector(".post__like")
+      ?.addEventListener("click", () => this.#toggleLike());
+    this.#syncLike();
 
     const text = element.querySelector<HTMLElement>(".post__text");
     if (text && text.scrollHeight > text.clientHeight) {
       this.#addShowMore(text);
+    }
+  }
+
+  /**
+   * Переключает лайк. Состояние меняется после подтверждения сервера.
+   */
+  async #toggleLike(): Promise<void> {
+    if (this.#isUpdatingLike) {
+      return;
+    }
+    this.#isUpdatingLike = true;
+    this.#syncLike();
+    this.#setLikeError("");
+
+    const shouldLike = !this.#post.is_liked_by_me;
+    const response = shouldLike
+      ? await api.likePost(this.#post.uid)
+      : await api.unlikePost(this.#post.uid);
+    this.#isUpdatingLike = false;
+
+    if (response.status === 204) {
+      if (Boolean(this.#post.is_liked_by_me) !== shouldLike) {
+        this.#post = {
+          ...this.#post,
+          is_liked_by_me: shouldLike,
+          likes_count: Math.max(
+            0,
+            this.#post.likes_count + (shouldLike ? 1 : -1),
+          ),
+        };
+      }
+      this.#syncLike();
+      return;
+    }
+
+    this.#syncLike();
+    if (
+      response.status === 401 &&
+      this.#options.onUnauthorized &&
+      this.#element?.isConnected
+    ) {
+      this.#options.onUnauthorized();
+      return;
+    }
+    this.#setLikeError(serverErrorMessage(response, LIKE_ERROR));
+  }
+
+  /**
+   * Обновляет кнопку и счётчик, сохраняя остальное содержимое поста.
+   */
+  #syncLike(): void {
+    const button = this.#element?.querySelector(".post__like");
+    if (!button) {
+      return;
+    }
+    button.setAttribute("aria-pressed", String(Boolean(this.#post.is_liked_by_me)));
+    button.setAttribute("aria-disabled", String(this.#isUpdatingLike));
+    const count = button.querySelector(".post__like-count") as HTMLElement;
+    count.textContent = String(this.#post.likes_count);
+  }
+
+  /**
+   * Показывает ошибку рядом с действиями поста.
+   * @param message Текст ошибки или пустая строка.
+   */
+  #setLikeError(message: string): void {
+    const error = this.#element?.querySelector(".post__like-error");
+    if (error) {
+      error.textContent = message;
     }
   }
 

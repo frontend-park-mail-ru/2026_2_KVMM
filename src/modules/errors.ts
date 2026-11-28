@@ -47,17 +47,18 @@ const REGISTER_FIELD_PATTERNS: [RegExp, string, string?][] = [
  * @param response Результат запроса из api.ts.
  * @param response.status HTTP-статус, 0 — сервер недоступен.
  * @param response.data Тело ответа с кодом ошибки.
+ * @param fallback Сообщение для неизвестной ошибки запроса.
  * @returns Текст ошибки.
  */
-export function serverErrorMessage({
-  status,
-  data,
-}: ApiResult<unknown>): string {
+export function serverErrorMessage(
+  { status, data }: ApiResult<unknown>,
+  fallback = DEFAULT_ERROR,
+): string {
   const known = status === 0 ? undefined : SERVER_ERRORS[data?.code ?? ""];
   if (known) {
     return known;
   }
-  return status === 0 || status >= 500 ? NETWORK_ERROR : DEFAULT_ERROR;
+  return status === 0 || status >= 500 ? NETWORK_ERROR : fallback;
 }
 
 /**

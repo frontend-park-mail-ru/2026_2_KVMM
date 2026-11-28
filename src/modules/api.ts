@@ -45,6 +45,7 @@ export interface Post {
   comments_count: number;
   reposts_count: number;
   likes_count: number;
+  is_liked_by_me: boolean;
   media_count: number;
   media_urls?: string[];
 }
@@ -363,6 +364,10 @@ export const api = {
       "DELETE",
       `/posts/delete?post_uid=${encodeURIComponent(postUid)}`,
     ),
+  likePost: (postUid: string) =>
+    request<null>("PUT", `/posts/${encodeURIComponent(postUid)}/like`),
+  unlikePost: (postUid: string) =>
+    request<null>("DELETE", `/posts/${encodeURIComponent(postUid)}/like`),
   avatars: () => request<{ avatars: Avatar[] }>("GET", "/profile/avatars"),
   friends: (cursor: number) =>
     request<RelationshipsResponse>(

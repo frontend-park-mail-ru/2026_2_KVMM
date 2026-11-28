@@ -214,7 +214,10 @@ export class PostList {
    * @returns Компонент поста, ещё не отрисованный.
    */
   #createPost(post: PostData): Post {
-    const item = new Post(this.#list, post, { onEdit: this.#config.onEdit });
+    const item = new Post(this.#list, post, {
+      onEdit: this.#config.onEdit,
+      onUnauthorized: this.#config.onUnauthorized,
+    });
     this.#posts.set(post.uid, item);
     return item;
   }
