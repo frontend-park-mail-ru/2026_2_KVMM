@@ -6,11 +6,11 @@ interface EntryBase {
   name: string;
 }
 
-export type EntryValue =
-  | { kind: "config"; value: JsonValue }
-  | { kind: "flag"; rollout: number; include: string[]; exclude: string[] };
+type ConfigValue = { kind: "config"; value: JsonValue };
+type FlagValue = { kind: "flag"; rollout: number; include?: string[]; exclude?: string[] };
 
-export type Entry = EntryBase & EntryValue;
+export type EntryValue = ConfigValue | Required<FlagValue>;
+export type Entry = EntryBase & (ConfigValue | FlagValue);
 type NewEntry = Omit<EntryBase, "uid"> & EntryValue;
 
 const ENTRIES_URL = "/api/onlineconf/admin/entries";
@@ -77,7 +77,7 @@ async function request(url: string, options: RequestInit = {}): Promise<unknown>
   return data;
 }
 
-async function writeEntry(url: string, method: "POST" | "PATCH" | "DELETE", payload?: object): Promise<void> {
+async function writeEntry(url: string, method: "POST" | "PATCH", payload: object): Promise<void> {
   const session = await request("/api/auth/me", {
     headers: ONLINECONF_DEV_MOCK ? { "X-OnlineConf-Dev-Mock": "1" } : undefined,
   });
@@ -89,7 +89,7 @@ async function writeEntry(url: string, method: "POST" | "PATCH" | "DELETE", payl
   await request(url, {
     method,
     headers: { "X-CSRF-Token": session.csrf_token },
-    body: payload === undefined ? undefined : JSON.stringify(payload),
+    body: JSON.stringify(payload),
   });
 }
 
@@ -138,13 +138,4 @@ export async function updateEntry(uid: string, value: EntryValue): Promise<void>
     : { rollout: value.rollout, include: value.include, exclude: value.exclude };
 
   await writeEntry(ENTRIES_URL + "/" + encodeURIComponent(uid), "PATCH", payload);
-}
-
-/**
- * Удаляет запись OnlineConf по идентификатору.
- * @param uid UUID ключа.
- * @returns Запрос завершается после удаления.
- */
-export async function deleteEntry(uid: string): Promise<void> {
-  await writeEntry(ENTRIES_URL + "/" + encodeURIComponent(uid), "DELETE");
 }

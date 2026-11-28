@@ -1,5 +1,4 @@
-import { confirmDialog } from "../components/Dialog/Dialog";
-import { createEntry, deleteEntry, redirectOnAccessDenied, updateEntry } from "./api";
+import { createEntry, redirectOnAccessDenied, updateEntry } from "./api";
 import type { Entry, EntryValue, JsonValue } from "./api";
 
 const UUID_FORMAT = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -48,7 +47,7 @@ function showMessage(target: HTMLElement, message: string): void {
 type FieldControl = HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
 
 /**
- * Подключает создание, редактирование и удаление флагов к форме OnlineConf.
+ * Подключает создание и редактирование ключей к форме OnlineConf.
  * @param panel Панель редактора.
  * @param onChanged Действие после успешного изменения списка ключей.
  * @returns Функция, открывающая форму для указанного или нового ключа.
@@ -69,7 +68,6 @@ export function bindEntryEditor(panel: HTMLElement, onChanged: () => void): (ent
   const error = element(form, "#onlineconf-editor-error");
   const save = element<HTMLButtonElement>(form, "[type=submit]");
   const cancel = element<HTMLButtonElement>(form, "#onlineconf-cancel");
-  const remove = element<HTMLButtonElement>(form, "#onlineconf-delete");
   let editing: Entry | undefined;
   let busy = false;
 
@@ -120,7 +118,6 @@ export function bindEntryEditor(panel: HTMLElement, onChanged: () => void): (ent
     busy = value;
     save.disabled = value;
     cancel.disabled = value;
-    remove.disabled = value;
   };
 
   const readValue = (): EntryValue | undefined => {
@@ -195,36 +192,6 @@ export function bindEntryEditor(panel: HTMLElement, onChanged: () => void): (ent
     }
   };
 
-  const removeFlag = async (): Promise<void> => {
-    const entry = editing;
-    if (busy || entry?.kind !== "flag") {
-      return;
-    }
-    setBusy(true);
-    showError("");
-    try {
-      const confirmed = await confirmDialog({
-        message: "Удалить фича-флаг «" + entry.scope + "." + entry.name + "»? Продукт будет использовать значение по умолчанию.",
-        confirm: "Удалить",
-        cancel: "Отмена",
-      });
-      if (!confirmed) {
-        return;
-      }
-
-      await deleteEntry(entry.uid);
-      panel.hidden = true;
-      onChanged();
-    } catch (cause) {
-      showRequestError(cause, "Не удалось удалить флаг");
-    } finally {
-      setBusy(false);
-      if (!panel.hidden) {
-        remove.focus();
-      }
-    }
-  };
-
   for (const field of fieldControls) {
     field.addEventListener("input", () => showFieldError(field, ""));
   }
@@ -232,7 +199,6 @@ export function bindEntryEditor(panel: HTMLElement, onChanged: () => void): (ent
   kind.addEventListener("change", showFields);
   include.addEventListener("input", checkOverrides);
   exclude.addEventListener("input", checkOverrides);
-  remove.addEventListener("click", () => void removeFlag());
   cancel.addEventListener("click", () => { panel.hidden = true; });
   form.addEventListener("submit", (event) => {
     event.preventDefault();
@@ -250,7 +216,6 @@ export function bindEntryEditor(panel: HTMLElement, onChanged: () => void): (ent
       showFieldError(field, "");
     }
     title.textContent = entry ? "Редактирование ключа" : "Новый ключ";
-    remove.hidden = entry?.kind !== "flag";
     for (const field of [scope, name, kind]) {
       field.disabled = Boolean(entry);
     }
@@ -263,8 +228,8 @@ export function bindEntryEditor(panel: HTMLElement, onChanged: () => void): (ent
         json.value = JSON.stringify(entry.value, null, 2);
       } else {
         rollout.value = String(entry.rollout);
-        include.value = entry.include.join("\n");
-        exclude.value = entry.exclude.join("\n");
+        include.value = entry.include?.join("\n") ?? "";
+        exclude.value = entry.exclude?.join("\n") ?? "";
       }
     }
 

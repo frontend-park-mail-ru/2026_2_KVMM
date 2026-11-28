@@ -16,13 +16,24 @@ const entries = [
     { uid: '33333333-3333-4333-8333-333333333333', scope: 'frontend', name: 'feed_title', kind: 'config', value: 'Лента' },
 ];
 
+function serializeEntry(entry) {
+    if (entry.kind === 'config') {
+        return entry;
+    }
+    return {
+        ...entry,
+        include: entry.include.length ? entry.include : undefined,
+        exclude: entry.exclude.length ? entry.exclude : undefined,
+    };
+}
+
 function listMockEntries(req, res) {
     const query = typeof req.query.q === 'string' ? req.query.q.trim().toLowerCase() : '';
     const scope = typeof req.query.scope === 'string' ? req.query.scope : '';
     const matchingEntries = entries.filter(entry =>
         (!scope || entry.scope === scope) && entry.name.toLowerCase().includes(query),
     );
-    res.set('Cache-Control', 'private, no-store').json({ entries: matchingEntries });
+    res.set('Cache-Control', 'private, no-store').json({ entries: matchingEntries.map(serializeEntry) });
 }
 
 function readUserIds(value, label) {
@@ -87,7 +98,7 @@ function createMockEntry(req, res) {
     try {
         const entry = { ...metadata, ...readEntryValue(metadata, req.body) };
         entries.push(entry);
-        res.status(201).json(entry);
+        res.status(201).json(serializeEntry(entry));
     } catch (error) {
         res.status(400).json({ code: 'invalid_entry', message: error.message });
     }
@@ -103,21 +114,10 @@ function updateMockEntry(req, res) {
     try {
         const entry = entries[index];
         entries[index] = { ...entry, ...readEntryValue(entry, req.body) };
-        res.json(entries[index]);
+        res.json(serializeEntry(entries[index]));
     } catch (error) {
         res.status(400).json({ code: 'invalid_entry', message: error.message });
     }
-}
-
-function deleteMockEntry(req, res) {
-    const index = entries.findIndex(entry => entry.uid === req.params.uid);
-    if (index === -1) {
-        res.status(404).json({ code: 'entry_not_found', message: 'Ключ не найден' });
-        return;
-    }
-
-    entries.splice(index, 1);
-    res.status(204).end();
 }
 
 function mockLikesEnabled() {
@@ -170,7 +170,7 @@ function registerOnlineConfMock(app, mode) {
             res.status(403).json({ code: 'forbidden', message: 'Нет доступа к OnlineConf' });
             return;
         }
-        if (['POST', 'PATCH', 'DELETE'].includes(req.method) && req.get('X-CSRF-Token') !== MOCK_CSRF_TOKEN) {
+        if (['POST', 'PATCH'].includes(req.method) && req.get('X-CSRF-Token') !== MOCK_CSRF_TOKEN) {
             res.status(403).json({ code: 'csrf_failed', message: 'Не прошла проверка CSRF. Повторите попытку.' });
             return;
         }
@@ -179,7 +179,6 @@ function registerOnlineConfMock(app, mode) {
     app.get(ENTRIES_PATH, listMockEntries);
     app.post(ENTRIES_PATH, json(), createMockEntry);
     app.patch(ENTRIES_PATH + '/:uid', json(), updateMockEntry);
-    app.delete(ENTRIES_PATH + '/:uid', deleteMockEntry);
 }
 
 module.exports = { registerOnlineConfMock };
