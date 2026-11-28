@@ -356,7 +356,7 @@ export const api = {
       `/posts/user?${postPageQuery(cursor, limit, profileUid)}`,
     ),
   postsRuntime: () =>
-    request<{ max_text_length: number }>("GET", "/posts/runtime", { cache: "no-store" }),
+    request<{ max_text_length: number; likes_enabled: boolean }>("GET", "/posts/runtime", { cache: "no-store" }),
   createPost: (text: string) =>
     request<Post>("POST", "/posts/create", { body: { post_text: text } }),
   updatePost: (postUid: string, text: string) =>
@@ -369,9 +369,9 @@ export const api = {
       `/posts/delete?post_uid=${encodeURIComponent(postUid)}`,
     ),
   likePost: (postUid: string) =>
-    request<null>("PUT", `/posts/${encodeURIComponent(postUid)}/like`),
+    request<unknown>("PUT", `/posts/${encodeURIComponent(postUid)}/like`),
   unlikePost: (postUid: string) =>
-    request<null>("DELETE", `/posts/${encodeURIComponent(postUid)}/like`),
+    request<unknown>("DELETE", `/posts/${encodeURIComponent(postUid)}/like`),
   avatars: () => request<{ avatars: Avatar[] }>("GET", "/profile/avatars"),
   friends: (cursor: number) =>
     request<RelationshipsResponse>(

@@ -98,7 +98,7 @@ export class PostEditor {
     );
     this.#text.render();
     this.#updateCounter();
-    this.#stopLimitWatch = postRuntime.onLimitChange(() => this.#updateCounter());
+    this.#stopLimitWatch = postRuntime.onChange(() => this.#updateCounter());
 
     this.#open.addEventListener("click", () => this.#show(null));
     this.#form.addEventListener("input", () => this.#updateCounter());

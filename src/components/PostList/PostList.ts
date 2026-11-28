@@ -4,6 +4,7 @@ import type {
   Post as PostData,
 } from "../../modules/api";
 import { nextCursor } from "@nexly/utils";
+import { postRuntime } from "../../modules/postRuntime";
 import { Post } from "../Post/Post";
 import spinnerIcon from "./spinner.svg";
 
@@ -60,6 +61,7 @@ export class PostList {
   #isLoading = false;
   #hasError = false;
   #isDestroyed = false;
+  #stopRuntimeWatch?: () => void;
 
   /**
    * @param parent Контейнер списка.
@@ -99,6 +101,9 @@ export class PostList {
       }
     });
     window.addEventListener("scroll", this.#onScroll, { passive: true });
+    this.#stopRuntimeWatch = postRuntime.onChange(() => {
+      this.#posts.forEach((post) => post.refreshLikeState());
+    });
     this.#loadPage();
   }
 
@@ -107,6 +112,7 @@ export class PostList {
    */
   destroy(): void {
     this.#isDestroyed = true;
+    this.#stopRuntimeWatch?.();
     window.removeEventListener("scroll", this.#onScroll);
     clearInterval(this.#timer);
     document.removeEventListener("visibilitychange", this.#onVisible);

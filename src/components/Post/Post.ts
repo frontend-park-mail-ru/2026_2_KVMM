@@ -5,6 +5,7 @@ import commentIcon from "./icons/comment.svg";
 import shareIcon from "./icons/share.svg";
 import editIcon from "./icons/edit.svg";
 import { user } from "../../modules/user";
+import { postRuntime } from "../../modules/postRuntime";
 import { people } from "../../modules/people";
 import { avatarTemplate } from "../../modules/avatar";
 import { serverErrorMessage } from "../../modules/errors";
@@ -21,6 +22,7 @@ const IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "gif", "webp", "avif"];
 const VIDEO_EXTENSIONS = ["mp4", "webm", "ogg", "mov"];
 const SHOW_MORE = "Читать еще";
 const LIKE_ERROR = "Не удалось изменить лайк. Попробуйте ещё раз";
+const LIKES_UNAVAILABLE = "Лайки сейчас недоступны";
 
 /**
  * Имя файла из пути вложения.
@@ -219,7 +221,7 @@ export class Post {
     element
       .querySelector(".post__like")
       ?.addEventListener("click", () => this.#toggleLike());
-    this.#syncLike();
+    this.refreshLikeState();
 
     const text = element.querySelector<HTMLElement>(".post__text");
     if (text && text.scrollHeight > text.clientHeight) {
@@ -231,11 +233,12 @@ export class Post {
    * Переключает лайк. Состояние меняется после подтверждения сервера.
    */
   async #toggleLike(): Promise<void> {
-    if (this.#isUpdatingLike) {
+    if (this.#isUpdatingLike || !postRuntime.likesEnabled) {
       return;
     }
+    const profileUid = user.profile?.uid;
     this.#isUpdatingLike = true;
-    this.#syncLike();
+    this.refreshLikeState();
     this.#setLikeError("");
 
     const shouldLike = !this.#post.is_liked_by_me;
@@ -243,6 +246,11 @@ export class Post {
       ? await api.likePost(this.#post.uid)
       : await api.unlikePost(this.#post.uid);
     this.#isUpdatingLike = false;
+
+    if (profileUid !== user.profile?.uid) {
+      this.refreshLikeState();
+      return;
+    }
 
     if (response.status === 204) {
       if (Boolean(this.#post.is_liked_by_me) !== shouldLike) {
@@ -255,11 +263,19 @@ export class Post {
           ),
         };
       }
-      this.#syncLike();
+      this.refreshLikeState();
       return;
     }
 
-    this.#syncLike();
+    if (response.status === 403 && response.data?.code === "feature_disabled") {
+      postRuntime.markLikesUnavailable();
+      this.refreshLikeState();
+      this.#setLikeError(LIKES_UNAVAILABLE);
+      void postRuntime.refresh();
+      return;
+    }
+
+    this.refreshLikeState();
     if (
       response.status === 401 &&
       this.#options.onUnauthorized &&
@@ -274,13 +290,16 @@ export class Post {
   /**
    * Обновляет кнопку и счётчик, сохраняя остальное содержимое поста.
    */
-  #syncLike(): void {
-    const button = this.#element?.querySelector(".post__like");
+  refreshLikeState(): void {
+    const button = this.#element?.querySelector<HTMLButtonElement>(".post__like");
     if (!button) {
       return;
     }
     button.setAttribute("aria-pressed", String(Boolean(this.#post.is_liked_by_me)));
-    button.setAttribute("aria-disabled", String(this.#isUpdatingLike));
+    button.disabled = !postRuntime.likesEnabled;
+    button.setAttribute("aria-disabled", String(button.disabled || this.#isUpdatingLike));
+    button.setAttribute("aria-label", button.disabled ? LIKES_UNAVAILABLE : "Нравится");
+    button.title = button.disabled ? LIKES_UNAVAILABLE : "";
     const count = button.querySelector(".post__like-count") as HTMLElement;
     count.textContent = String(this.#post.likes_count);
   }

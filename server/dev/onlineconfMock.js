@@ -1,10 +1,12 @@
 'use strict';
 
-const { randomUUID } = require('node:crypto');
+const { createHash, randomUUID } = require('node:crypto');
 const { json } = require('express');
 
 const ENTRIES_PATH = '/api/onlineconf/admin/entries';
 const MOCK_CSRF_TOKEN = 'onlineconf-mock-csrf';
+const MOCK_VIEWER_UID = '11111111-1111-4111-8111-111111111111';
+const MOCK_LIKES_BUCKET = Number(createHash('sha256').update('posts/likes_enabled:42').digest().readBigUInt64BE() % 100n);
 const SCOPES = new Set(['frontend', 'auth', 'user', 'posts', 'community', 'backend']);
 const UUID_FORMAT = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -118,6 +120,20 @@ function deleteMockEntry(req, res) {
     res.status(204).end();
 }
 
+function mockLikesEnabled() {
+    const flag = entries.find(entry => entry.scope === 'posts' && entry.name === 'likes_enabled' && entry.kind === 'flag');
+    return !flag || (!flag.exclude.includes(MOCK_VIEWER_UID) &&
+        (flag.include.includes(MOCK_VIEWER_UID) || MOCK_LIKES_BUCKET < flag.rollout));
+}
+
+function rejectDisabledLike(_req, res, next) {
+    if (mockLikesEnabled()) {
+        next();
+        return;
+    }
+    res.status(403).json({ code: 'feature_disabled', message: 'Лайки сейчас недоступны' });
+}
+
 function registerOnlineConfMock(app, mode) {
     app.get('/api/posts/runtime', (_req, res) => {
         res.set('Cache-Control', 'private, no-store');
@@ -128,8 +144,10 @@ function registerOnlineConfMock(app, mode) {
         const limit = entries.find(entry =>
             entry.scope === 'posts' && entry.name === 'max_text_length' && entry.kind === 'config',
         );
-        res.json({ max_text_length: limit?.value ?? 256, likes_enabled: true });
+        res.json({ max_text_length: limit?.value ?? 256, likes_enabled: mockLikesEnabled() });
     });
+    app.put('/api/posts/:uid/like', rejectDisabledLike);
+    app.delete('/api/posts/:uid/like', rejectDisabledLike);
     app.get('/api/auth/me', (req, res, next) => {
         if (req.get('X-OnlineConf-Dev-Mock') !== '1') {
             next();
