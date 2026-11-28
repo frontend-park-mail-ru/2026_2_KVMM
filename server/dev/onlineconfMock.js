@@ -11,9 +11,9 @@ const SCOPES = new Set(['frontend', 'auth', 'user', 'posts', 'community', 'backe
 const UUID_FORMAT = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const entries = [
-    { id: 'posts-likes', scope: 'posts', name: 'likes_enabled', kind: 'flag', rollout: 100, include: [], exclude: [] },
-    { id: 'posts-max-text', scope: 'posts', name: 'max_text_length', kind: 'config', value: 256 },
-    { id: 'frontend-feed-title', scope: 'frontend', name: 'feed_title', kind: 'config', value: 'Лента' },
+    { uid: '11111111-1111-4111-8111-111111111111', scope: 'posts', name: 'likes_enabled', kind: 'flag', rollout: 100, include: [], exclude: [] },
+    { uid: '22222222-2222-4222-8222-222222222222', scope: 'posts', name: 'max_text_length', kind: 'config', value: 256 },
+    { uid: '33333333-3333-4333-8333-333333333333', scope: 'frontend', name: 'feed_title', kind: 'config', value: 'Лента' },
 ];
 
 function listMockEntries(req, res) {
@@ -83,7 +83,7 @@ function createMockEntry(req, res) {
         return;
     }
 
-    const metadata = { id: randomUUID(), scope, name: keyName, kind };
+    const metadata = { uid: randomUUID(), scope, name: keyName, kind };
     try {
         const entry = { ...metadata, ...readEntryValue(metadata, req.body) };
         entries.push(entry);
@@ -94,7 +94,7 @@ function createMockEntry(req, res) {
 }
 
 function updateMockEntry(req, res) {
-    const index = entries.findIndex(entry => entry.id === req.params.id);
+    const index = entries.findIndex(entry => entry.uid === req.params.uid);
     if (index === -1) {
         res.status(404).json({ code: 'entry_not_found', message: 'Ключ не найден' });
         return;
@@ -110,7 +110,7 @@ function updateMockEntry(req, res) {
 }
 
 function deleteMockEntry(req, res) {
-    const index = entries.findIndex(entry => entry.id === req.params.id);
+    const index = entries.findIndex(entry => entry.uid === req.params.uid);
     if (index === -1) {
         res.status(404).json({ code: 'entry_not_found', message: 'Ключ не найден' });
         return;
@@ -178,8 +178,8 @@ function registerOnlineConfMock(app, mode) {
     });
     app.get(ENTRIES_PATH, listMockEntries);
     app.post(ENTRIES_PATH, json(), createMockEntry);
-    app.patch(ENTRIES_PATH + '/:id', json(), updateMockEntry);
-    app.delete(ENTRIES_PATH + '/:id', deleteMockEntry);
+    app.patch(ENTRIES_PATH + '/:uid', json(), updateMockEntry);
+    app.delete(ENTRIES_PATH + '/:uid', deleteMockEntry);
 }
 
 module.exports = { registerOnlineConfMock };

@@ -181,7 +181,7 @@ export function bindEntryEditor(panel: HTMLElement, onChanged: () => void): (ent
 
     try {
       if (editing) {
-        await updateEntry(editing.id, value);
+        await updateEntry(editing.uid, value);
       } else {
         await createEntry({ scope: scope.value, name: keyName, ...value });
       }
@@ -212,7 +212,7 @@ export function bindEntryEditor(panel: HTMLElement, onChanged: () => void): (ent
         return;
       }
 
-      await deleteEntry(entry.id);
+      await deleteEntry(entry.uid);
       panel.hidden = true;
       onChanged();
     } catch (cause) {

@@ -1,7 +1,7 @@
 export type JsonValue = null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue };
 
 interface EntryBase {
-  id: string;
+  uid: string;
   scope: string;
   name: string;
 }
@@ -11,7 +11,7 @@ export type EntryValue =
   | { kind: "flag"; rollout: number; include: string[]; exclude: string[] };
 
 export type Entry = EntryBase & EntryValue;
-type NewEntry = Omit<EntryBase, "id"> & EntryValue;
+type NewEntry = Omit<EntryBase, "uid"> & EntryValue;
 
 const ENTRIES_URL = "/api/onlineconf/admin/entries";
 
@@ -128,23 +128,23 @@ export async function createEntry(entry: NewEntry): Promise<void> {
 
 /**
  * Сохраняет изменяемые поля существующего ключа.
- * @param id Идентификатор ключа.
+ * @param uid UUID ключа.
  * @param value Данные конфигурации или флага.
  * @returns Запрос завершается после сохранения.
  */
-export async function updateEntry(id: string, value: EntryValue): Promise<void> {
+export async function updateEntry(uid: string, value: EntryValue): Promise<void> {
   const payload = value.kind === "config"
     ? { value: value.value }
     : { rollout: value.rollout, include: value.include, exclude: value.exclude };
 
-  await writeEntry(ENTRIES_URL + "/" + encodeURIComponent(id), "PATCH", payload);
+  await writeEntry(ENTRIES_URL + "/" + encodeURIComponent(uid), "PATCH", payload);
 }
 
 /**
  * Удаляет запись OnlineConf по идентификатору.
- * @param id Идентификатор ключа.
+ * @param uid UUID ключа.
  * @returns Запрос завершается после удаления.
  */
-export async function deleteEntry(id: string): Promise<void> {
-  await writeEntry(ENTRIES_URL + "/" + encodeURIComponent(id), "DELETE");
+export async function deleteEntry(uid: string): Promise<void> {
+  await writeEntry(ENTRIES_URL + "/" + encodeURIComponent(uid), "DELETE");
 }
