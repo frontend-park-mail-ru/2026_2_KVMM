@@ -16,29 +16,27 @@ export interface RelationResult {
   profile?: ShortProfile;
 }
 
-const MAX_PAGES = 10;
-
 /**
- * Ищет человека в списке связей, проходя страницы по смещению (до 10).
+ * Ищет человека в списке связей, проходя страницы по смещению.
  * @param load Загрузка страницы списка по смещению.
- * @param profileId Кого искать.
+ * @param profileUid UUID человека.
  * @returns Статус последнего запроса и найденная связь, если есть.
  */
 async function scan(
   load: (cursor: number) => Promise<ApiResult<RelationshipsResponse>>,
-  profileId: number,
+  profileUid: string,
 ): Promise<{
   status: number;
   found?: RelationshipsResponse["relationships"][number];
 }> {
   let cursor = 0;
-  for (let page = 0; page < MAX_PAGES; page++) {
+  for (;;) {
     const { status, data } = await load(cursor);
     if (status !== 200 || !data?.relationships) {
       return { status };
     }
     const found = data.relationships.find(
-      (relationship) => relationship.profile.id === profileId,
+      (relationship) => relationship.profile.uid === profileUid,
     );
     const next = nextOffset(cursor, data);
     if (found || !next.hasMore) {
@@ -46,22 +44,41 @@ async function scan(
     }
     cursor = next.cursor;
   }
-  return { status: 200 };
 }
 
 /**
- * Ищет связь с человеком в списках друзей и заявок, по 10 страниц каждого. Временная замена ручки чужого профиля, которой у бэка пока нет.
- * @param profileId Id человека.
- * @param myId Id текущего пользователя.
+ * Собирает UUID отправителей входящих заявок. Общий список заявок смешивает оба направления.
+ * @returns Статус и UUID отправителей.
+ */
+export async function loadIncomingUids(): Promise<{
+  status: number;
+  uids: Set<string>;
+}> {
+  const uids = new Set<string>();
+  let cursor = 0;
+  for (;;) {
+    const { status, data } = await api.incomingRequests(cursor);
+    if (status !== 200 || !data?.relationships) {
+      return { status, uids };
+    }
+    data.relationships.forEach(({ profile }) => uids.add(profile.uid));
+    const next = nextOffset(cursor, data);
+    if (!next.hasMore) {
+      return { status, uids };
+    }
+    cursor = next.cursor;
+  }
+}
+
+/**
+ * Ищет связь в списках друзей и заявок. Для направления заявки проверяет список входящих.
+ * @param profileUid UUID человека.
  * @returns Статус ответа, связь и краткий профиль человека.
  */
-export async function findRelation(
-  profileId: number,
-  myId: number,
-): Promise<RelationResult> {
+export async function findRelation(profileUid: string): Promise<RelationResult> {
   const [friends, pending] = await Promise.all([
-    scan(api.friends, profileId),
-    scan(api.pendingRelationships, profileId),
+    scan(api.friends, profileUid),
+    scan(api.pendingRelationships, profileUid),
   ]);
   const status = friends.status !== 200 ? friends.status : pending.status;
   if (status !== 200) {
@@ -71,10 +88,10 @@ export async function findRelation(
     return { status, relation: "friend", profile: friends.found.profile };
   }
   if (pending.found) {
-    const isMine = pending.found.profile_id_master === myId;
+    const incoming = await scan(api.incomingRequests, profileUid);
     return {
-      status,
-      relation: isMine ? "sent" : "incoming",
+      status: incoming.status,
+      relation: incoming.found ? "incoming" : "sent",
       profile: pending.found.profile,
     };
   }

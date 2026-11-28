@@ -1,36 +1,32 @@
 /**
  * Положение в списке с курсорной подгрузкой.
  */
-export interface CursorState {
-  cursor: number;
+export interface CursorState<T extends number | string = number> {
+  cursor: T;
   hasMore: boolean;
 }
 
 /**
- * Следующий курсор списка. Подгрузка продолжается, только если бэк обещает ещё элементы и курсор уходит строго к более старым — иначе список мог бы зациклиться.
- * @param current Текущий курсор, 0 — самое начало.
+ * Следующий курсор для списка с UUID. Повтор ранее использованного курсора завершает подгрузку.
+ * @param current Текущий курсор или пустая строка перед первой страницей.
  * @param page Ответ бэка.
  * @param page.has_more Есть ли ещё элементы.
  * @param page.next_cursor Курсор следующей страницы.
+ * @param seen Курсоры уже запрошенных страниц.
  * @returns Новый курсор и признак, есть ли что подгружать.
  */
 export function nextCursor(
-  current: number,
+  current: string,
   {
     has_more: hasMore,
     next_cursor: next,
-  }: { has_more: boolean; next_cursor?: number },
-): CursorState {
-  const isForward =
-    typeof next === "number" &&
-    Number.isInteger(next) &&
-    next > 0 &&
-    (current === 0 || next < current);
-  const canContinue = hasMore === true && isForward;
-  return {
-    cursor: canContinue ? (next as number) : current,
-    hasMore: canContinue,
-  };
+  }: { has_more: boolean; next_cursor?: string },
+  seen: ReadonlySet<string>,
+): CursorState<string> {
+  if (hasMore && typeof next === "string" && next && !seen.has(next)) {
+    return { cursor: next, hasMore: true };
+  }
+  return { cursor: current, hasMore: false };
 }
 
 /**

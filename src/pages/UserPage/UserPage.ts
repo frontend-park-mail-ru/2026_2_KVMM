@@ -57,13 +57,12 @@ const NEXT_RELATION: Record<string, RelationStatus> = {
 };
 
 /**
- * Страница другого пользователя /profile/:id: имя, аватар, «О себе», дата рождения и посты.
+ * Страница другого пользователя /profile/:id: профиль, кнопки дружбы и его посты.
  */
 export class UserPage {
   #parent: HTMLElement;
   #router: Router;
   #profileUid: string;
-  #legacyProfileId: number | undefined;
   #card!: HTMLElement;
   #list!: PostList;
   #name: string | null = null;
@@ -86,19 +85,14 @@ export class UserPage {
   constructor(parent: HTMLElement, router: Router, params: RouteParams) {
     this.#parent = parent;
     this.#router = router;
-    this.#profileUid = params.id;
-    // Модули дружбы и чатов пока принимают числовой ID из прежних ссылок.
-    const legacyId = Number(params.id);
-    this.#legacyProfileId =
-      Number.isSafeInteger(legacyId) && legacyId > 0 ? legacyId : undefined;
-    this.#isRelationLoaded = this.#legacyProfileId === undefined;
+    this.#profileUid = params.id.toLowerCase();
   }
 
   /**
    * Рисует карточку с известным из ленты, списков или чатов именем, затем загружает профиль, посты и связь с пользователем.
    */
   render(): void {
-    const known = people.get(this.#legacyProfileId ?? this.#profileUid);
+    const known = people.get(this.#profileUid);
     this.#name = known?.name ?? null;
     this.#avatarPath = known?.avatarUrl || null;
 
@@ -131,9 +125,7 @@ export class UserPage {
     });
     this.#list.render();
     this.#loadProfile();
-    if (this.#legacyProfileId !== undefined) {
-      this.#loadRelation(this.#legacyProfileId);
-    }
+    this.#loadRelation();
   }
 
   /**
@@ -164,10 +156,7 @@ export class UserPage {
       avatarPath: this.#avatarPath,
       bio: this.#bio,
       birthday: this.#birthday,
-      actions:
-        this.#isMissing || this.#legacyProfileId === undefined
-          ? ""
-          : buttons + error,
+      actions: this.#isMissing ? "" : buttons + error,
     });
   }
 
@@ -202,7 +191,7 @@ export class UserPage {
       this.#avatarPath ??= "";
     }
     if (this.#name && this.#name !== UNKNOWN_NAME) {
-      people.remember(this.#legacyProfileId ?? this.#profileUid, {
+      people.remember(this.#profileUid, {
         name: this.#name,
         avatarUrl: this.#avatarPath ?? "",
       });
@@ -243,11 +232,9 @@ export class UserPage {
 
   /**
    * Узнаёт, кто вы друг другу, и берёт имя из списка связей.
-   * @param profileId Числовой идентификатор профиля для модуля дружбы.
    */
-  async #loadRelation(profileId: number): Promise<void> {
-    const me = user.profile?.id ?? 0;
-    const result = await findRelation(profileId, me);
+  async #loadRelation(): Promise<void> {
+    const result = await findRelation(this.#profileUid);
     if (this.#isDestroyed) {
       return;
     }
@@ -269,26 +256,24 @@ export class UserPage {
   /**
    * Запрос к бэку для кнопки дружбы. Отклонение, отмена и удаление — один и тот же запрос.
    * @param action Действие кнопки.
-   * @param profileId Числовой идентификатор профиля для модуля дружбы.
    * @returns Ответ бэка.
    */
-  #send(action: string, profileId: number): Promise<ApiResult<unknown>> {
+  #send(action: string): Promise<ApiResult<unknown>> {
     if (action === "add") {
-      return api.addFriend(profileId);
+      return api.addFriend(this.#profileUid);
     }
     if (action === "accept") {
-      return api.acceptFriend(profileId);
+      return api.acceptFriend(this.#profileUid);
     }
-    return api.removeFriend(profileId);
+    return api.removeFriend(this.#profileUid);
   }
 
   /**
    * Открывает чат с человеком и переходит в диалог.
-   * @param profileId Числовой идентификатор собеседника.
    */
-  async #write(profileId: number): Promise<void> {
+  async #write(): Promise<void> {
     this.#setButtonsDisabled(true);
-    const response = await openChat(profileId);
+    const response = await openChat(this.#profileUid);
     if (this.#isDestroyed) {
       return;
     }
@@ -296,8 +281,8 @@ export class UserPage {
       this.#goToLogin();
       return;
     }
-    if (response.data?.id) {
-      this.#router.navigate(`/chats/${response.data.id}`);
+    if (response.data?.uid) {
+      this.#router.navigate(`/chats/${encodeURIComponent(response.data.uid)}`);
       return;
     }
     this.#error = serverErrorMessage(response);
@@ -319,12 +304,8 @@ export class UserPage {
    * @param action Действие кнопки.
    */
   async #act(action: string): Promise<void> {
-    const profileId = this.#legacyProfileId;
-    if (profileId === undefined) {
-      return;
-    }
     if (action === "write") {
-      this.#write(profileId);
+      this.#write();
       return;
     }
     if (!(action in NEXT_RELATION)) {
@@ -341,7 +322,7 @@ export class UserPage {
       }
     }
     this.#setButtonsDisabled(true);
-    const response = await this.#send(action, profileId);
+    const response = await this.#send(action);
     if (this.#isDestroyed) {
       return;
     }
@@ -353,7 +334,7 @@ export class UserPage {
       friendRequests.refresh();
     }
     if (response.status === 409 || response.status === 404) {
-      await this.#loadRelation(profileId);
+      await this.#loadRelation();
       return;
     }
     const isDone = response.status === 200 || response.status === 201;

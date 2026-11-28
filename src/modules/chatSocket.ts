@@ -13,8 +13,8 @@ export type {
  */
 export const chatSocket = new ChatSocket({
   path: "/api/chats/ws",
-  lockName: "nexly-chat-socket",
-  channelName: "nexly-chat",
+  lockName: "nexly-chat-socket-v2",
+  channelName: "nexly-chat-v2",
   getCsrf: () => user.csrfToken,
-  getMyId: () => user.profile?.id ?? 0,
+  getMyUid: () => user.profile?.uid ?? "",
 });

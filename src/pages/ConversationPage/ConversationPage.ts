@@ -24,10 +24,12 @@ const MESSAGES = {
 const ERRORS = {
   empty: "Напишите что-то в этот чат",
   offline: "Нет соединения с сервером, попробуйте еще раз",
+  unconfirmed:
+    "Сервер не подтвердил отправку. Проверьте историю перед повторной отправкой",
   failed: "Не удалось отправить сообщение",
 };
 
-const OFFLINE_CODES = new Set(["timeout", "connection_lost", "stopped"]);
+const OFFLINE_CODES = new Set(["connection_lost", "stopped"]);
 const DELETED = "Сообщение удалено";
 const MAX_LENGTH = 256;
 const LOAD_OLDER_OFFSET = 80;
@@ -36,17 +38,17 @@ const STICK_TO_BOTTOM = 120;
 /**
  * Пузырь сообщения: свои справа, чужие слева, удалённые — серым курсивом. Текст экранируется.
  * @param message Сообщение.
- * @param myId id текущего пользователя.
+ * @param myUid UUID текущего пользователя.
  * @returns Разметка сообщения.
  */
-function messageTemplate(message: ChatMessage, myId: number): string {
-  const mine = message.author_id === myId ? " conversation__message_mine" : "";
+function messageTemplate(message: ChatMessage, myUid: string): string {
+  const mine = message.author_uid === myUid ? " conversation__message_mine" : "";
   const text =
     message.message_text === null
       ? `<p class="conversation__text conversation__text_deleted">${DELETED}</p>`
       : `<p class="conversation__text">${escapeHtml(message.message_text)}</p>`;
   return `
-    <li class="conversation__message${mine}" data-id="${message.id}">
+    <li class="conversation__message${mine}" data-uid="${escapeHtml(message.uid)}">
       ${text}
       <time class="conversation__date" datetime="${escapeHtml(message.created_at)}">${formatDate(message.created_at)}</time>
     </li>
@@ -56,18 +58,18 @@ function messageTemplate(message: ChatMessage, myId: number): string {
 /**
  * Аватарка чата в левой колонке. Текущий чат обведён и помечен aria-current.
  * @param chat Чат.
- * @param myId id текущего пользователя.
- * @param currentId Открытый чат.
+ * @param myUid UUID текущего пользователя.
+ * @param currentUid UUID открытого чата.
  * @returns Разметка пункта.
  */
-function railTemplate(chat: Chat, myId: number, currentId: number): string {
-  const { name, avatarPath } = partnerView(chatPartner(chat, myId));
-  const isCurrent = chat.id === currentId;
+function railTemplate(chat: Chat, myUid: string, currentUid: string): string {
+  const { name, avatarPath } = partnerView(chatPartner(chat, myUid));
+  const isCurrent = chat.uid === currentUid;
   const current = isCurrent ? ' aria-current="page"' : "";
   const modifier = isCurrent ? " conversation__chat_current" : "";
   return `
     <li class="conversation__rail-item">
-      <a class="conversation__chat${modifier}" href="/chats/${chat.id}" data-link draggable="false" title="${escapeHtml(name)}" aria-label="${escapeHtml(name)}"${current}>
+      <a class="conversation__chat${modifier}" href="/chats/${encodeURIComponent(chat.uid)}" data-link draggable="false" title="${escapeHtml(name)}" aria-label="${escapeHtml(name)}"${current}>
         ${avatarTemplate("conversation", name, avatarPath)}
       </a>
     </li>
@@ -102,7 +104,7 @@ const TEMPLATE = `
 export class ConversationPage {
   #parent: HTMLElement;
   #router: Router;
-  #chatId: number;
+  #chatUid: string;
   #root!: HTMLElement;
   #rail!: HTMLElement;
   #header!: HTMLElement;
@@ -114,8 +116,9 @@ export class ConversationPage {
   #send!: HTMLButtonElement;
   #error!: HTMLElement;
   #chats: Chat[] = [];
-  #messages = new Map<number, ChatMessage>();
-  #cursor = 0;
+  #messages = new Map<string, ChatMessage>();
+  #cursor = "";
+  #seenCursors = new Set<string>();
   #hasMore = false;
   #isLoading = false;
   #isStarted = false;
@@ -126,12 +129,12 @@ export class ConversationPage {
   /**
    * @param parent Контейнер страницы.
    * @param router Роутер для перехода на /login.
-   * @param params Параметры пути, id — чат.
+   * @param params Параметры пути, id — UUID чата.
    */
   constructor(parent: HTMLElement, router: Router, params: RouteParams) {
     this.#parent = parent;
     this.#router = router;
-    this.#chatId = Number(params.id);
+    this.#chatUid = params.id.toLowerCase();
   }
 
   /**
@@ -185,7 +188,7 @@ export class ConversationPage {
     });
 
     this.#unsubscribe = chatSocket.onEvent((event) => this.#onEvent(event));
-    chatSocket.refresh([this.#chatId]);
+    chatSocket.refresh([this.#chatUid]);
     this.#loadChats();
     this.#loadOlder();
   }
@@ -207,11 +210,11 @@ export class ConversationPage {
   }
 
   /**
-   * id текущего пользователя.
-   * @returns id или 0, если сессии уже нет.
+   * UUID текущего пользователя.
+   * @returns UUID или пустая строка, если сессии уже нет.
    */
-  get #myId(): number {
-    return user.profile?.id ?? 0;
+  get #myUid(): string {
+    return user.profile?.uid ?? "";
   }
 
   /**
@@ -237,7 +240,7 @@ export class ConversationPage {
   #renderRail(): void {
     this.#chats.sort((a, b) => chatActivity(b) - chatActivity(a));
     this.#rail.innerHTML = this.#chats
-      .map((chat) => railTemplate(chat, this.#myId, this.#chatId))
+      .map((chat) => railTemplate(chat, this.#myUid, this.#chatUid))
       .join("");
   }
 
@@ -245,16 +248,16 @@ export class ConversationPage {
    * Показывает в шапке собеседника со ссылкой на его страницу. В чате с собой ссылка ведёт в свой профиль.
    */
   #renderHeader(): void {
-    const chat = this.#chats.find((item) => item.id === this.#chatId);
+    const chat = this.#chats.find((item) => item.uid === this.#chatUid);
     if (!chat) {
       return;
     }
-    const partner = chatPartner(chat, this.#myId);
+    const partner = chatPartner(chat, this.#myUid);
     const { name, avatarPath } = partnerView(partner);
     const href =
-      !partner || partner.id === this.#myId
+      !partner || partner.uid === this.#myUid
         ? "/profile"
-        : `/profile/${partner.id}`;
+        : `/profile/${encodeURIComponent(partner.uid)}`;
     this.#header.innerHTML = `
       <a class="conversation__person" href="${href}" data-link draggable="false">
         ${avatarTemplate("conversation", name, avatarPath)}
@@ -273,7 +276,7 @@ export class ConversationPage {
       return;
     }
     this.#isLoading = true;
-    const response = await api.chatMessages(this.#chatId, this.#cursor);
+    const response = await api.chatMessages(this.#chatUid, this.#cursor);
     if (this.#isDestroyed) {
       return;
     }
@@ -289,14 +292,16 @@ export class ConversationPage {
       return;
     }
     this.#isStarted = true;
-    const next = nextCursor(this.#cursor, response.data);
+    this.#seenCursors.add(this.#cursor);
+    const next = nextCursor(this.#cursor, response.data, this.#seenCursors);
     this.#cursor = next.cursor;
     this.#hasMore = next.hasMore;
     const oldHeight = this.#scroller.scrollHeight;
     const oldTop = this.#scroller.scrollTop;
-    response.data.messages.forEach((message) =>
-      this.#messages.set(message.id, message),
-    );
+    const older = [...response.data.messages]
+      .reverse()
+      .map((message) => [message.uid, message] as const);
+    this.#messages = new Map([...older, ...this.#messages]);
     this.#renderMessages();
     if (isFirst) {
       this.#scrollToBottom();
@@ -310,12 +315,12 @@ export class ConversationPage {
   }
 
   /**
-   * Перерисовывает переписку по порядку id и показывает «Ваша история общения начинается сейчас!», если сообщений нет.
+   * Перерисовывает переписку от старых сообщений к новым и показывает подсказку для пустого диалога.
    */
   #renderMessages(): void {
-    const messages = [...this.#messages.values()].sort((a, b) => a.id - b.id);
+    const messages = [...this.#messages.values()];
     this.#list.innerHTML = messages
-      .map((message) => messageTemplate(message, this.#myId))
+      .map((message) => messageTemplate(message, this.#myUid))
       .join("");
     this.#showNotice(messages.length ? "" : MESSAGES.empty);
   }
@@ -342,16 +347,16 @@ export class ConversationPage {
    * @param message Сообщение.
    */
   #addMessage(message: ChatMessage): void {
-    if (this.#messages.has(message.id) || this.#isFailed) {
+    if (this.#messages.has(message.uid) || this.#isFailed) {
       return;
     }
     const distance =
       this.#scroller.scrollHeight -
       this.#scroller.scrollTop -
       this.#scroller.clientHeight;
-    this.#messages.set(message.id, message);
+    this.#messages.set(message.uid, message);
     this.#renderMessages();
-    if (distance < STICK_TO_BOTTOM || message.author_id === this.#myId) {
+    if (distance < STICK_TO_BOTTOM || message.author_uid === this.#myUid) {
       this.#scrollToBottom();
     }
   }
@@ -364,10 +369,10 @@ export class ConversationPage {
     if (event.type !== "message") {
       return;
     }
-    if (event.chat_id === this.#chatId) {
+    if (event.chat_uid === this.#chatUid) {
       this.#addMessage(event.message);
     }
-    const chat = this.#chats.find((item) => item.id === event.chat_id);
+    const chat = this.#chats.find((item) => item.uid === event.chat_uid);
     if (chat) {
       chat.last_message = event.message;
       this.#renderRail();
@@ -388,7 +393,7 @@ export class ConversationPage {
     }
     this.#setError("");
     this.#setFormDisabled(true);
-    const result = await chatSocket.send(this.#chatId, text);
+    const result = await chatSocket.send(this.#chatUid, text);
     if (this.#isDestroyed) {
       return;
     }
@@ -406,6 +411,10 @@ export class ConversationPage {
       this.#fitInput();
       this.#addMessage(result.message);
       this.#input.focus();
+      return;
+    }
+    if (result.code === "timeout") {
+      this.#setError(ERRORS.unconfirmed);
       return;
     }
     this.#setError(

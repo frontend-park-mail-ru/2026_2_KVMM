@@ -3,6 +3,7 @@ import type {
   FeedResponse,
   Post as PostData,
 } from "../../modules/api";
+import { nextCursor } from "@nexly/utils";
 import { Post } from "../Post/Post";
 import spinnerIcon from "./spinner.svg";
 
@@ -291,13 +292,12 @@ export class PostList {
         this.#newestTimestamp ??= Date.parse(post.created_at);
       }
     }
-    const next = data.next_cursor;
-    if (data.has_more && next && !this.#seenCursors.has(next)) {
-      this.#cursor = next;
-      this.#seenCursors.add(next);
-    } else {
-      this.#hasMore = false;
-    }
+    this.#seenCursors.add(this.#cursor);
+    ({ cursor: this.#cursor, hasMore: this.#hasMore } = nextCursor(
+      this.#cursor,
+      data,
+      this.#seenCursors,
+    ));
 
     if (!this.#list.children.length) {
       this.#setStatus("empty");

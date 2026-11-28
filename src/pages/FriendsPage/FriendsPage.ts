@@ -13,6 +13,7 @@ import { PeopleSection } from "../../components/PeopleSection/PeopleSection";
 import type { PeoplePage } from "../../components/PeopleSection/PeopleSection";
 import { confirmDialog } from "../../components/Dialog/Dialog";
 import { friendRequests } from "../../modules/friendRequests";
+import { loadIncomingUids } from "../../modules/relations";
 
 const MESSAGES = {
   loading: "Загружаем список друзей",
@@ -24,14 +25,14 @@ const MESSAGES = {
 const REQUEST_EXISTS = "Заявка этому человеку уже есть";
 
 /**
- * Превращает страницу связей в страницу людей для секции: берёт вторую сторону связи и, если нужно, только связи, где master подходит под условие.
+ * Превращает страницу связей в страницу людей для секции.
  * @param response Ответ бэка со связями.
- * @param keep Условие на отправителя заявки, по умолчанию — любые.
+ * @param keep Условие отбора по UUID второй стороны связи.
  * @returns Ответ со списком людей и курсором.
  */
 function relationshipsPage(
   response: ApiResult<RelationshipsResponse>,
-  keep: (master: number) => boolean = () => true,
+  keep: (uid: string) => boolean = () => true,
 ): ApiResult<PeoplePage> {
   const { status, data } = response;
   if (status !== 200 || !data?.relationships) {
@@ -41,7 +42,7 @@ function relationshipsPage(
     status,
     data: {
       people: data.relationships
-        .filter((relationship) => keep(relationship.profile_id_master))
+        .filter(({ profile }) => keep(profile.uid))
         .map((relationship) => relationship.profile),
       has_more: data.has_more,
       next_cursor: data.next_cursor,
@@ -62,6 +63,7 @@ export class FriendsPage {
   #friends!: PeopleSection;
   #isLoaded = false;
   #isDestroyed = false;
+  #unsubscribeRequests: (() => void) | null = null;
 
   /**
    * @param parent Контейнер страницы.
@@ -82,7 +84,7 @@ export class FriendsPage {
       `<p class="friends-status friends-status_loading">${MESSAGES.loading}</p>`,
     );
     this.#status = main.lastElementChild as HTMLElement;
-    const me = (user.profile as { id: number }).id;
+    const incomingUids = loadIncomingUids();
     const onAction = (action: string, person: ShortProfile) =>
       this.#act(action, person);
 
@@ -99,11 +101,16 @@ export class FriendsPage {
     this.#sent = new PeopleSection(main, {
       title: "Отправленные заявки",
       actions: [{ name: "cancel", label: "Отменить", kind: "danger" }],
-      load: async (cursor) =>
-        relationshipsPage(
+      load: async (cursor) => {
+        const incoming = await incomingUids;
+        if (incoming.status !== 200) {
+          return { status: incoming.status, data: null };
+        }
+        return relationshipsPage(
           await api.pendingRelationships(cursor),
-          (master) => master === me,
-        ),
+          (uid) => !incoming.uids.has(uid),
+        );
+      },
       onAction,
     });
     this.#suggestions = new PeopleSection(main, {
@@ -134,14 +141,19 @@ export class FriendsPage {
     [this.#incoming, this.#sent, this.#suggestions, this.#friends].forEach(
       (section) => section.render(),
     );
+    this.#unsubscribeRequests = friendRequests.onRefresh(
+      ({ profiles, pageSize, hasMore }) =>
+        this.#incoming.sync(profiles, pageSize, hasMore),
+    );
     this.#loadAll();
   }
 
   /**
-   * Игнорирует ответы, пришедшие после ухода со страницы.
+   * Отписывается от проверки заявок и игнорирует ответы после ухода со страницы.
    */
   destroy(): void {
     this.#isDestroyed = true;
+    this.#unsubscribeRequests?.();
   }
 
   /**
@@ -203,18 +215,18 @@ export class FriendsPage {
       this.#run(
         this.#incoming,
         person,
-        () => api.acceptFriend(person.id),
+        () => api.acceptFriend(person.uid),
         () => this.#friends.prepend(person),
       );
     } else if (action === "decline") {
-      this.#run(this.#incoming, person, () => api.removeFriend(person.id));
+      this.#run(this.#incoming, person, () => api.removeFriend(person.uid));
     } else if (action === "cancel") {
-      this.#run(this.#sent, person, () => api.removeFriend(person.id));
+      this.#run(this.#sent, person, () => api.removeFriend(person.uid));
     } else if (action === "add") {
       this.#run(
         this.#suggestions,
         person,
-        () => api.addFriend(person.id),
+        () => api.addFriend(person.uid),
         () => this.#sent.prepend(person),
       );
     } else if (action === "remove") {
@@ -233,7 +245,7 @@ export class FriendsPage {
       cancel: "Нет",
     });
     if (isConfirmed && !this.#isDestroyed) {
-      this.#run(this.#friends, person, () => api.removeFriend(person.id));
+      this.#run(this.#friends, person, () => api.removeFriend(person.uid));
     }
   }
 
@@ -251,12 +263,12 @@ export class FriendsPage {
     onDone?: () => void,
   ): Promise<void> {
     section.setError("");
-    section.setBusy(person.id, true);
+    section.setBusy(person.uid, true);
     const response = await send();
     if (this.#isDestroyed) {
       return;
     }
-    section.setBusy(person.id, false);
+    section.setBusy(person.uid, false);
     if (response.status === 401) {
       this.#goToLogin();
       return;
@@ -267,7 +279,7 @@ export class FriendsPage {
       );
       return;
     }
-    section.remove(person.id);
+    section.remove(person.uid);
     if (section === this.#incoming) {
       friendRequests.refresh();
     }

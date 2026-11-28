@@ -65,8 +65,8 @@ function itemTemplate(person: ShortProfile, actions: PersonAction[]): string {
     )
     .join("");
   return `
-    <li class="people__item" data-id="${person.id}">
-      <a class="people__person" href="/profile/${person.id}" data-link draggable="false">
+    <li class="people__item" data-uid="${escapeHtml(person.uid)}">
+      <a class="people__person" href="/profile/${encodeURIComponent(person.uid)}" data-link draggable="false">
         ${avatarTemplate("people", name, person.avatar_urls ?? "")}
         <span class="people__name" title="${escapeHtml(name)}">${escapeHtml(name)}</span>
       </a>
@@ -85,7 +85,7 @@ export class PeopleSection {
   #list!: HTMLElement;
   #error!: HTMLElement;
   #more!: HTMLButtonElement;
-  #people = new Map<number, ShortProfile>();
+  #people = new Map<string, ShortProfile>();
   #cursor = 0;
   #hasMore = false;
 
@@ -123,8 +123,8 @@ export class PeopleSection {
       const button = (event.target as Element).closest<HTMLButtonElement>(
         "[data-action]",
       );
-      const id = Number(button?.closest<HTMLElement>("[data-id]")?.dataset.id);
-      const person = this.#people.get(id);
+      const uid = button?.closest<HTMLElement>("[data-uid]")?.dataset.uid;
+      const person = uid ? this.#people.get(uid) : undefined;
       if (button && person) {
         this.#config.onAction(button.dataset.action ?? "", person);
       }
@@ -148,7 +148,7 @@ export class PeopleSection {
       return status;
     }
     data.people
-      .filter((person) => !this.#people.has(person.id))
+      .filter((person) => !this.#people.has(person.uid))
       .forEach((person) => this.#append(person, "beforeend"));
     ({ cursor: this.#cursor, hasMore: this.#hasMore } = nextOffset(
       this.#cursor,
@@ -178,11 +178,40 @@ export class PeopleSection {
   }
 
   /**
+   * Обновляет уже открытые страницы списка по результату фоновой проверки.
+   * @param people Люди из ответа бэка в порядке выдачи.
+   * @param pageSize Размер первой страницы.
+   * @param hasMore Есть ли люди за пределами полученного списка.
+   */
+  sync(people: ShortProfile[], pageSize: number, hasMore: boolean): void {
+    if (this.#more.disabled || this.#list.querySelector("button:disabled")) {
+      return;
+    }
+    const limit = Math.max(this.#cursor, pageSize);
+    if (hasMore && people.length < limit) {
+      return;
+    }
+    const visible = people.slice(0, limit);
+    const previous = [...this.#people.keys()];
+    if (
+      previous.length !== visible.length ||
+      visible.some(({ uid }, index) => uid !== previous[index])
+    ) {
+      this.#people.clear();
+      this.#list.replaceChildren();
+      visible.forEach((person) => this.#append(person, "beforeend"));
+    }
+    this.#cursor = visible.length;
+    this.#hasMore = hasMore || people.length > visible.length;
+    this.#update();
+  }
+
+  /**
    * Добавляет человека в начало, например после принятой заявки. Смещение сдвигается, чтобы следующая страница не повторила его.
    * @param person Краткий профиль.
    */
   prepend(person: ShortProfile): void {
-    if (this.#people.has(person.id)) {
+    if (this.#people.has(person.uid)) {
       return;
     }
     this.#append(person, "afterbegin");
@@ -192,25 +221,25 @@ export class PeopleSection {
 
   /**
    * Убирает человека из списка. Смещение сдвигается назад, чтобы следующая страница никого не пропустила.
-   * @param id Id профиля.
+   * @param uid UUID профиля.
    */
-  remove(id: number): void {
-    if (!this.#people.delete(id)) {
+  remove(uid: string): void {
+    if (!this.#people.delete(uid)) {
       return;
     }
-    this.#list.querySelector(`[data-id="${id}"]`)?.remove();
+    this.#list.querySelector(`[data-uid="${CSS.escape(uid)}"]`)?.remove();
     this.#cursor = Math.max(0, this.#cursor - 1);
     this.#update();
   }
 
   /**
    * Блокирует кнопки строки на время запроса.
-   * @param id Id профиля.
+   * @param uid UUID профиля.
    * @param isBusy Идёт ли запрос.
    */
-  setBusy(id: number, isBusy: boolean): void {
+  setBusy(uid: string, isBusy: boolean): void {
     this.#list
-      .querySelectorAll<HTMLButtonElement>(`[data-id="${id}"] button`)
+      .querySelectorAll<HTMLButtonElement>(`[data-uid="${CSS.escape(uid)}"] button`)
       .forEach((button) => (button.disabled = isBusy));
   }
 
@@ -228,8 +257,8 @@ export class PeopleSection {
    * @param position В начало или в конец списка.
    */
   #append(person: ShortProfile, position: InsertPosition): void {
-    this.#people.set(person.id, person);
-    people.remember(person.id, {
+    this.#people.set(person.uid, person);
+    people.remember(person.uid, {
       name: displayName(person),
       avatarUrl: person.avatar_urls ?? "",
     });

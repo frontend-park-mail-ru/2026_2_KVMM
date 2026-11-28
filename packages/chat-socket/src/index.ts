@@ -2,12 +2,12 @@
  * Сообщение в чате. message_text = null у удалённых сообщений.
  */
 export interface ChatMessage {
-  id: number;
-  chat_id: number;
-  author_id: number;
+  uid: string;
+  chat_uid?: string;
+  author_uid?: string;
   message_text: string | null;
-  repost_from?: number;
-  reply_from?: number;
+  repost_from?: string;
+  reply_from?: string;
   created_at: string;
   updated_at?: string;
   deleted_at?: string;
@@ -15,14 +15,14 @@ export interface ChatMessage {
 
 /**
  * Настройки клиента: адрес сокета на этом сайте, имена замка и канала между вкладками,
- * откуда брать CSRF-токен сессии и id текущего пользователя.
+ * откуда брать CSRF-токен сессии и UUID текущего пользователя.
  */
 export interface ChatSocketOptions {
   path: string;
   lockName: string;
   channelName: string;
   getCsrf: () => string;
-  getMyId: () => number;
+  getMyUid: () => string;
 }
 
 const SEND_TIMEOUT = 10000;
@@ -51,7 +51,7 @@ export type ChatSocketStatus =
  */
 export interface ChatSocketState {
   status: ChatSocketStatus;
-  chatIds: number[];
+  chatUids: string[];
 }
 
 /**
@@ -67,9 +67,9 @@ export interface ChatSocketError {
  */
 export type ChatEvent =
   | { type: "connected" }
-  | { type: "subscribed"; chat_id?: number; chat_ids?: number[] }
-  | { type: "message"; chat_id: number; message: ChatMessage }
-  | { type: "error"; chat_id?: number; error: ChatSocketError };
+  | { type: "subscribed"; chat_uid?: string; chat_uids?: string[] }
+  | { type: "message"; chat_uid: string; message: ChatMessage }
+  | { type: "error"; chat_uid?: string; error: ChatSocketError };
 
 /**
  * Итог отправки: сохранённое сообщение или код ошибки.
@@ -81,15 +81,15 @@ export type SendResult =
 type ChannelMessage =
   | { kind: "event"; event: ChatEvent }
   | { kind: "state"; state: ChatSocketState }
-  | { kind: "send"; id: string; chatId: number; text: string }
+  | { kind: "send"; id: string; chatUid: string; text: string }
   | { kind: "sent"; id: string; result: SendResult }
-  | { kind: "refresh"; chatIds: number[] }
+  | { kind: "refresh"; chatUids: string[] }
   | { kind: "wake" }
   | { kind: "hello"; csrf: string }
   | { kind: "stop"; csrf: string };
 
 interface Outgoing {
-  chatId: number;
+  chatUid: string;
   text: string;
   expires: number;
   isRetried: boolean;
@@ -114,14 +114,14 @@ function parseEvent(data: unknown): ChatEvent | null {
 }
 
 /**
- * Чаты из события subscribed: бэк присылает chat_id, если чат один, chat_ids — если их несколько, и ничего — если чатов нет.
+ * Чаты из события subscribed: бэк присылает chat_uid, если чат один, chat_uids — если их несколько, и ничего — если чатов нет.
  * @param event Событие subscribed.
- * @param event.chat_id Единственный чат.
- * @param event.chat_ids Несколько чатов.
- * @returns Список id чатов.
+ * @param event.chat_uid Единственный чат.
+ * @param event.chat_uids Несколько чатов.
+ * @returns Список UUID чатов.
  */
-function subscribedIds(event: { chat_id?: number; chat_ids?: number[] }) {
-  return event.chat_ids ?? (event.chat_id ? [event.chat_id] : []);
+function subscribedUids(event: { chat_uid?: string; chat_uids?: string[] }) {
+  return event.chat_uids ?? (event.chat_uid ? [event.chat_uid] : []);
 }
 
 /**
@@ -139,11 +139,11 @@ export class ChatSocket {
   #isBound = false;
   #lockAbort: AbortController | null = null;
   #releaseLock: (() => void) | null = null;
-  #state: ChatSocketState = { status: "idle", chatIds: [] };
+  #state: ChatSocketState = { status: "idle", chatUids: [] };
   #eventListeners = new Set<(event: ChatEvent) => void>();
   #stateListeners = new Set<(state: ChatSocketState) => void>();
   #outbox: Outgoing[] = [];
-  #inflight = new Map<number, Outgoing[]>();
+  #inflight = new Map<string, Outgoing[]>();
   #requests = new Map<string, (result: SendResult) => void>();
   #requestCount = 0;
   #retryTimer = 0;
@@ -152,7 +152,7 @@ export class ChatSocket {
   #onlineAt = 0;
 
   /**
-   * @param options Адрес, имена замка и канала, источники CSRF-токена и id пользователя.
+   * @param options Адрес, имена замка и канала, источники CSRF-токена и UUID пользователя.
    */
   constructor(options: ChatSocketOptions) {
     this.#options = options;
@@ -163,7 +163,7 @@ export class ChatSocket {
    * @returns Копия состояния.
    */
   get state(): ChatSocketState {
-    return { ...this.#state, chatIds: [...this.#state.chatIds] };
+    return { ...this.#state, chatUids: [...this.#state.chatUids] };
   }
 
   /**
@@ -185,7 +185,7 @@ export class ChatSocket {
     }
     this.#isRunning = true;
     this.#csrf = csrf;
-    this.#applyState({ status: "connecting", chatIds: [] });
+    this.#applyState({ status: "connecting", chatUids: [] });
     this.#post({ kind: "hello", csrf });
     this.#joinLock();
   }
@@ -203,11 +203,11 @@ export class ChatSocket {
 
   /**
    * Отправляет сообщение через соединение лидера. Пока соединения нет, сообщение ждёт до 10 секунд.
-   * @param chatId Чат.
+   * @param chatUid Чат.
    * @param text Текст сообщения.
    * @returns Сохранённое бэком сообщение или код ошибки.
    */
-  send(chatId: number, text: string): Promise<SendResult> {
+  send(chatUid: string, text: string): Promise<SendResult> {
     return new Promise((resolve) => {
       if (!this.#isRunning) {
         resolve({ ok: false, code: "stopped" });
@@ -228,10 +228,10 @@ export class ChatSocket {
         SEND_TIMEOUT,
       );
       if (this.#isLeader) {
-        this.#enqueue(chatId, text, finish);
+        this.#enqueue(chatUid, text, finish);
       } else {
         this.#requests.set(id, finish);
-        this.#post({ kind: "send", id, chatId, text });
+        this.#post({ kind: "send", id, chatUid, text });
       }
     });
   }
@@ -239,16 +239,16 @@ export class ChatSocket {
   /**
    * Переподключается, если соединение не подписано на какой-то из чатов: бэк подписывает только
    * при подключении, поэтому новый чат без этого молчит. Без аргументов переподключается всегда.
-   * @param chatIds Чаты, которые должны приходить.
+   * @param chatUids Чаты, которые должны приходить.
    */
-  refresh(chatIds: number[] = []): void {
+  refresh(chatUids: string[] = []): void {
     if (!this.#isRunning) {
       return;
     }
     if (this.#isLeader) {
-      this.#refresh(chatIds);
+      this.#refresh(chatUids);
     } else {
-      this.#post({ kind: "refresh", chatIds });
+      this.#post({ kind: "refresh", chatUids });
     }
   }
 
@@ -326,11 +326,11 @@ export class ChatSocket {
       return;
     }
     if (message.kind === "send") {
-      this.#enqueue(message.chatId, message.text, (result) =>
+      this.#enqueue(message.chatUid, message.text, (result) =>
         this.#post({ kind: "sent", id: message.id, result }),
       );
     } else if (message.kind === "refresh") {
-      this.#refresh(message.chatIds);
+      this.#refresh(message.chatUids);
     } else if (message.kind === "wake") {
       this.#wakeUp();
     } else if (message.kind === "hello") {
@@ -387,7 +387,7 @@ export class ChatSocket {
       .splice(0)
       .forEach((item) => item.finish({ ok: false, code: "stopped" }));
     this.#requests.forEach((finish) => finish({ ok: false, code: "stopped" }));
-    this.#applyState({ status: "idle", chatIds: [] });
+    this.#applyState({ status: "idle", chatUids: [] });
   }
 
   /**
@@ -441,12 +441,12 @@ export class ChatSocket {
     if (event.type === "subscribed") {
       this.#onlineAt = Date.now();
       this.#attempt = 0;
-      this.#setState("online", subscribedIds(event));
+      this.#setState("online", subscribedUids(event));
       this.#flush();
     } else if (event.type === "message") {
-      if (event.message.author_id === this.#options.getMyId()) {
+      if (event.message.author_uid === this.#options.getMyUid()) {
         this.#inflight
-          .get(event.chat_id)
+          .get(event.chat_uid)
           ?.shift()
           ?.finish({ ok: true, message: event.message });
       }
@@ -457,8 +457,8 @@ export class ChatSocket {
       ) {
         this.#closeSocket("connection_lost");
         this.#setState("unauthorized", []);
-      } else if (event.chat_id) {
-        this.#onSendError(event.chat_id, event.error);
+      } else if (event.chat_uid) {
+        this.#onSendError(event.chat_uid, event.error);
       }
     }
     this.#emit(event);
@@ -467,11 +467,11 @@ export class ChatSocket {
 
   /**
    * Ошибка в ответ на отправку. Если чат не в подписках, переподключается и отправляет ещё раз, один раз.
-   * @param chatId Чат из ошибки.
+   * @param chatUid Чат из ошибки.
    * @param error Код и текст ошибки.
    */
-  #onSendError(chatId: number, error: ChatSocketError): void {
-    const item = this.#inflight.get(chatId)?.shift();
+  #onSendError(chatUid: string, error: ChatSocketError): void {
+    const item = this.#inflight.get(chatUid)?.shift();
     if (!item) {
       return;
     }
@@ -528,11 +528,11 @@ export class ChatSocket {
 
   /**
    * Переподключается, если какой-то из чатов не в подписках; без списка — всегда.
-   * @param chatIds Чаты, которые должны приходить.
+   * @param chatUids Чаты, которые должны приходить.
    */
-  #refresh(chatIds: number[]): void {
-    const known = new Set(this.#state.chatIds);
-    if (!chatIds.length || chatIds.some((id) => !known.has(id))) {
+  #refresh(chatUids: string[]): void {
+    const known = new Set(this.#state.chatUids);
+    if (!chatUids.length || chatUids.some((id) => !known.has(id))) {
       this.#attempt = 0;
       this.#shortLives = 0;
       this.#connect();
@@ -541,17 +541,17 @@ export class ChatSocket {
 
   /**
    * Ставит сообщение в очередь лидера. Онлайн — отправляет сразу, иначе будит соединение. В очереди сообщение ждёт не дольше 10 секунд.
-   * @param chatId Чат.
+   * @param chatUid Чат.
    * @param text Текст.
    * @param finish Куда сообщить итог.
    */
   #enqueue(
-    chatId: number,
+    chatUid: string,
     text: string,
     finish: (result: SendResult) => void,
   ): void {
     this.#outbox.push({
-      chatId,
+      chatUid,
       text,
       finish,
       expires: Date.now() + SEND_TIMEOUT,
@@ -582,23 +582,23 @@ export class ChatSocket {
       socket.send(
         JSON.stringify({
           type: "message",
-          chat_id: item.chatId,
+          chat_uid: item.chatUid,
           message: { message_text: item.text },
         }),
       );
-      const queue = this.#inflight.get(item.chatId) ?? [];
+      const queue = this.#inflight.get(item.chatUid) ?? [];
       queue.push(item);
-      this.#inflight.set(item.chatId, queue);
+      this.#inflight.set(item.chatUid, queue);
     }
   }
 
   /**
    * Меняет состояние лидера и сообщает его ведомым вкладкам.
    * @param status Новый статус.
-   * @param chatIds Подписанные чаты.
+   * @param chatUids Подписанные чаты.
    */
-  #setState(status: ChatSocketStatus, chatIds: number[]): void {
-    this.#applyState({ status, chatIds });
+  #setState(status: ChatSocketStatus, chatUids: string[]): void {
+    this.#applyState({ status, chatUids });
     this.#post({ kind: "state", state: this.#state });
   }
 

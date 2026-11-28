@@ -11,8 +11,6 @@ const API_URL = "/api";
  */
 export interface Profile {
   uid: string;
-  /** Числовой идентификатор для прежних вызовов модулей друзей и чатов. */
-  id?: number;
   nickname: string;
   email?: string;
   phone_number?: string;
@@ -54,12 +52,18 @@ export interface Post {
 /**
  * Страница ленты с курсором следующей страницы.
  */
-export interface FeedResponse {
-  posts: Post[];
+interface CursorPage {
   cursor?: string;
   limit: number;
   has_more: boolean;
   next_cursor?: string;
+}
+
+/**
+ * Страница ленты.
+ */
+export interface FeedResponse extends CursorPage {
+  posts: Post[];
 }
 
 /**
@@ -73,7 +77,7 @@ export interface UserPostsResponse extends FeedResponse {
  * Краткий профиль человека в списках друзей: имя и текущая аватарка.
  */
 export interface ShortProfile {
-  id: number;
+  uid: string;
   nickname: string;
   profile_name?: string;
   surname?: string;
@@ -85,7 +89,7 @@ export interface ShortProfile {
  * Участник чата. Бэк присылает профиль целиком, а аватарку — списком из одной последней. Фронт берёт только имя и аватарку.
  */
 export interface ChatParticipant {
-  id: number;
+  uid: string;
   nickname: string;
   profile_name?: string;
   surname?: string;
@@ -97,7 +101,7 @@ export interface ChatParticipant {
  * Личный чат с участниками и последним сообщением.
  */
 export interface Chat {
-  id: number;
+  uid: string;
   participants?: ChatParticipant[];
   last_message?: ChatMessage;
   streak_days: number;
@@ -105,35 +109,25 @@ export interface Chat {
 }
 
 /**
- * Страница списка чатов, новые сначала. next_cursor — id последнего чата.
+ * Страница списка чатов, новые сначала. next_cursor — UUID последнего чата.
  */
-export interface ChatsResponse {
+export interface ChatsResponse extends CursorPage {
   chats: Chat[];
-  cursor: number;
-  limit: number;
-  has_more: boolean;
-  next_cursor?: number;
 }
 
 /**
  * Страница сообщений чата, новые сначала. parents — сообщения, на которые есть ответы или репосты.
  */
-export interface MessagesResponse {
+export interface MessagesResponse extends CursorPage {
   messages: ChatMessage[];
   parents: ChatMessage[];
-  chat_id: number;
-  cursor: number;
-  limit: number;
-  has_more: boolean;
-  next_cursor?: number;
+  chat_uid: string;
 }
 
 /**
- * Связь с другим человеком: master отправил запрос, slave получил. profile — вторая сторона.
+ * Связь с другим человеком. profile — вторая сторона.
  */
 export interface Relationship {
-  profile_id_master: number;
-  profile_id_slave: number;
   profile: ShortProfile;
   relationships_status: "request" | "accepted" | "canceled";
   relationships_type: string;
@@ -390,33 +384,38 @@ export const api = {
       "GET",
       `/relationships/suggestions?cursor=${cursor}`,
     ),
-  addFriend: (profileId: number) =>
+  addFriend: (profileUid: string) =>
     request<Relationship>("POST", "/relationships/create", {
-      body: { profile_id_slave: profileId, relationships_type: FRIENDSHIP },
+      body: { profile_uid_slave: profileUid, relationships_type: FRIENDSHIP },
     }),
-  acceptFriend: (profileId: number) =>
+  acceptFriend: (profileUid: string) =>
     request<Relationship>("PATCH", "/relationships/accept", {
-      body: { profile_id: profileId, relationships_type: FRIENDSHIP },
+      body: { profile_uid: profileUid, relationships_type: FRIENDSHIP },
     }),
-  removeFriend: (profileId: number) =>
+  removeFriend: (profileUid: string) =>
     request<Relationship>("DELETE", "/relationships/cancle", {
-      body: { profile_id: profileId, relationships_type: FRIENDSHIP },
+      body: { profile_uid: profileUid, relationships_type: FRIENDSHIP },
     }),
   deleteAvatar: (avatarUid: string) =>
     request<null>("DELETE", `/profile/avatars/${encodeURIComponent(avatarUid)}`),
-  chats: (cursor: number) =>
-    request<ChatsResponse>("GET", `/chats/list?cursor=${cursor}`, {
-      csrf: true,
-    }),
-  chatMessages: (chatId: number, cursor: number) =>
-    request<MessagesResponse>(
+  chats: (cursor: string) =>
+    request<ChatsResponse>(
       "GET",
-      `/chats/messages?chat_id=${chatId}&cursor=${cursor}`,
+      cursor ? `/chats/list?cursor=${encodeURIComponent(cursor)}` : "/chats/list",
       { csrf: true },
     ),
-  createChat: (profileId: number) =>
+  chatMessages: (chatUid: string, cursor: string) => {
+    const params = new URLSearchParams({ chat_uid: chatUid });
+    if (cursor) {
+      params.set("cursor", cursor);
+    }
+    return request<MessagesResponse>("GET", `/chats/messages?${params}`, {
+      csrf: true,
+    });
+  },
+  createChat: (profileUid: string) =>
     request<Chat>("POST", "/chats/create", {
-      body: { profile_id: profileId },
+      body: { profile_uid: profileUid },
     }),
   mediaUrl: (path: string) => `${path}`,
 };

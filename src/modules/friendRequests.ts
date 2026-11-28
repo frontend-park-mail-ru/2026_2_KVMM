@@ -1,5 +1,6 @@
 import { nextOffset } from "@nexly/utils";
 import { api } from "./api";
+import type { ShortProfile } from "./api";
 
 const POLL_INTERVAL = 60000;
 const MAX_PAGES = 10;
@@ -10,6 +11,14 @@ let isRunning = false;
 let isBound = false;
 let generation = 0;
 const listeners = new Set<(count: number) => void>();
+
+interface IncomingRequests {
+  profiles: ShortProfile[];
+  pageSize: number;
+  hasMore: boolean;
+}
+
+const refreshListeners = new Set<(requests: IncomingRequests) => void>();
 
 /**
  * Сохраняет новое число заявок и сообщает подписчикам, если оно изменилось.
@@ -23,30 +32,35 @@ function set(value: number): void {
 }
 
 /**
- * Считает входящие заявки, проходя страницы списка (до 10, по 10 на странице).
- * @returns Число заявок или null при ошибке запроса.
+ * Загружает входящие заявки. Для значка достаточно первых десяти страниц, открытый список получает все страницы.
+ * @returns Заявки или null при ошибке запроса.
  */
-async function load(): Promise<number | null> {
-  let total = 0;
+async function load(): Promise<IncomingRequests | null> {
+  const profiles: ShortProfile[] = [];
+  const maxPages = refreshListeners.size ? Infinity : MAX_PAGES;
   let cursor = 0;
-  for (let page = 0; page < MAX_PAGES; page++) {
+  let pageSize = 0;
+  let hasMore = false;
+  for (let page = 0; page < maxPages; page++) {
     const { status, data } = await api.incomingRequests(cursor);
     if (status !== 200 || !data?.relationships) {
       return null;
     }
-    total += data.relationships.length;
+    pageSize ||= data.limit;
+    profiles.push(...data.relationships.map(({ profile }) => profile));
     const next = nextOffset(cursor, data);
-    if (!next.hasMore) {
+    hasMore = next.hasMore;
+    if (!hasMore) {
       break;
     }
     cursor = next.cursor;
   }
-  return total;
+  return { profiles, pageSize, hasMore };
 }
 
 /**
- * Число входящих заявок в друзья для значка в меню. Бэк не сообщает о новых заявках, поэтому число
- * обновляется раз в минуту, при переходах по страницам, при возвращении на вкладку и после ответа на заявку.
+ * Входящие заявки в друзья для значка в меню и открытого списка. Обновляются раз в минуту,
+ * при переходах по страницам, при возвращении на вкладку и после ответа на заявку.
  */
 export const friendRequests = {
   /**
@@ -88,16 +102,17 @@ export const friendRequests = {
   },
 
   /**
-   * Пересчитывает заявки. Ответы, пришедшие после выхода, игнорируются; при ошибке остаётся прежнее число.
+   * Пересчитывает заявки. Учитывает результат последнего запроса текущей сессии.
    */
   async refresh(): Promise<void> {
     if (!isRunning) {
       return;
     }
-    const current = generation;
-    const total = await load();
-    if (total !== null && current === generation) {
-      set(total);
+    const current = ++generation;
+    const requests = await load();
+    if (requests && current === generation) {
+      set(requests.profiles.length);
+      refreshListeners.forEach((listener) => listener(requests));
     }
   },
 
@@ -109,5 +124,15 @@ export const friendRequests = {
   onChange(listener: (count: number) => void): () => void {
     listeners.add(listener);
     return () => listeners.delete(listener);
+  },
+
+  /**
+   * Подписка на результат проверки, в том числе когда число заявок осталось прежним.
+   * @param listener Обработчик списка входящих заявок.
+   * @returns Функция отписки.
+   */
+  onRefresh(listener: (requests: IncomingRequests) => void): () => void {
+    refreshListeners.add(listener);
+    return () => refreshListeners.delete(listener);
   },
 };

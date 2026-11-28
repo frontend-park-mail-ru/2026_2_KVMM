@@ -23,9 +23,9 @@ function toShortProfile(participant: ChatParticipant): ShortProfile {
 function rememberParticipants(chat: Chat): void {
   chat.participants?.forEach((participant) => {
     const person = toShortProfile(participant);
-    people.remember(person.id, {
+    people.remember(person.uid, {
       name: displayName(person),
-      avatarUrl: person.avatar_urls || people.get(person.id)?.avatarUrl || "",
+      avatarUrl: person.avatar_urls || people.get(person.uid)?.avatarUrl || "",
     });
   });
 }
@@ -33,13 +33,13 @@ function rememberParticipants(chat: Chat): void {
 /**
  * Собеседник в личном чате. В чате с собой — сам пользователь.
  * @param chat Чат.
- * @param myId id текущего пользователя.
+ * @param myUid UUID текущего пользователя.
  * @returns Короткий профиль собеседника или null, если бэк не прислал участников.
  */
-export function chatPartner(chat: Chat, myId: number): ShortProfile | null {
+export function chatPartner(chat: Chat, myUid: string): ShortProfile | null {
   const participants = chat.participants ?? [];
   const partner =
-    participants.find((person) => person.id !== myId) ?? participants[0];
+    participants.find((person) => person.uid !== myUid) ?? participants[0];
   return partner ? toShortProfile(partner) : null;
 }
 
@@ -55,7 +55,7 @@ export function partnerView(person: ShortProfile | null): {
   if (!person) {
     return { name: "Пользователь", avatarPath: "" };
   }
-  const known = people.get(person.id);
+  const known = people.get(person.uid);
   return {
     name: displayName(person),
     avatarPath: person.avatar_urls || known?.avatarUrl || "",
@@ -76,18 +76,20 @@ export function chatActivity(chat: Chat): number {
  * @returns Чаты, свежие сначала, или ошибка первой неудачной страницы.
  */
 export async function loadAllChats(): Promise<ApiResult<Chat[]>> {
-  const chats = new Map<number, Chat>();
-  let cursor = 0;
+  const chats = new Map<string, Chat>();
+  const seen = new Set<string>();
+  let cursor = "";
   for (let page = 0; page < MAX_PAGES; page++) {
     const { status, data } = await api.chats(cursor);
     if (status !== 200 || !data?.chats) {
       return { status, data: null };
     }
     data.chats.forEach((chat) => {
-      chats.set(chat.id, chat);
+      chats.set(chat.uid, chat);
       rememberParticipants(chat);
     });
-    const next = nextCursor(cursor, data);
+    seen.add(cursor);
+    const next = nextCursor(cursor, data, seen);
     if (!next.hasMore) {
       break;
     }
@@ -101,14 +103,14 @@ export async function loadAllChats(): Promise<ApiResult<Chat[]>> {
 
 /**
  * Создаёт личный чат с человеком (или возвращает существующий) и просит сокет подписаться на него: бэк подписывает только при подключении.
- * @param profileId Собеседник.
+ * @param profileUid UUID собеседника.
  * @returns Ответ бэка с чатом.
  */
-export async function openChat(profileId: number): Promise<ApiResult<Chat>> {
-  const response = await api.createChat(profileId);
-  if ((response.status === 200 || response.status === 201) && response.data) {
+export async function openChat(profileUid: string): Promise<ApiResult<Chat>> {
+  const response = await api.createChat(profileUid);
+  if ((response.status === 200 || response.status === 201) && response.data?.uid) {
     rememberParticipants(response.data);
-    chatSocket.refresh([response.data.id]);
+    chatSocket.refresh([response.data.uid]);
   }
   return response;
 }

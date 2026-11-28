@@ -43,15 +43,15 @@ function previewText(chat: Chat): string {
 /**
  * Строка чата: аватар и имя собеседника, последнее сообщение и его дата. Вся строка — ссылка в диалог.
  * @param chat Чат.
- * @param myId id текущего пользователя.
+ * @param myUid UUID текущего пользователя.
  * @returns Разметка строки.
  */
-function rowTemplate(chat: Chat, myId: number): string {
-  const { name, avatarPath } = partnerView(chatPartner(chat, myId));
+function rowTemplate(chat: Chat, myUid: string): string {
+  const { name, avatarPath } = partnerView(chatPartner(chat, myUid));
   const date = chat.last_message?.created_at ?? chat.created_at;
   return `
-    <li class="chat-list__item" data-id="${chat.id}">
-      <a class="chat-list__link" href="/chats/${chat.id}" data-link draggable="false">
+    <li class="chat-list__item" data-uid="${escapeHtml(chat.uid)}">
+      <a class="chat-list__link" href="/chats/${encodeURIComponent(chat.uid)}" data-link draggable="false">
         <span class="chat-list__person">
           ${avatarTemplate("chat-list", name, avatarPath)}
           <span class="chat-list__name" title="${escapeHtml(name)}">${escapeHtml(name)}</span>
@@ -72,7 +72,7 @@ export class ChatsPage {
   #list!: HTMLElement;
   #status!: HTMLElement;
   #suggestions!: PeopleSection;
-  #chats = new Map<number, Chat>();
+  #chats = new Map<string, Chat>();
   #unsubscribe: (() => void) | null = null;
   #isDestroyed = false;
 
@@ -171,9 +171,9 @@ export class ChatsPage {
       this.#status.textContent = MESSAGES.error;
       return;
     }
-    this.#chats = new Map(data.map((chat) => [chat.id, chat]));
+    this.#chats = new Map(data.map((chat) => [chat.uid, chat]));
     this.#renderList();
-    chatSocket.refresh(data.map((chat) => chat.id));
+    chatSocket.refresh(data.map((chat) => chat.uid));
     if (data.length) {
       this.#status.textContent = "";
       return;
@@ -196,12 +196,12 @@ export class ChatsPage {
    * Перерисовывает список, свежие чаты сверху.
    */
   #renderList(): void {
-    const myId = user.profile?.id ?? 0;
+    const myUid = user.profile?.uid ?? "";
     const chats = [...this.#chats.values()].sort(
       (a, b) => chatActivity(b) - chatActivity(a),
     );
     this.#list.innerHTML = chats
-      .map((chat) => rowTemplate(chat, myId))
+      .map((chat) => rowTemplate(chat, myUid))
       .join("");
   }
 
@@ -213,7 +213,7 @@ export class ChatsPage {
     if (event.type !== "message") {
       return;
     }
-    const chat = this.#chats.get(event.chat_id);
+    const chat = this.#chats.get(event.chat_uid);
     if (!chat) {
       this.#load();
       return;
@@ -228,20 +228,20 @@ export class ChatsPage {
    */
   async #write(person: ShortProfile): Promise<void> {
     this.#suggestions.setError("");
-    this.#suggestions.setBusy(person.id, true);
-    const response = await openChat(person.id);
+    this.#suggestions.setBusy(person.uid, true);
+    const response = await openChat(person.uid);
     if (this.#isDestroyed) {
       return;
     }
-    this.#suggestions.setBusy(person.id, false);
+    this.#suggestions.setBusy(person.uid, false);
     if (response.status === 401) {
       this.#goToLogin();
       return;
     }
-    if (!response.data?.id) {
+    if (!response.data?.uid) {
       this.#suggestions.setError(serverErrorMessage(response));
       return;
     }
-    this.#router.navigate(`/chats/${response.data.id}`);
+    this.#router.navigate(`/chats/${encodeURIComponent(response.data.uid)}`);
   }
 }
