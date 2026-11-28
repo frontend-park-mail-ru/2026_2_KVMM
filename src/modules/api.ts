@@ -221,28 +221,30 @@ interface RequestOptions {
   body?: unknown;
   csrf?: boolean;
   cache?: RequestCache;
+  signal?: AbortSignal;
 }
 
 /**
  * Запрос к бэку с cookie сессии. Тело-объект уходит как JSON, FormData — как есть. CSRF-токен добавляется к изменяющим запросам и к тем GET, где его требует бэк. Сетевую ошибку превращает в status 0 и сообщает модулю сети, есть ли связь.
  * @param method HTTP-метод.
  * @param path Путь после /api.
- * @param options Тело запроса, CSRF и режим кеширования.
+ * @param options Тело запроса, CSRF, режим кеширования и отмена.
  * @param options.body Тело: объект или FormData.
  * @param options.csrf Добавить ли X-CSRF-Token; по умолчанию — для всех, кроме GET.
  * @param options.cache Режим кеширования браузера.
+ * @param options.signal Сигнал отмены запроса.
  * @returns Статус и разобранный JSON или null.
  */
 async function request<T>(
   method: string,
   path: string,
-  { body, csrf = method !== "GET", cache }: RequestOptions = {},
+  { body, csrf = method !== "GET", cache, signal }: RequestOptions = {},
 ): Promise<ApiResult<T>> {
   const headers: Record<string, string> = {};
   if (csrf && user.csrfToken) {
     headers["X-CSRF-Token"] = user.csrfToken;
   }
-  const options: RequestInit = { method, credentials: "include", headers, cache };
+  const options: RequestInit = { method, credentials: "include", headers, cache, signal };
 
   if (body instanceof FormData) {
     options.body = body;
@@ -255,7 +257,9 @@ async function request<T>(
   try {
     response = await fetch(`${API_URL}${path}`, options);
   } catch {
-    network.report(null);
+    if (!signal?.aborted) {
+      network.report(null);
+    }
     return { status: 0, data: null };
   }
   network.report(response);
@@ -355,8 +359,8 @@ export const api = {
       "GET",
       `/posts/user?${postPageQuery(cursor, limit, profileUid)}`,
     ),
-  postsRuntime: () =>
-    request<{ max_text_length: number; likes_enabled: boolean }>("GET", "/posts/runtime", { cache: "no-store" }),
+  postsRuntime: (signal: AbortSignal) =>
+    request<{ max_text_length: number; likes_enabled: boolean }>("GET", "/posts/runtime", { cache: "no-store", signal }),
   createPost: (text: string) =>
     request<Post>("POST", "/posts/create", { body: { post_text: text } }),
   updatePost: (postUid: string, text: string) =>

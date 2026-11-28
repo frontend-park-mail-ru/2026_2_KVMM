@@ -82,6 +82,7 @@ user.onChange(() => {
   }
 });
 
+postRuntime.watch();
 renderOfflineBanner(document.body);
 watchAvatars();
 if (SERVICE_WORKER) {

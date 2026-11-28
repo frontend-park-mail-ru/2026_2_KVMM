@@ -302,6 +302,9 @@ export class Post {
     button.title = button.disabled ? LIKES_UNAVAILABLE : "";
     const count = button.querySelector(".post__like-count") as HTMLElement;
     count.textContent = String(this.#post.likes_count);
+    if (!button.disabled && this.#element?.querySelector(".post__like-error")?.textContent === LIKES_UNAVAILABLE) {
+      this.#setLikeError("");
+    }
   }
 
   /**

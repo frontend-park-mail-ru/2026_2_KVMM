@@ -3,10 +3,12 @@ import { user } from "./user";
 import { MAX_LENGTH } from "./validation";
 
 const MAX_CONFIGURED_LENGTH = 2048;
+const REFRESH_INTERVAL = 15_000;
+const REQUEST_TIMEOUT = 8_000;
 const DEFAULT_RUNTIME = { maxTextLength: MAX_LENGTH.post, likesEnabled: true };
 let runtime = DEFAULT_RUNTIME;
 let profileUid: string | undefined;
-let requestVersion = 0;
+let pendingRequest: AbortController | undefined;
 const listeners = new Set<() => void>();
 
 function setRuntime(next: typeof DEFAULT_RUNTIME): void {
@@ -34,6 +36,21 @@ export const postRuntime = {
     setRuntime({ ...runtime, likesEnabled: false });
   },
 
+  /** Обновляет настройки по таймеру и сразу после возвращения на вкладку. */
+  watch(): void {
+    const refresh = (): void => {
+      if (user.isAuthorized && !pendingRequest) {
+        void postRuntime.refresh();
+      }
+    };
+    window.setInterval(refresh, REFRESH_INTERVAL);
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") {
+        refresh();
+      }
+    });
+  },
+
   /**
    * Загружает настройки публикаций для вошедшего пользователя.
    * При временной ошибке использует последнее успешное значение этой сессии.
@@ -41,7 +58,8 @@ export const postRuntime = {
    */
   async refresh(): Promise<void> {
     const uid = user.profile?.uid;
-    const version = ++requestVersion;
+    pendingRequest?.abort();
+    pendingRequest = undefined;
     if (uid !== profileUid) {
       profileUid = uid;
       setRuntime(DEFAULT_RUNTIME);
@@ -50,8 +68,16 @@ export const postRuntime = {
       return;
     }
 
-    const { status, data } = await api.postsRuntime();
-    if (status !== 200 || version !== requestVersion || uid !== user.profile?.uid) {
+    const request = new AbortController();
+    pendingRequest = request;
+    const timeout = window.setTimeout(() => request.abort(), REQUEST_TIMEOUT);
+    const { status, data } = await api.postsRuntime(request.signal);
+    window.clearTimeout(timeout);
+    if (pendingRequest !== request) {
+      return;
+    }
+    pendingRequest = undefined;
+    if (status !== 200 || request.signal.aborted || uid !== user.profile?.uid) {
       return;
     }
     const limit = data?.max_text_length;
