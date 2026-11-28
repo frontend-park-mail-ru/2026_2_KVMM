@@ -1,5 +1,6 @@
 import { createEntry, redirectOnAccessDenied, updateEntry } from "./api";
 import type { Entry, EntryValue, JsonValue } from "./api";
+import { bindFlagCheck } from "./flagCheck";
 import { element, showMessage, UUID_FORMAT } from "./form";
 
 function checkUserIds(text: string): { ids: string[]; error: string } {
@@ -37,7 +38,8 @@ type FieldControl = HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
  * @returns Функция, открывающая форму для указанного или нового ключа.
  */
 export function bindEntryEditor(panel: HTMLElement, onChanged: () => void): (entry?: Entry) => void {
-  const form = element<HTMLFormElement>(panel, "form");
+  const form = element<HTMLFormElement>(panel, ".onlineconf__editor-form");
+  const setFlagCheck = bindFlagCheck(element<HTMLFormElement>(panel, "#onlineconf-flag-check"));
   const title = element(panel, "#onlineconf-editor-title");
   const scope = element<HTMLSelectElement>(form, "[name=scope]");
   const name = element<HTMLInputElement>(form, "[name=name]");
@@ -54,6 +56,11 @@ export function bindEntryEditor(panel: HTMLElement, onChanged: () => void): (ent
   const cancel = element<HTMLButtonElement>(form, "#onlineconf-cancel");
   let editing: Entry | undefined;
   let busy = false;
+
+  const close = (): void => {
+    panel.hidden = true;
+    setFlagCheck();
+  };
 
   const showError = (message: string): void => showMessage(error, message);
   const showRequestError = (cause: unknown, fallback: string): void => {
@@ -166,7 +173,7 @@ export function bindEntryEditor(panel: HTMLElement, onChanged: () => void): (ent
       } else {
         await createEntry({ scope: scope.value, name: keyName, ...value });
       }
-      panel.hidden = true;
+      close();
       onChanged();
     } catch (cause) {
       showRequestError(cause, "Не удалось сохранить ключ");
@@ -183,7 +190,7 @@ export function bindEntryEditor(panel: HTMLElement, onChanged: () => void): (ent
   kind.addEventListener("change", showFields);
   include.addEventListener("input", checkOverrides);
   exclude.addEventListener("input", checkOverrides);
-  cancel.addEventListener("click", () => { panel.hidden = true; });
+  cancel.addEventListener("click", close);
   form.addEventListener("submit", (event) => {
     event.preventDefault();
     void submit();
@@ -195,6 +202,7 @@ export function bindEntryEditor(panel: HTMLElement, onChanged: () => void): (ent
     }
     editing = entry;
     form.reset();
+    setFlagCheck(entry?.kind === "flag" ? entry : undefined);
     showError("");
     for (const field of fieldControls) {
       showFieldError(field, "");

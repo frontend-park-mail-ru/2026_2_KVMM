@@ -123,6 +123,17 @@
               <button class="onlineconf__button onlineconf__button_primary" type="submit">Сохранить</button>
             </div>
           </form>
+          <form id="onlineconf-flag-check" class="onlineconf__flag-check" aria-labelledby="onlineconf-flag-check-title" novalidate hidden>
+            <h3 id="onlineconf-flag-check-title">Проверить флаг для пользователя</h3>
+            <p class="onlineconf__flag-check-note">Проверка использует сохранённые настройки флага.</p>
+            <label class="onlineconf__field">
+              UUID пользователя Nexly
+              <input type="text" name="profile_uid" class="onlineconf__code-input" autocomplete="off" autocapitalize="off" spellcheck="false" aria-describedby="onlineconf-flag-check-error" required />
+            </label>
+            <button class="onlineconf__button" type="submit">Проверить</button>
+            <p id="onlineconf-flag-check-error" class="onlineconf__editor-error" role="alert" hidden></p>
+            <p id="onlineconf-flag-check-result" class="onlineconf__flag-check-result" role="status" hidden></p>
+          </form>
         </section>
       </div>
 

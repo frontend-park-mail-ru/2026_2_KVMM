@@ -13,6 +13,13 @@ export type EntryValue = ConfigValue | Required<FlagValue>;
 export type Entry = EntryBase & (ConfigValue | FlagValue);
 type NewEntry = Omit<EntryBase, "uid"> & EntryValue;
 
+/** Итог проверки сохранённого флага для одного пользователя. */
+export interface FlagCheckResult {
+  enabled: boolean;
+  reason: "include" | "exclude" | "rollout";
+  rollout: number;
+}
+
 /** Профиль, которому выдан доступ к OnlineConf. */
 export interface OnlineConfAdmin {
   profile_uid: string;
@@ -22,6 +29,7 @@ export interface OnlineConfAdmin {
 
 const ENTRIES_URL = "/api/onlineconf/admin/entries";
 const ADMINS_URL = "/api/onlineconf/admin/admins";
+const FLAGS_URL = "/api/onlineconf/admin/flags";
 
 /** Ошибка административного API с кодом и HTTP-статусом. */
 export class OnlineConfHttpError extends Error {
@@ -152,6 +160,30 @@ export async function updateEntry(uid: string, value: EntryValue): Promise<void>
     : { rollout: value.rollout, include: value.include, exclude: value.exclude };
 
   await write(ENTRIES_URL + "/" + encodeURIComponent(uid), "PATCH", payload);
+}
+
+/**
+ * Проверяет сохранённый флаг для указанного профиля Nexly.
+ * @param flag Скоуп и имя флага.
+ * @param profileUid Публичный UUID профиля.
+ * @param signal Сигнал отмены проверки.
+ * @returns Состояние флага, причина и процент раскатки.
+ */
+export async function checkFlag(
+  flag: Pick<Entry, "scope" | "name">,
+  profileUid: string,
+  signal: AbortSignal,
+): Promise<FlagCheckResult> {
+  const path = `${FLAGS_URL}/${encodeURIComponent(flag.scope)}/${encodeURIComponent(flag.name)}/check`;
+  const params = new URLSearchParams({ profile_uid: profileUid });
+  const data = await request(`${path}?${params}`, { signal });
+  if (!data || typeof data !== "object" ||
+      !("enabled" in data) || typeof data.enabled !== "boolean" ||
+      !("reason" in data) || (data.reason !== "include" && data.reason !== "exclude" && data.reason !== "rollout") ||
+      !("rollout" in data) || typeof data.rollout !== "number") {
+    throw new Error("OnlineConf вернул некорректный результат проверки.");
+  }
+  return { enabled: data.enabled, reason: data.reason, rollout: data.rollout };
 }
 
 /**

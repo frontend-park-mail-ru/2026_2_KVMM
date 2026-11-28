@@ -6,10 +6,11 @@ const { json } = require('express');
 const ADMIN_PATH = '/api/onlineconf/admin';
 const ENTRIES_PATH = ADMIN_PATH + '/entries';
 const ADMINS_PATH = ADMIN_PATH + '/admins';
+const FLAG_CHECK_PATH = ADMIN_PATH + '/flags/:scope/:name/check';
 const MOCK_CSRF_TOKEN = 'onlineconf-mock-csrf';
 const MOCK_VIEWER_UID = '11111111-1111-4111-8111-111111111111';
 const MOCK_BOOTSTRAP_UID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
-const MOCK_LIKES_BUCKET = Number(createHash('sha256').update('posts/likes_enabled:42').digest().readBigUInt64BE() % 100n);
+const MOCK_PROFILE_IDS = new Map([[MOCK_VIEWER_UID, 42], [MOCK_BOOTSTRAP_UID, 1]]);
 const SCOPES = new Set(['frontend', 'auth', 'user', 'posts', 'community', 'backend']);
 const UUID_FORMAT = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -167,10 +168,41 @@ function revokeMockAdmin(req, res) {
     res.status(204).end();
 }
 
+function evaluateMockFlag(flag, profileUid) {
+    const profileId = MOCK_PROFILE_IDS.get(profileUid);
+    const bucketKey = flag.scope + '/' + flag.name + ':' + profileId;
+    const bucket = Number(createHash('sha256').update(bucketKey).digest().readBigUInt64BE() % 100n);
+    const reason = flag.exclude.includes(profileUid) ? 'exclude'
+        : flag.include.includes(profileUid) ? 'include' : 'rollout';
+    const enabled = reason === 'include' || (reason === 'rollout' && bucket < flag.rollout);
+    return {
+        scope: flag.scope, name: flag.name, profile_uid: profileUid,
+        enabled, reason, rollout: flag.rollout, bucket,
+    };
+}
+
+function checkMockFlag(req, res) {
+    const { scope, name } = req.params;
+    const profileUid = typeof req.query.profile_uid === 'string' ? req.query.profile_uid.trim().toLowerCase() : '';
+    if (!SCOPES.has(scope) || !UUID_FORMAT.test(profileUid)) {
+        res.status(400).json({ code: 'validation_error', message: 'Проверьте скоуп и UUID' });
+        return;
+    }
+    const entry = entries.find(item => item.scope === scope && item.name === name);
+    if (!entry) {
+        res.status(404).json({ code: 'not_found', message: 'Ключ не найден' });
+        return;
+    }
+    if (entry.kind !== 'flag' || !MOCK_PROFILE_IDS.has(profileUid)) {
+        res.status(400).json({ code: 'validation_error', message: 'Укажите существующие флаг и пользователя' });
+        return;
+    }
+    res.set('Cache-Control', 'private, no-store').json(evaluateMockFlag(entry, profileUid));
+}
+
 function mockLikesEnabled() {
     const flag = entries.find(entry => entry.scope === 'posts' && entry.name === 'likes_enabled' && entry.kind === 'flag');
-    return !flag || (!flag.exclude.includes(MOCK_VIEWER_UID) &&
-        (flag.include.includes(MOCK_VIEWER_UID) || MOCK_LIKES_BUCKET < flag.rollout));
+    return !flag || evaluateMockFlag(flag, MOCK_VIEWER_UID).enabled;
 }
 
 function rejectDisabledLike(_req, res, next) {
@@ -229,6 +261,7 @@ function registerOnlineConfMock(app, mode) {
     app.get(ADMINS_PATH, (_req, res) => res.set('Cache-Control', 'private, no-store').json({ admins }));
     app.post(ADMINS_PATH, json(), grantMockAdmin);
     app.delete(ADMINS_PATH + '/:profile_uid', revokeMockAdmin);
+    app.get(FLAG_CHECK_PATH, checkMockFlag);
 }
 
 module.exports = { registerOnlineConfMock };
