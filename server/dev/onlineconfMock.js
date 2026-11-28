@@ -1,5 +1,12 @@
 'use strict';
 
+const { randomUUID } = require('node:crypto');
+const { json } = require('express');
+
+const ENTRIES_PATH = '/api/onlineconf/admin/entries';
+const SCOPES = new Set(['frontend', 'auth', 'user', 'posts', 'community', 'backend']);
+const UUID_FORMAT = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 const entries = [
     { id: 'posts-likes', scope: 'posts', name: 'likes_enabled', kind: 'flag', rollout: 100, include: [], exclude: [] },
     { id: 'posts-max-text', scope: 'posts', name: 'max_text_length', kind: 'config', value: 256 },
@@ -15,4 +22,106 @@ function listMockEntries(req, res) {
     res.set('Cache-Control', 'private, no-store').json({ entries: matchingEntries });
 }
 
-module.exports = { listMockEntries };
+function readUserIds(value, label) {
+    if (!Array.isArray(value) || value.some(id => typeof id !== 'string' || !UUID_FORMAT.test(id))) {
+        throw new Error('Списки включения и исключения должны содержать UUID');
+    }
+    const ids = value.map(id => id.toLowerCase());
+    if (new Set(ids).size !== ids.length) {
+        throw new Error('UUID повторяется в списке «' + label + '».');
+    }
+    return ids;
+}
+
+function readEntryValue({ scope, name, kind }, body) {
+    if (!body || typeof body !== 'object') {
+        throw new Error('Передайте данные ключа');
+    }
+    if (scope === 'posts' && name === 'likes_enabled' && kind !== 'flag') {
+        throw new Error('posts.likes_enabled должен быть фича-флагом');
+    }
+    if (scope === 'posts' && name === 'max_text_length') {
+        if (kind !== 'config' || !Number.isInteger(body.value) || body.value < 1 || body.value > 2048) {
+            throw new Error('posts.max_text_length должен быть целым числом от 1 до 2048');
+        }
+    }
+
+    if (kind === 'config') {
+        if (!Object.hasOwn(body, 'value')) {
+            throw new Error('Передайте значение конфига');
+        }
+        return { value: body.value };
+    }
+
+    const { rollout, include, exclude } = body;
+    if (!Number.isInteger(rollout) || rollout < 0 || rollout > 100) {
+        throw new Error('Процент раскатки должен быть целым числом от 0 до 100');
+    }
+    const includedIds = readUserIds(include, 'Принудительное включение');
+    const excludedIds = readUserIds(exclude, 'Принудительное исключение');
+    const excluded = new Set(excludedIds);
+    const duplicate = includedIds.find(id => excluded.has(id));
+    if (duplicate) {
+        throw new Error('UUID ' + duplicate + ' указан в обоих списках. Оставьте его в одном списке.');
+    }
+    return { rollout, include: includedIds, exclude: excludedIds };
+}
+
+function createMockEntry(req, res) {
+    const { scope, name, kind } = req.body ?? {};
+    const keyName = typeof name === 'string' ? name.trim() : '';
+    if (!SCOPES.has(scope) || !keyName || (kind !== 'config' && kind !== 'flag')) {
+        res.status(400).json({ code: 'invalid_entry', message: 'Проверьте скоуп, имя и тип ключа' });
+        return;
+    }
+
+    if (entries.some(entry => entry.scope === scope && entry.name === keyName)) {
+        res.status(409).json({ code: 'entry_exists', message: 'Ключ с таким именем уже есть в этом скоупе' });
+        return;
+    }
+
+    const metadata = { id: randomUUID(), scope, name: keyName, kind };
+    try {
+        const entry = { ...metadata, ...readEntryValue(metadata, req.body) };
+        entries.push(entry);
+        res.status(201).json(entry);
+    } catch (error) {
+        res.status(400).json({ code: 'invalid_entry', message: error.message });
+    }
+}
+
+function updateMockEntry(req, res) {
+    const index = entries.findIndex(entry => entry.id === req.params.id);
+    if (index === -1) {
+        res.status(404).json({ code: 'entry_not_found', message: 'Ключ не найден' });
+        return;
+    }
+
+    try {
+        const entry = entries[index];
+        entries[index] = { ...entry, ...readEntryValue(entry, req.body) };
+        res.json(entries[index]);
+    } catch (error) {
+        res.status(400).json({ code: 'invalid_entry', message: error.message });
+    }
+}
+
+function deleteMockEntry(req, res) {
+    const index = entries.findIndex(entry => entry.id === req.params.id);
+    if (index === -1) {
+        res.status(404).json({ code: 'entry_not_found', message: 'Ключ не найден' });
+        return;
+    }
+
+    entries.splice(index, 1);
+    res.status(204).end();
+}
+
+function registerOnlineConfMock(app) {
+    app.get(ENTRIES_PATH, listMockEntries);
+    app.post(ENTRIES_PATH, json(), createMockEntry);
+    app.patch(ENTRIES_PATH + '/:id', json(), updateMockEntry);
+    app.delete(ENTRIES_PATH + '/:id', deleteMockEntry);
+}
+
+module.exports = { registerOnlineConfMock };

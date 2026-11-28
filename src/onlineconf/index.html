@@ -16,42 +16,111 @@
       <h1 class="onlineconf__title">OnlineConf</h1>
       <p class="onlineconf__description">Настройки и фича-флаги Nexly</p>
 
-      <section class="onlineconf__panel" aria-labelledby="onlineconf-keys-title">
-        <h2 id="onlineconf-keys-title" class="onlineconf__section-title">Ключи</h2>
-        <form id="onlineconf-filters" class="onlineconf__filters" role="search">
-          <label class="onlineconf__filter">
-            Поиск по имени
-            <input name="q" type="search" placeholder="Например, likes" />
-          </label>
-          <label class="onlineconf__filter">
-            Скоуп
-            <select name="scope">
-              <option value="">Все скоупы</option>
-              <option value="frontend">frontend</option>
-              <option value="auth">auth</option>
-              <option value="user">user</option>
-              <option value="posts">posts</option>
-              <option value="community">community</option>
-              <option value="backend">backend</option>
-            </select>
-          </label>
-        </form>
+      <div class="onlineconf__workspace">
+        <section class="onlineconf__panel" aria-labelledby="onlineconf-keys-title">
+          <div class="onlineconf__panel-header">
+            <h2 id="onlineconf-keys-title" class="onlineconf__section-title">Ключи</h2>
+            <button id="onlineconf-create" class="onlineconf__button onlineconf__button_primary" type="button">
+              Создать ключ
+            </button>
+          </div>
+          <form id="onlineconf-filters" class="onlineconf__filters" role="search">
+            <label class="onlineconf__field">
+              Поиск по имени
+              <input name="q" type="search" placeholder="Например, likes" />
+            </label>
+            <label class="onlineconf__field">
+              Скоуп
+              <select name="scope">
+                <option value="">Все скоупы</option>
+                <option value="frontend">frontend</option>
+                <option value="auth">auth</option>
+                <option value="user">user</option>
+                <option value="posts">posts</option>
+                <option value="community">community</option>
+                <option value="backend">backend</option>
+              </select>
+            </label>
+          </form>
 
-        <table id="onlineconf-entries" class="onlineconf__table" aria-labelledby="onlineconf-keys-title" hidden>
-          <thead>
-            <tr>
-              <th scope="col">Ключ</th>
-              <th scope="col">Скоуп</th>
-              <th scope="col">Тип</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-        <p id="onlineconf-status" class="onlineconf__status" role="status">Загружаем ключи…</p>
-        <button id="onlineconf-retry" class="onlineconf__retry" type="button" hidden>
-          Повторить загрузку
-        </button>
-      </section>
+          <table id="onlineconf-entries" class="onlineconf__table" aria-labelledby="onlineconf-keys-title" hidden>
+            <thead>
+              <tr>
+                <th scope="col">Ключ</th>
+                <th scope="col">Скоуп</th>
+                <th scope="col">Тип</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+          <p id="onlineconf-status" class="onlineconf__status" role="status">Загружаем ключи…</p>
+          <button id="onlineconf-retry" class="onlineconf__button" type="button" hidden>
+            Повторить загрузку
+          </button>
+        </section>
+
+        <section id="onlineconf-editor" class="onlineconf__panel" aria-labelledby="onlineconf-editor-title" hidden>
+          <h2 id="onlineconf-editor-title" class="onlineconf__section-title">Новый ключ</h2>
+          <form class="onlineconf__editor-form" novalidate>
+            <label class="onlineconf__field">
+              Скоуп
+              <select name="scope" aria-describedby="onlineconf-scope-error" required>
+                <option value="">Выберите скоуп</option>
+                <option value="frontend">frontend</option>
+                <option value="auth">auth</option>
+                <option value="user">user</option>
+                <option value="posts">posts</option>
+                <option value="community">community</option>
+                <option value="backend">backend</option>
+              </select>
+              <span id="onlineconf-scope-error" class="onlineconf__field-error" role="alert" hidden></span>
+            </label>
+            <label class="onlineconf__field">
+              Имя ключа
+              <input name="name" type="text" placeholder="Например, max_text_length" autocomplete="off" aria-describedby="onlineconf-name-error" required />
+              <span id="onlineconf-name-error" class="onlineconf__field-error" role="alert" hidden></span>
+            </label>
+            <label class="onlineconf__field">
+              Тип
+              <select name="kind">
+                <option value="config">Конфиг</option>
+                <option value="flag">Фича-флаг</option>
+              </select>
+            </label>
+            <div id="onlineconf-config-fields" class="onlineconf__field-group">
+              <label class="onlineconf__field">
+                Значение JSON
+                <textarea name="value" class="onlineconf__code-input" rows="5" spellcheck="false" placeholder="Например, 50" aria-describedby="onlineconf-value-error"></textarea>
+                <span id="onlineconf-value-error" class="onlineconf__field-error" role="alert" hidden></span>
+              </label>
+            </div>
+            <div id="onlineconf-flag-fields" class="onlineconf__field-group" hidden>
+              <label class="onlineconf__field">
+                Процент раскатки
+                <input name="rollout" type="number" min="0" max="100" step="1" value="0" aria-describedby="onlineconf-rollout-error" />
+                <span id="onlineconf-rollout-error" class="onlineconf__field-error" role="alert" hidden></span>
+              </label>
+              <label class="onlineconf__field">
+                Принудительное включение
+                <textarea name="include" class="onlineconf__code-input" rows="2" spellcheck="false" placeholder="Один UUID на строку" aria-describedby="onlineconf-include-error onlineconf-override-conflict"></textarea>
+                <span id="onlineconf-include-error" class="onlineconf__field-error" role="alert" hidden></span>
+              </label>
+              <label class="onlineconf__field">
+                Принудительное исключение
+                <textarea name="exclude" class="onlineconf__code-input" rows="2" spellcheck="false" placeholder="Один UUID на строку" aria-describedby="onlineconf-exclude-error onlineconf-override-conflict"></textarea>
+                <span id="onlineconf-exclude-error" class="onlineconf__field-error" role="alert" hidden></span>
+              </label>
+              <p id="onlineconf-override-conflict" class="onlineconf__editor-error" role="alert" hidden></p>
+            </div>
+            <p id="onlineconf-editor-error" class="onlineconf__editor-error" role="alert" hidden></p>
+            <div class="onlineconf__editor-actions">
+              <button id="onlineconf-delete" class="onlineconf__button onlineconf__button_danger" type="button" hidden>Удалить флаг</button>
+              <button id="onlineconf-cancel" class="onlineconf__button" type="button">Отмена</button>
+              <button class="onlineconf__button onlineconf__button_primary" type="submit">Сохранить</button>
+            </div>
+          </form>
+        </section>
+      </div>
     </main>
   </body>
 </html>

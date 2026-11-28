@@ -1,6 +1,8 @@
 @use "../styles/variables";
 @use "../styles/fonts";
 @use "../styles/base";
+@use "../components/Button/Button";
+@use "../components/Dialog/Dialog";
 
 .onlineconf__header {
   background: var(--color-surface);
@@ -37,8 +39,15 @@
   margin: 8px 0 0;
 }
 
-.onlineconf__panel {
+.onlineconf__workspace {
   margin-top: 28px;
+  display: grid;
+  align-items: start;
+  gap: 20px;
+}
+
+.onlineconf__panel {
+  min-width: 0;
   padding: clamp(16px, 3vw, 28px);
   background: var(--color-surface);
   border: 1px solid var(--color-track);
@@ -51,6 +60,19 @@
   line-height: 1.25;
 }
 
+.onlineconf__panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 20px;
+
+  .onlineconf__section-title {
+    margin: 0;
+  }
+}
+
 .onlineconf__filters {
   display: grid;
   grid-template-columns: minmax(0, 360px) minmax(0, 200px);
@@ -58,13 +80,14 @@
   margin-bottom: 24px;
 }
 
-.onlineconf__filter {
+.onlineconf__field {
   display: grid;
   gap: 6px;
   font: var(--font-title);
 
   input,
-  select {
+  select,
+  textarea {
     width: 100%;
     min-height: 44px;
     padding: 8px 12px;
@@ -78,6 +101,44 @@
       outline: 2px solid var(--color-link);
       outline-offset: 1px;
     }
+  }
+
+  textarea {
+    resize: vertical;
+  }
+
+  :is(input, select, textarea)[aria-invalid="true"] {
+    border-color: #a92831;
+    background: #fff8f8;
+  }
+
+  input:disabled,
+  select:disabled {
+    color: var(--color-text-secondary);
+    cursor: default;
+  }
+
+  .onlineconf__code-input {
+    font-family: ui-monospace, Consolas, monospace;
+  }
+}
+
+.onlineconf__entry {
+  cursor: pointer;
+
+  &:hover,
+  &:focus-within {
+    background: var(--color-page);
+  }
+}
+
+.onlineconf__entry-key {
+  color: var(--color-link);
+  text-align: left;
+  overflow-wrap: anywhere;
+
+  &:hover {
+    text-decoration: underline;
   }
 }
 
@@ -115,7 +176,7 @@
   border-top: 1px solid var(--color-track);
 }
 
-.onlineconf__retry {
+.onlineconf__button {
   min-height: 44px;
   padding: 8px 12px;
   border: 1px solid var(--color-link);
@@ -125,6 +186,63 @@
 
   &:hover {
     background: var(--color-page);
+  }
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: default;
+  }
+}
+
+.onlineconf__button_primary {
+  background: var(--color-link);
+  color: var(--color-text-inverse);
+
+  &:hover {
+    background: #302db6;
+  }
+}
+
+.onlineconf__button_danger {
+  margin-inline-end: auto;
+  border-color: #a92831;
+  color: #a92831;
+}
+
+.onlineconf__editor-form,
+.onlineconf__field-group:not([hidden]) {
+  display: grid;
+  gap: 16px;
+}
+
+.onlineconf__editor-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.onlineconf__field-error,
+.onlineconf__editor-error {
+  margin: 0;
+  color: #a92831;
+  overflow-wrap: anywhere;
+}
+
+.onlineconf__field-error {
+  font: var(--font-caption);
+}
+
+.onlineconf__editor-error {
+  padding: 10px 12px;
+  border: 1px solid #efb8bd;
+  border-radius: var(--radius-field);
+  background: #fff1f2;
+}
+
+@media (min-width: 900px) {
+  .onlineconf__workspace:has(#onlineconf-editor:not([hidden])) {
+    grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
   }
 }
 

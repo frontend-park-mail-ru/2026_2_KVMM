@@ -1,5 +1,6 @@
 import { listEntries } from "./api";
 import type { Entry } from "./api";
+import { bindEntryEditor } from "./editor";
 import "./index.scss";
 
 const KIND_LABEL: Record<Entry["kind"], string> = {
@@ -7,11 +8,17 @@ const KIND_LABEL: Record<Entry["kind"], string> = {
   flag: "Фича-флаг",
 };
 
-function createEntryRow(entry: Entry): HTMLTableRowElement {
+function createEntryRow(entry: Entry, openEditor: (entry: Entry) => void): HTMLTableRowElement {
   const row = document.createElement("tr");
+  row.className = "onlineconf__entry";
+  row.addEventListener("click", () => openEditor(entry));
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "onlineconf__entry-key";
   const name = document.createElement("code");
   name.textContent = `${entry.scope}.${entry.name}`;
-  row.insertCell().append(name);
+  button.append(name);
+  row.insertCell().append(button);
   row.insertCell().textContent = entry.scope;
   row.insertCell().textContent = KIND_LABEL[entry.kind];
   return row;
@@ -21,8 +28,10 @@ const filters = document.querySelector<HTMLFormElement>("#onlineconf-filters");
 const table = document.querySelector<HTMLTableElement>("#onlineconf-entries");
 const status = document.getElementById("onlineconf-status");
 const retry = document.querySelector<HTMLButtonElement>("#onlineconf-retry");
+const create = document.querySelector<HTMLButtonElement>("#onlineconf-create");
+const editor = document.getElementById("onlineconf-editor");
 
-if (filters && table && status && retry) {
+if (filters && table && status && retry && create && editor) {
   const rows = table.tBodies[0];
   let listRequest: AbortController | undefined;
 
@@ -53,7 +62,7 @@ if (filters && table && status && retry) {
         return;
       }
 
-      rows.replaceChildren(...entries.map(createEntryRow));
+      rows.replaceChildren(...entries.map((entry) => createEntryRow(entry, openEditor)));
       table.hidden = false;
       status.hidden = true;
     } catch {
@@ -63,6 +72,8 @@ if (filters && table && status && retry) {
     }
   };
 
+  const openEditor = bindEntryEditor(editor, () => void refreshEntries());
+  create.addEventListener("click", () => openEditor());
   filters.addEventListener("input", () => void refreshEntries());
   filters.addEventListener("submit", (event) => {
     event.preventDefault();
